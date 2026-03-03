@@ -6,8 +6,8 @@ import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-ico
 import { useNavigation } from '@react-navigation/native';
 import { useCameraPermissions, CameraView } from 'expo-camera';
 
-const MARKETPLACE_URL = 'https://shahil-kv.github.io/Unlink-App-Android-Extensions/marketplace.json';
-const BASE_URL = 'https://shahil-kv.github.io/Unlink-App-Android-Extensions';
+const MARKETPLACE_URL = 'https://unlinkhq.github.io/Extensions/marketplace.json';
+const BASE_URL = 'https://unlinkhq.github.io/Extensions';
 
 interface Extension {
   id: string;
