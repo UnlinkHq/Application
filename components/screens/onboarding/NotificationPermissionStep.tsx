@@ -1,102 +1,95 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, Image, Dimensions } from 'react-native';
+import React from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface NotificationPermissionStepProps {
   onNext: () => void;
 }
 
 export const NotificationPermissionStep: React.FC<NotificationPermissionStepProps> = ({ onNext }) => {
-  const { width } = Dimensions.get('window');
-
   const requestNotificationPermission = async () => {
     const { status } = await Notifications.requestPermissionsAsync();
-    // Proceed regardless of status for now, as per user's request "Give that permission also then it will working this is the final step"
+    // Move forward regardless of the outcome for onboarding flow
     onNext();
   };
 
   return (
-    <View className="flex-1 bg-black px-6 pt-10">
-      <View className="items-center w-full mb-8">
-        {/* Animated Eyes/Circles Illustration */}
-        <View className="flex-row space-x-12 mb-10">
-          <View className="w-24 h-14 bg-gray-600 rounded-full overflow-hidden relative">
-            <View className="absolute inset-x-2 top-2 bottom-0 bg-black rounded-full" />
-          </View>
-          <View className="w-24 h-14 bg-gray-600 rounded-full overflow-hidden relative">
-            <View className="absolute inset-x-2 top-2 bottom-0 bg-black rounded-full" />
-          </View>
-        </View>
-
-        <Text className="text-4xl font-bold text-center text-white mb-4 px-2" style={{ fontFamily: 'Outfit_700Bold' }}>
-          Notification Required
-        </Text>
-        
-        <Text className="text-lg text-center text-gray-500 leading-6 px-4" style={{ fontFamily: 'Outfit_400Regular' }}>
-          ScreenBreak requires notifications to unlock blocked apps. We'll never send you ads.
-        </Text>
-      </View>
-
-      {/* Mockup Phone Illustration */}
-      <View className="flex-1 items-center justify-center -mt-10 mb-10">
-        <View 
-            className="w-[280px] h-[500px] bg-[#1c1c1e] rounded-[50px] border-[8px] border-gray-800 relative overflow-hidden items-center pt-20"
-            style={{ 
-                shadowColor: '#fff',
-                shadowOffset: { width: 0, height: 0 },
-                shadowOpacity: 0.1,
-                shadowRadius: 20
-            }}
-        >
-          {/* Mock Notification */}
-          <View className="w-[240px] bg-[#2c2c2e] rounded-2xl p-4 flex-row items-center space-x-3 mb-10">
-             <View className="w-10 h-10 bg-white rounded-lg items-center justify-center">
-                 <View className="flex-row space-x-1">
-                    <View className="w-2 h-1 bg-black rounded-full" />
-                    <View className="w-2 h-1 bg-black rounded-full" />
-                 </View>
-             </View>
-             <View>
-                 <Text className="text-white font-bold text-sm">Take a challenge</Text>
-                 <Text className="text-gray-400 text-xs">to unlock the app</Text>
-             </View>
-          </View>
-
-          {/* I am watching you section */}
-          <View className="items-center mt-10">
-            <View className="flex-row space-x-4 mb-6">
-                <View className="w-10 h-6 bg-gray-600 rounded-full overflow-hidden relative">
-                    <View className="absolute inset-x-1 top-1 bottom-0 bg-black rounded-full" />
-                </View>
-                <View className="w-10 h-6 bg-gray-600 rounded-full overflow-hidden relative">
-                    <View className="absolute inset-x-1 top-1 bottom-0 bg-black rounded-full" />
-                </View>
+    <View className="flex-1 bg-black relative">
+      <View className="flex-1 pt-10 pb-32 px-8 max-w-2xl w-full self-center">
+        {/* Section Header */}
+        <View >
+            <View className="flex-row items-center mb-2">
+                <View className="h-[1px] w-8 bg-white mr-2" />
+                <Text className="font-label text-xs tracking-[0.2em] text-[#666666] uppercase">
+                    Critical Permission
+                </Text>
             </View>
-
-            <Text className="text-white text-2xl font-bold mb-4" style={{ fontFamily: 'Outfit_700Bold' }}>
-                I am watching you
+            
+            <Text className="text-4xl md:text-5xl  font-headline tracking-tighter leading-none mb-6 text-white text-left">
+                SYSTEM AUTHORIZATION
             </Text>
             
-            <Text className="text-gray-400 text-center text-sm px-6" style={{ fontFamily: 'Outfit_400Regular' }}>
-                This app is blocked by ScreenBreak. To access it, you must take a focus challenge.
+            <Text className="font-body text-[#999999] text-base leading-relaxed max-w-md">
+                Unlink requires system-level notifications to interrupt the dopamine loop. Without this, the intervention cannot be executed.
             </Text>
-          </View>
+        </View>
 
-          {/* Home Indicator */}
-          <View className="absolute bottom-4 w-24 h-1.5 bg-gray-700 rounded-full" />
+        {/* Notification Visual */}
+        <View className="flex-1 items-center justify-center py-2">
+            <View className="w-full aspect-square border border-white/10 relative flex items-center justify-center overflow-hidden">
+                
+                {/* Visual Grid/Diagonal Placeholder */}
+                <View className="absolute inset-0 opacity-[0.03] bg-white" />
+
+                {/* Minimal Notification Card */}
+                <View className="relative z-10 w-full max-w-[280px] bg-[#111111] border border-white/10 p-5 flex-row items-center shadow-2xl">
+                    {/* Icon Box */}
+                    <View className="w-10 h-10 bg-white flex items-center justify-center shrink-0 mr-4">
+                        <MaterialIcons name="notifications" size={24} color="black" />
+                    </View>
+                    
+                    {/* Content Box */}
+                    <View className="flex-col justify-center h-10">
+                        <Text className="font-headline font-bold text-sm text-white leading-tight">
+                            Notification Required
+                        </Text>
+                        <Text className="font-label text-[10px] uppercase tracking-widest text-[#666666] mt-1">
+                            System Override
+                        </Text>
+                    </View>
+
+                    {/* Corner Accents */}
+                    <View className="absolute -top-[1px] -left-[1px] w-2 h-2 border-t border-l border-white" />
+                    <View className="absolute -bottom-[1px] -right-[1px] w-2 h-2 border-b border-r border-white" />
+                </View>
+
+                {/* Structural Grid Detail */}
+                <View className="absolute inset-0 border-[0.5px] border-white/5 pointer-events-none" />
+            </View>
         </View>
       </View>
 
-      <View className="pb-8">
-        <TouchableOpacity
-          onPress={requestNotificationPermission}
-          className="w-full rounded-full bg-[#ff006e] py-5 items-center shadow-lg shadow-pink-500/30 active:scale-95 transition-transform"
-        >
-          <Text className="text-white text-2xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>
-            Give Permission
-          </Text>
-        </TouchableOpacity>
+      {/* Fixed Action Block */}
+      <View className="absolute bottom-0 left-0 right-0 p-6 md:p-8 border-t border-white/10" style={{ backgroundColor: 'rgba(0,0,0,0.95)' }}>
+          <TouchableOpacity 
+              onPress={requestNotificationPermission}
+              activeOpacity={0.8}
+              className="w-full py-6 bg-white flex-row items-center justify-center rounded-none active:scale-[0.99] transition-transform"
+          >
+              <Text className="text-black font-headline font-black text-lg tracking-tighter uppercase mr-3">
+                  GIVE PERMISSION
+              </Text>
+              <MaterialIcons name="arrow-forward" size={24} color="black" />
+          </TouchableOpacity>
+          
+          <View className="mt-4 flex-row justify-center">
+              <TouchableOpacity onPress={onNext} className="active:opacity-50 transition-opacity">
+                  <Text className="font-label text-[10px] text-[#666666] uppercase tracking-[0.3em] font-bold py-2">
+                      Remind me later
+                  </Text>
+              </TouchableOpacity>
+          </View>
       </View>
     </View>
   );

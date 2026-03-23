@@ -1,26 +1,21 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
-import { Svg, Rect, Line, Text as SvgText, G } from 'react-native-svg';
 import { getUsageStats } from '../../../modules/screen-time';
-import { formatDuration } from '../../../utils/screenTimeData';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface ReclaimTimeStepProps {
   onNext: () => void;
   preFetchedData?: any;
+  screenTimeGoal: number;
 }
 
 export const ReclaimTimeStep: React.FC<ReclaimTimeStepProps> = ({ 
   onNext,
-  preFetchedData
+  preFetchedData,
+  screenTimeGoal
 }) => {
   const [loading, setLoading] = useState(!preFetchedData);
   const [todaySeconds, setTodaySeconds] = useState(0);
-  const { width } = Dimensions.get('window');
-
-  const CHART_WIDTH = width - 48;
-  const BAR_HEIGHT = 40;
-  const MAX_HOURS = 8; // Max scale for the chart
 
   useEffect(() => {
     if (preFetchedData && preFetchedData.weekHistory) {
@@ -53,146 +48,127 @@ export const ReclaimTimeStep: React.FC<ReclaimTimeStepProps> = ({
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-black">
-        <ActivityIndicator color="#ff006e" size="large" />
+        <ActivityIndicator color="#ffffff" size="large" />
       </View>
     );
   }
 
   const beforeHours = todaySeconds / 3600;
-  const afterHours = beforeHours * 0.7; // 30% reduction
+  // Target is the goal set, but we ensure it's at least a 15% reduction if they are already below the goal
+  const targetGoalHours = screenTimeGoal;
+  const afterHours = beforeHours > targetGoalHours ? targetGoalHours : beforeHours * 0.85;
   const reclaimedHours = beforeHours - afterHours;
+  
+  const reductionPercentage = beforeHours > 0 ? ((reclaimedHours / beforeHours) * 100).toFixed(1) : "0.0";
 
-  const scale = (CHART_WIDTH - 80) / MAX_HOURS; // Leaving space for labels
+  const formatHours = (hours: number) => {
+      const h = Math.floor(hours);
+      const m = Math.round((hours - h) * 60);
+      return `${h}h ${m}m`;
+  };
 
-  const benefits = [
-    { title: "Save time", text: `Gain ${Math.round(reclaimedHours)} extra hours every day to spend with family or pursue your passions.` },
-    { title: "Reduce distractions", text: "Increase efficiency and cut procrastination by 20%." },
-    { title: "Improve focus", text: "Achieve goals 30% faster than your peers with better concentration." },
-    { title: "Build lasting habits", text: "Save 45 days a year to make your life more fulfilling." }
-  ];
+  // Scaling bars: The taller one is always 100% of container height (h-64/h-72)
+  // or at least impactful. Let's use 85% for the tallest.
+  const beforeHeight = 85; 
+  const afterHeight = (afterHours / beforeHours) * beforeHeight;
 
   return (
-    <View className="flex-1 bg-black pt-6 pb-6 px-6">
-      <View className="items-center w-full mb-8">
-        {/* Eyes Illustration */}
-        <View className="flex-row space-x-8 mb-6">
-          <View className="w-20 h-10 bg-gray-600 rounded-t-full overflow-hidden relative">
-            <View className="absolute inset-x-2 top-2 bottom-0 bg-black rounded-t-full" />
-          </View>
-          <View className="w-20 h-10 bg-gray-600 rounded-t-full overflow-hidden relative">
-            <View className="absolute inset-x-2 top-2 bottom-0 bg-black rounded-t-full" />
-          </View>
-        </View>
+    <View className="flex-1 bg-black pt-16 pb-6 px-8 relative overflow-hidden">
+      
+      {/* Structural Guides Background */}
+      <View className="absolute top-24 right-0 w-[px] h-32 bg-white opacity-10" />
+      <View className="absolute bottom-32 left-0 w-[px] h-32 bg-white opacity-10" />
 
-        <Text className="text-4xl font-bold text-center text-white mb-2" style={{ fontFamily: 'Outfit_700Bold' }}>
-          No worries, we've got you covered
+      {/* Header Section */}
+      <View className="mb-10">
+        <Text className="font-label text-[10px] tracking-[0.3em] uppercase text-[#919191] mb-2">
+            Phase 04: Projection
         </Text>
-        <Text className="text-lg text-gray-500 text-center" style={{ fontFamily: 'Outfit_400Regular' }}>
-          See how much time you can reclaim. Estimated based on our user research
+        <Text className="text-5xl md:text-5xl font-headline tracking-tighter leading-none text-[#e2e2e2]">
+            RECLAIM{'\n'}YOUR TIME
         </Text>
+        <View className="w-12 h-[2px] bg-white mt-4" />
       </View>
 
-      {/* Before/After Chart */}
-      <View className="mb-10 items-center justify-center">
-        <View style={{ height: 180, width: CHART_WIDTH }}>
-          <Svg width={CHART_WIDTH} height={180}>
-            {/* Grid Lines */}
-            {[0, 2, 4, 6, 8].map(h => (
-              <G key={h}>
-                <Line
-                  x1={h * scale}
-                  y1="20"
-                  x2={h * scale}
-                  y2="140"
-                  stroke="#3f3f46"
-                  strokeWidth="1"
-                  strokeDasharray="4,4"
-                  opacity="0.3"
-                />
-                <SvgText x={h * scale} y="155" fontSize="10" fill="#71717a" textAnchor="middle">{h}h</SvgText>
-              </G>
-            ))}
-
-            {/* Before Bar */}
-            <Rect
-              x="0"
-              y="30"
-              width={beforeHours * scale}
-              height={BAR_HEIGHT}
-              fill="#facc15"
-              rx={8}
-            />
-            <SvgText 
-              x={beforeHours * scale + 8} 
-              y={30 + BAR_HEIGHT / 2 + 5} 
-              fontSize="20" 
-              fontWeight="bold" 
-              fill="white"
-            >
-              {formatDuration(todaySeconds)}
-            </SvgText>
-
-            <SvgText x="0" y="25" fontSize="14" fill="#71717a" fontWeight="bold">Before</SvgText>
-
-            {/* After Bar */}
-            <Rect
-              x="0"
-              y="90"
-              width={afterHours * scale}
-              height={BAR_HEIGHT}
-              fill="#bbe73c"
-              rx={8}
-            />
-            <SvgText 
-              x={afterHours * scale + 8} 
-              y={90 + BAR_HEIGHT / 2 + 5} 
-              fontSize="20" 
-              fontWeight="bold" 
-              fill="white"
-            >
-              {formatDuration(afterHours * 3600)}
-            </SvgText>
+      {/* Instrument Comparison Display */}
+      <View className="flex-col gap-10 py-2 mb-auto">
+        {/* Comparison Grid */}
+        <View className="flex-row items-end space-x-8 w-full h-80">
             
-            <SvgText x="0" y="85" fontSize="14" fill="#71717a" fontWeight="bold">After</SvgText>
-          </Svg>
+            {/* Before Column */}
+            <View className="flex-1 flex-col justify-end h-full">
+                <View className="flex-col mb-4">
+                    <Text className="font-label text-[10px] text-[#ffb4aa] uppercase tracking-widest mb-1">Status: Current</Text>
+                    <Text className="text-3xl font-headline font-bold text-[#e2e2e2] leading-none">{formatHours(beforeHours)}</Text>
+                </View>
+                
+                <View className="h-64 bg-[#1b1b1b] relative overflow-hidden flex-col justify-end">
+                    <View 
+                        className="w-full bg-[#ffb4aa] border-t border-[#ff8a7b] opacity-80" 
+                        style={{ height: `${beforeHeight}%` }}
+                    />
+                    {/* High density technical lines */}
+                    <View className="absolute inset-0 flex-col justify-between py-6 opacity-10 pointer-events-none px-2">
+                        <View className="border-b border-white w-full" />
+                        <View className="border-b border-white w-full" />
+                        <View className="border-b border-white w-full" />
+                        <View className="border-b border-white w-full" />
+                        <View className="border-b border-white w-full" />
+                    </View>
+                </View>
+                <Text className="font-label text-[10px] text-[#919191] uppercase text-center mt-3 tracking-widest">Screen Latency</Text>
+            </View>
 
-          {/* -30% Badge */}
-          <View 
-            className="absolute bg-[#00c853] px-3 py-1 rounded-full items-center justify-center"
-            style={{ 
-                left: afterHours * scale + 10, 
-                top: 130 
-            }}
-          >
-            <Text className="text-white font-bold text-sm">-30%</Text>
-          </View>
+            {/* After Column */}
+            <View className="flex-1 flex-col justify-end h-full">
+                <View className="flex-col mb-4">
+                    <Text className="font-label text-[10px] text-[#72fe88] uppercase tracking-widest mb-1">Target: Optimized</Text>
+                    <Text className="text-3xl font-headline font-bold text-[#e2e2e2] leading-none">{formatHours(afterHours)}</Text>
+                </View>
+                
+                <View className="h-64 bg-[#1b1b1b] relative overflow-hidden flex-col justify-end">
+                    <View 
+                        className="w-full bg-[#72fe88] border-t border-[#00a741] opacity-80" 
+                        style={{ height: `${afterHeight}%` }}
+                    />
+                    {/* High density technical lines */}
+                    <View className="absolute inset-0 flex-col justify-between py-6 opacity-10 pointer-events-none px-2">
+                        <View className="border-b border-white w-full" />
+                        <View className="border-b border-white w-full" />
+                        <View className="border-b border-white w-full" />
+                        <View className="border-b border-white w-full" />
+                        <View className="border-b border-white w-full" />
+                    </View>
+                </View>
+                <Text className="font-label text-[10px] text-[#919191] uppercase text-center mt-3 tracking-widest">Unlinked Pulse</Text>
+            </View>
+        </View>
+
+        {/* Precision Metric */}
+        <View className="bg-[#0e0e0e] p-6 border-l-2 border-[#72fe88] mt-4">
+            <View className="flex-row justify-between items-baseline mb-2">
+                <Text className="font-label text-xs text-[#919191] uppercase tracking-tighter">Projected Recapture</Text>
+                <Text className="font-label text-2xl font-bold text-[#72fe88]">+{formatHours(reclaimedHours)}</Text>
+            </View>
+            <Text className="font-label text-[11px] text-[#c6c6c6] leading-relaxed uppercase opacity-80">
+                System analysis indicates a {reductionPercentage}% recovery of cognitive bandwidth within first cycle.
+            </Text>
         </View>
       </View>
 
-      {/* Benefits List */}
-      <View className="space-y-4 mb-auto">
-        {benefits.map((benefit, index) => (
-          <View key={index} className="flex-row items-start space-x-3 mb-2">
-            <View className="bg-[#00c853] rounded-full p-1 mt-1 mr-2">
-              <Ionicons name="checkmark" size={16} color="black" />
-            </View>
-            <View className="flex-1">
-              <Text className="text-white text-lg" style={{ fontFamily: 'Outfit_400Regular' }}>
-                <Text className="font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>{benefit.title} :</Text> {benefit.text}
+      {/* Action Section */}
+      <View className="w-full mb-4 flex-col pt-8">
+          <TouchableOpacity 
+              onPress={onNext}
+              activeOpacity={0.8}
+              className="w-full py-6 bg-white flex-row items-center justify-center rounded-none active:scale-[0.98] transition-transform"
+          >
+              <Text className="text-black font-black text-xl tracking-[0.2em] uppercase mr-3">
+                  CONTINUE
               </Text>
-            </View>
-          </View>
-        ))}
+              <MaterialIcons name="arrow-forward" size={24} color="black" />
+          </TouchableOpacity>
       </View>
-
-      <TouchableOpacity
-        onPress={onNext}
-        className="w-full rounded-full bg-[#ff006e] py-5 items-center shadow-lg shadow-pink-500/30 active:scale-95 transition-transform"
-      >
-        <Text className="text-white text-2xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>
-          Continue
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 };

@@ -1,6 +1,7 @@
-import React, { useEffect, useState, useMemo, useRef } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Dimensions, ScrollView, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { getUsageStats } from '../../../modules/screen-time';
+import { MaterialIcons } from '@expo/vector-icons';
 
 interface ScreenTimeComparisonStepProps {
   onNext: () => void;
@@ -12,25 +13,33 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
   preFetchedData 
 }) => {
   const [loading, setLoading] = useState(!preFetchedData);
-  const [yearlyHours, setYearlyHours] = useState(0);
+  const [totalHours, setTotalHours] = useState(0);
+  const [projectionYears, setProjectionYears] = useState(1);
   const [activeIndex, setActiveIndex] = useState(0);
   const { width } = Dimensions.get('window');
 
   useEffect(() => {
     if (preFetchedData) {
-      calculateYearly(preFetchedData.daily || preFetchedData);
+      calculateMetrics(preFetchedData.daily || preFetchedData);
       setLoading(false);
       return;
     }
     fetchData();
   }, [preFetchedData]);
 
-  const calculateYearly = (dailyStats: Record<string, number>) => {
+  const calculateMetrics = (dailyStats: Record<string, number>) => {
     const weeklyTotalSeconds = Object.values(dailyStats).reduce((sum: number, val: number) => sum + val, 0) / 1000;
     
-    // Project to a year
-    const projectedYearlyHours = Math.round((weeklyTotalSeconds / 7) * 365 / 3600);
-    setYearlyHours(projectedYearlyHours);
+    // Daily average
+    const dailyHours = (weeklyTotalSeconds / 7) / 3600;
+    
+    // Fixed at 1 year projection
+    const yearsToProject = 1;
+    setProjectionYears(yearsToProject);
+    
+    // Project to the dynamic years
+    const projectedHours = Math.round(dailyHours * 365 * yearsToProject);
+    setTotalHours(projectedHours);
   };
 
   const fetchData = async () => {
@@ -41,7 +50,7 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
       const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).getTime();
 
       const usageData = await getUsageStats(start, end);
-      calculateYearly(usageData.daily || {});
+      calculateMetrics(usageData.daily || {});
     } catch (e) {
       console.error("Failed to fetch usage data for comparison", e);
     } finally {
@@ -51,28 +60,30 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
 
   const comparisons = useMemo(() => [
     {
-      title: "Read Books",
-      value: Math.floor(yearlyHours / 15),
-      description: `Estimated at 15 hours per book, this allows for a broad exploration of knowledge in literature, history, psychology, and practical skills.`
+      title: "READING",
+      value: Math.floor(totalHours / 15),
+      unit: "BOOKS",
+      description: `Estimated at 15 hours per book. A broad exploration of literature and applied psychology.`
     },
     {
-      title: "Learn a Language",
-      value: Math.floor(yearlyHours / 480),
-      description: `Enough time to reach B1 level proficiency in a new language. You could communicate fluently with millions of new people around the world.`
+      title: "LEARN A LANGUAGE",
+      value: Math.floor(totalHours / 480),
+      unit: "FLUENCY LEVELS",
+      description: `Enough time to reach B1 level proficiency in a new language. You could communicate fluently with millions.`
     },
     {
-      title: "Learn a New Skill",
-      value: Math.floor(yearlyHours / 100),
-      label: "Skills",
-      description: `You could master several high-value skills like coding, graphic design, or playing a musical instrument with this much dedicated time.`
+      title: "SKILL ACQUISITION",
+      value: Math.floor(totalHours / 100),
+      unit: "MASTERIES",
+      description: `Sufficient runway to master high-value competencies like software engineering or design.`
     },
     {
-      title: "Exercise Regularly",
-      value: Math.floor(yearlyHours / 3),
-      label: "Workouts",
-      description: `That's enough time for nearly a daily workout session, leading to a complete transformation in your health and fitness levels.`
+      title: "PHYSICAL TRAINING",
+      value: Math.floor(totalHours / 3),
+      unit: "SESSIONS",
+      description: `Volume equates to nearly daily conditioning, capable of complete physiological transformation.`
     }
-  ], [yearlyHours]);
+  ], [totalHours]);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const scrollOffset = event.nativeEvent.contentOffset.x;
@@ -83,51 +94,60 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-black">
-        <Text className="text-white text-lg">Calculating your potential...</Text>
+        <Text className="text-white text-lg font-label uppercase tracking-widest">Calculating Data...</Text>
       </View>
     );
   }
 
-  return (
-    <View className="flex-1 bg-black pt-6 pb-6">
-      <View className="items-center w-full px-6 mb-8">
-        {/* Eyes Illustration */}
-        <View className="flex-row space-x-8 mb-6">
-          <View className="w-20 h-10 bg-gray-600 rounded-t-full overflow-hidden relative">
-            <View className="absolute inset-x-2 top-2 bottom-0 bg-black rounded-t-full" />
-          </View>
-          <View className="w-20 h-10 bg-gray-600 rounded-t-full overflow-hidden relative">
-            <View className="absolute inset-x-2 top-2 bottom-0 bg-black rounded-t-full" />
-          </View>
-        </View>
+  const projectionTitle = projectionYears === 1 
+      ? "One Year of Screen Time" 
+      : `${projectionYears} Years of Screen Time`;
 
-        <Text className="text-4xl font-bold text-center text-white mb-2" style={{ fontFamily: 'Outfit_700Bold' }}>
-          One Year of Screen Time
-        </Text>
-        <Text className="text-lg text-gray-500 text-center" style={{ fontFamily: 'Outfit_400Regular' }}>
-          Discover what these hours could become
-        </Text>
-        
-        <Text className="text-6xl font-bold text-white mt-6" style={{ fontFamily: 'Outfit_700Bold' }}>
-          {yearlyHours.toLocaleString()} hours
-        </Text>
+  return (
+    <View className="flex-1 bg-black justify-center relative overflow-hidden">
+
+      {/* Asymmetric Visual Element (Surgical precision detail) */}
+      <View className="absolute left-6 top-1/2 -translate-y-1/2 opacity-20 hidden md:block z-0 pointer-events-none">
+          <View className="h-64 w-[1px] bg-white ml-2" />
+          <Text className="font-label text-[10px] text-white tracking-widest mt-6 -ml-[40px] w-32" style={{ transform: [{ rotate: '90deg' }] }}>
+              AXIS_TIME_METRIC
+          </Text>
       </View>
 
-      <View className="flex-1">
+      <View className="items-center w-full z-10 pt-16">
+        <Text className="font-label text-xs tracking-[0.4em] text-[#919191] uppercase text-center mb-8">
+          {projectionTitle}
+        </Text>
+        
+        <View className="flex-row items-baseline justify-center max-w-lg mb-4">
+            <Text className="text-[120px] font-headline font-extrabold leading-none tracking-tighter text-white">
+              {totalHours}
+            </Text>
+            <Text className="text-2xl font-label tracking-normal font-light text-white ml-2 uppercase">
+              HOURS
+            </Text>
+        </View>
+
+        {/* Fracture/Separator */}
+        <View className="w-3/4 max-w-sm h-[1px] bg-[#474747] my-10 opacity-40 mx-auto" />
+      </View>
+
+      <View className="w-full h-40 z-10">
         <ScrollView
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
-          className="flex-1"
+          className="w-full"
         >
           {comparisons.map((item, index) => (
-            <View key={index} style={{ width }} className="px-10 items-center justify-center">
-              <Text className="text-white text-3xl font-bold italic border-b-2 border-white mb-6 pb-1" style={{ fontFamily: 'Outfit_700Bold' }}>
-                {item.title} {item.value} {item.label || (item.value === 1 ? 'Book' : 'Books')}
+            <View key={index} style={{ width }} className="px-6 items-center justify-start">
+              <Text className="font-label text-base md:text-lg tracking-widest text-white font-bold uppercase text-center mb-4">
+                {item.title} // <Text className="text-[#ffb4aa]">{item.value} {item.unit}</Text>
               </Text>
-              <Text className="text-gray-300 text-xl text-center leading-8" style={{ fontFamily: 'Outfit_400Regular' }}>
+              
+              <Text className="text-[#c6c6c6] font-body text-sm md:text-base leading-relaxed text-center opacity-80 max-w-sm px-4">
                 {item.description}
               </Text>
             </View>
@@ -135,24 +155,45 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
         </ScrollView>
       </View>
 
-      <View className="flex-row justify-center space-x-2 mb-10">
+      {/* Grid Indicators */}
+      <View className="flex-row justify-center space-x-4 mb-[140px] w-full z-10">
         {comparisons.map((_, index) => (
           <View
             key={index}
-            className={`w-2.5 h-2.5 rounded-full ${activeIndex === index ? 'bg-[#bbe73c]' : 'bg-gray-800'}`}
+            className={`h-[2px] rounded-full transition-all duration-300 ${activeIndex === index ? 'bg-white w-8' : 'bg-[#474747] w-4'}`}
           />
         ))}
       </View>
 
-      <View className="px-6">
-        <TouchableOpacity
-          onPress={onNext}
-          className="w-full rounded-full bg-[#ff006e] py-5 items-center shadow-lg shadow-pink-500/30 active:scale-95 transition-transform"
-        >
-          <Text className="text-white text-2xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>
-            Continue
-          </Text>
-        </TouchableOpacity>
+      {/* Decorative Corner Detail */}
+      <View className="absolute top-24 left-6 pointer-events-none opacity-30 z-0 hidden md:block">
+          <View className="font-label text-[10px] space-y-1">
+              <Text className="text-white">LAT: 37.7749</Text>
+              <Text className="text-white">LONG: -122.4194</Text>
+              <Text className="text-[#ffb4aa]">CRITICAL_OVERUSE_DETECTION</Text>
+          </View>
+      </View>
+      
+      <View className="absolute top-24 right-6 pointer-events-none opacity-30 z-0 hidden md:block items-end">
+          <View className="font-label text-[10px] space-y-1 items-end">
+              <Text className="text-white">SYSTEM_ID: OP-094</Text>
+              <Text className="text-white">MODE: SURGICAL_INTERVENTION</Text>
+              <Text className="text-white">BUFFER: 0.00ms</Text>
+          </View>
+      </View>
+
+      {/* Continue Button Block */}
+      <View className="absolute bottom-0 left-0 w-full p-6 md:p-12 z-50 flex items-center justify-center pt-8">
+          <TouchableOpacity 
+              onPress={onNext}
+              activeOpacity={0.8}
+              className="w-full max-w-lg bg-white flex-row items-center justify-center gap-2 px-10 py-6 rounded-none active:scale-[0.98] transition-transform"
+          >
+              <Text className="text-black font-headline font-extrabold uppercase tracking-[0.2em] text-lg">
+                  CONTINUE
+              </Text>
+              <MaterialIcons name="arrow-forward" size={24} color="black" />
+          </TouchableOpacity>
       </View>
     </View>
   );

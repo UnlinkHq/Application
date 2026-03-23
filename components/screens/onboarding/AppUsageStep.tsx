@@ -1,12 +1,14 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { View, Text, TouchableOpacity, Image, ActivityIndicator, Dimensions, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView } from 'react-native';
 import { getUsageStats, getInstalledApps } from '../../../modules/screen-time';
 import { formatDuration } from '../../../utils/screenTimeData';
+import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface AppUsageStepProps {
   onNext: () => void;
-  preFetchedData?: any; // The raw or processed usage data
-  preFetchedApps?: any[]; // The list of installed apps
+  preFetchedData?: any; 
+  preFetchedApps?: any[]; 
 }
 
 interface AppStats {
@@ -23,6 +25,7 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
 }) => {
   const [loading, setLoading] = useState(!(preFetchedData && preFetchedApps));
   const [topApps, setTopApps] = useState<AppStats[]>([]);
+  const [totalDailySeconds, setTotalDailySeconds] = useState(0);
   const { width } = Dimensions.get('window');
 
   useEffect(() => {
@@ -40,21 +43,24 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
       appMap.set(app.packageName, { label: app.label, icon: app.icon });
     });
 
-    // Combine and sort
+    let totalDuration = 0;
     const processedApps: AppStats[] = Object.entries(dailyStats)
       .map(([pkg, duration]) => {
         const appInfo = appMap.get(pkg);
+        const durSecs = (duration as number) / 1000;
+        totalDuration += durSecs;
         return {
           packageName: pkg,
           label: appInfo?.label || pkg.split('.').pop() || 'Unknown',
           icon: appInfo?.icon || null,
-          duration: (duration as number) / 1000
+          duration: durSecs
         };
       })
-      .filter(app => app.duration > 60) // At least 1 minute
+      .filter(app => app.duration > 60)
       .sort((a, b) => b.duration - a.duration)
       .slice(0, 5);
 
+    setTotalDailySeconds(totalDuration);
     setTopApps(processedApps);
   };
 
@@ -64,7 +70,7 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
       
       const now = new Date();
       const end = now.getTime();
-      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).getTime();
+      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime(); // just last 24h
 
       const [usageData, installedApps] = await Promise.all([
         getUsageStats(start, end),
@@ -82,96 +88,123 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-black">
-        <ActivityIndicator color="#ff006e" size="large" />
+        <ActivityIndicator color="#ffffff" size="large" />
       </View>
     );
   }
 
   const maxDuration = topApps.length > 0 ? topApps[0].duration : 1;
+  const totalHours = Math.round(totalDailySeconds / 3600);
+  const reclaimedHours = Math.max(0, (totalHours - 2)).toFixed(1);
 
   return (
-    <View className="flex-1 bg-black pt-6 pb-6 px-6">
-      <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-        <View className="items-center w-full mb-8">
-            {/* Eyes Illustration */}
-            <View className="flex-row space-x-8 mb-6">
-                <View className="w-20 h-10 bg-gray-600 rounded-t-full overflow-hidden relative">
-                    <View className="absolute inset-x-2 top-2 bottom-0 bg-black rounded-t-full" />
-                </View>
-                <View className="w-20 h-10 bg-gray-600 rounded-t-full overflow-hidden relative">
-                    <View className="absolute inset-x-2 top-2 bottom-0 bg-black rounded-t-full" />
-                </View>
-            </View>
+    <View className="flex-1 bg-black relative">
+      <LinearGradient 
+        colors={['#250505', '#000000']} 
+        locations={[0, 0.4]}
+        className="absolute inset-0"
+      />
 
-            <Text className="text-4xl font-bold text-center text-white mb-2" style={{ fontFamily: 'Outfit_700Bold' }}>
-                Where your time goes
+      <ScrollView showsVerticalScrollIndicator={false} className="flex-1 pt-8 pb-12 px-8 flex-col max-w-2xl mx-auto w-full">
+        {/* Headline Section */}
+        <View className="mb-12">
+            <Text className="font-label text-xs tracking-widest text-[#474747] mb-2 uppercase">Analysis Complete</Text>
+            <Text className="text-5xl font-black leading-none tracking-tighter text-[#e2e2e2] mb-6 font-headline">
+                WHERE YOUR{'\n'}TIME GOES
             </Text>
-            <Text className="text-lg text-gray-500" style={{ fontFamily: 'Outfit_400Regular' }}>
-                Top apps for the last 7 days
-            </Text>
+            <View className="h-[1px] w-full bg-[#474747] opacity-40 relative">
+                {/* Fracture detail mock */}
+                <View className="absolute right-0 top-[-4px] w-2 h-2 border-l border-[#474747] transform rotate-45" />
+            </View>
         </View>
 
-        <View className="space-y-8 pb-10">
+        {/* Usage List (Surgical Precision) */}
+        <View className="space-y-10 flex-col mb-12 flex-grow">
           {topApps.map((app, index) => {
             const progress = app.duration / maxDuration;
-            const barWidth = (width - 120) * progress;
-            const isTop = index === 0;
+            
+            let severityText = "Optimal Range";
+            let severityColor = "text-[#474747]";
+            let barColor = "bg-[#2a2a2a]";
+            let categoryText = "Utility";
+
+            if (index === 0) {
+              severityText = "Extreme Usage";
+              severityColor = "text-[#ffb4aa]";
+              barColor = "bg-[#ffb4aa]";
+              categoryText = "Primary Drain";
+            } else if (index === 1) {
+              severityText = "High Usage";
+              severityColor = "text-[#919191]";
+              barColor = "bg-white";
+              categoryText = "Secondary Drain";
+            } else {
+              categoryText = "Application";
+            }
 
             return (
-              <View key={app.packageName} className="w-full">
-                <Text className="text-white text-lg font-bold mb-3" style={{ fontFamily: 'Outfit_700Bold' }}>
-                  No. {index + 1}
-                </Text>
-                
-                <View className="flex-row items-center space-x-4 mb-2">
-                  <View className="w-10 h-10 rounded-xl mr-3 bg-gray-800 overflow-hidden items-center justify-center">
-                    {app.icon ? (
-                      <Image 
-                        source={{ uri: `data:image/png;base64,${app.icon}` }} 
-                        className="w-8 h-8"
-                        resizeMode="contain"
-                      />
-                    ) : (
-                      <View className="w-6 h-6 bg-gray-600 rounded-md" />
-                    )}
+              <View key={app.packageName} className="w-full flex-col group mb-8">
+                <View className="flex-row justify-between items-end mb-3">
+                  <View className="flex-col">
+                      <Text className="font-label text-sm text-[#474747] uppercase tracking-widest leading-tight mb-1">{categoryText}</Text>
+                      <Text className="text-xl font-bold tracking-tight text-[#e2e2e2] font-headline">{app.label}</Text>
                   </View>
                   
-                  <View 
-                    style={{ 
-                      width: Math.max(barWidth, 40), 
-                      height: 36, 
-                      backgroundColor: isTop ? '#ff453a' : '#ffb6c1',
-                      borderRadius: 18,
-                    }} 
-                  />
+                  <View className="items-end">
+                      <Text className="text-3xl font-black font-headline text-white" style={{ fontVariant: ['tabular-nums'] }}>
+                          {formatDuration(app.duration)}
+                      </Text>
+                      <Text className={`font-label text-[10px] uppercase tracking-tighter ${severityColor}`}>
+                          {severityText}
+                      </Text>
+                  </View>
                 </View>
 
-                <View className="flex-row justify-between items-center ml-1">
-                  <Text className="text-white text-xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>
-                    {app.label}
-                  </Text>
-                  <Text className="text-gray-400 text-lg" style={{ fontFamily: 'Outfit_400Regular' }}>
-                    {formatDuration(app.duration)}
-                  </Text>
+                {/* Progress Bar: Liquid Level Aesthetic */}
+                <View className="h-4 w-full bg-[#0e0e0e] border border-[#474747]/20 relative overflow-hidden">
+                    <View 
+                       className={`absolute top-0 left-0 h-full rounded-t-sm ${barColor}`}
+                       style={{ 
+                         width: `${progress * 100}%`,
+                         shadowColor: index === 0 ? '#ffb4aa' : 'transparent',
+                         shadowOffset: { width: 0, height: 0 },
+                         shadowOpacity: index === 0 ? 0.3 : 0,
+                         shadowRadius: 15
+                       }} 
+                    />
                 </View>
-                
-                {index < topApps.length - 1 && (
-                    <View className="h-[0.5px] bg-gray-800 w-full mt-6" />
-                )}
               </View>
             );
           })}
         </View>
+
+        {/* Summary Tonal Layer */}
+        <View className="mb-[150px] bg-[#0e0e0e] border border-[#474747]/10 p-6 flex-row items-center space-x-6">
+            <View className="w-16 mr-3 h-16 border border-white flex justify-center items-center">
+                <MaterialIcons name="broken-image" size={32} color="white" />
+            </View>
+            <View className="flex-1">
+                <Text className="text-[#c6c6c6] font-body text-sm leading-relaxed">
+                    You are currently spending <Text className="font-bold text-white tracking-widest">{totalHours} hours</Text> daily behind the glass. 
+                    Unlink will reclaim <Text className="font-bold text-[#72fe88] tracking-widest">{reclaimedHours} hours</Text> for your physical reality.
+                </Text>
+            </View>
+        </View>
       </ScrollView>
 
-      <TouchableOpacity
-        onPress={onNext}
-        className="w-full rounded-full bg-[#ff006e] py-5 items-center shadow-lg shadow-pink-500/30 active:scale-95 transition-transform"
-      >
-        <Text className="text-white text-2xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>
-          Continue
-        </Text>
-      </TouchableOpacity>
+      {/* Footer / Action Area */}
+      <View className="absolute bottom-6 left-6 right-6 z-50 pt-4">
+          <TouchableOpacity 
+              onPress={onNext}
+              activeOpacity={0.8}
+              className="w-full bg-white flex-row items-center justify-center py-6 border border-white active:scale-[0.98] transition-transform shadow-2xl rounded-none relative"
+          >
+              <Text className="text-black font-black text-2xl font-headline tracking-[0.2em] relative mr-2">
+                  CONTINUE
+              </Text>
+              <MaterialIcons name="arrow-forward" size={24} color="black" />
+          </TouchableOpacity>
+      </View>
     </View>
   );
 };

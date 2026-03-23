@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 
 interface WelcomeStepProps {
   onNext: () => void;
@@ -8,40 +7,43 @@ interface WelcomeStepProps {
 
 export const WelcomeStep: React.FC<WelcomeStepProps> = ({ onNext }) => {
   return (
-    <View className="flex-1 items-center justify-between py-10 px-6">
-       <View /> 
-
-      <View className="items-center w-full">
-        {/* Logo / Icon */}
-        <View className="w-20 h-20 bg-pink-500 rounded-3xl items-center justify-center shadow-lg shadow-pink-500/30 rotate-12 mb-10">
-            <Ionicons name="hourglass-outline" size={40} color="white" />
+    <View className="flex-1 bg-black flex-col">
+      {/* Header Area */}
+      <View className="w-full flex-row items-center justify-between px-8 py-6 z-20 border-b border-white/10">
+        <View className="flex-1" />
+        <View className="flex-[2] items-center">
+          <Text className="text-lg  tracking-[3px] text-white font-headline uppercase">UNLINK</Text>
         </View>
-
-        <View className="items-center px-4">
-            <Text className="text-lg mb-4 font-bold text-center text-gray-500" style={{ fontFamily: 'Outfit_700Bold' }}>
-            Welcome to ScreenBreak
-            </Text>
-            
-            <Text className="text-4xl text-center text-white leading-tight" style={{ fontFamily: 'Outfit_400Regular' }}>
-            Take Control of Your Screen Time
-            </Text>
+        <View className="flex-1 flex-row justify-end">
+          <Text className="font-label text-[10px] tracking-[2px] text-white/40 uppercase">V-0.1BETA</Text>
         </View>
-
       </View>
 
-      <View className="w-full">
-        <TouchableOpacity 
+      {/* Main Content Area */}
+      <View className="flex-1 items-center justify-center px-8 z-10 w-full">
+        <View className="w-full">
+          <Text className="text-5xl  font-headline text-white uppercase text-center" style={{ lineHeight: 48, letterSpacing: -1 }}>
+            THE 48-HOUR{'\n'}CRASH IS REAL.
+          </Text>
+        </View>
+      </View>
+
+      {/* Footer Action Area */}
+      <View className="w-full px-8 pb-8 flex-col items-center z-20">
+        <View className="w-full items-center">
+          <Text className="text-white/40 font-body text-[10px] tracking-[2px] uppercase mb-8 text-center" style={{ lineHeight: 18 }}>
+            The dopamine cycle is quantifiable.{'\n'}Break it now.
+          </Text>
+          <TouchableOpacity 
             onPress={onNext}
-            className="w-full rounded-full bg-white py-5 items-center shadow-lg active:scale-95 transition-transform"
-        >
-            <Text className="text-black text-2xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>
-                Get Started
+            activeOpacity={0.8}
+            className="w-full bg-white py-6 items-center justify-center rounded-none active:scale-[0.98] mb-10 transition-transform"
+          >
+            <Text className="text-black font-headline font-bold uppercase tracking-[2px]  text-center">
+              BREAK THE CYCLE
             </Text>
-        </TouchableOpacity>
-        
-        <Text className="text-left text-xs text-gray-500 mt-6 px-4">
-            By tapping Get Started, you agree to our <Text className='text-blue-500'>Privacy Policy</Text> and <Text className='text-blue-500'>Terms and Conditions</Text>.
-        </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );

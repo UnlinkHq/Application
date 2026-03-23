@@ -155,9 +155,9 @@ export const OnboardingScreen = () => {
         )}
         {currentStep === 4 && (!isDataLoaded ? (
           <View className="flex-1 items-center justify-center bg-black">
-             <Text className="text-white text-xl mb-4" style={{ fontFamily: 'Outfit_700Bold' }}>Analyzing your habits...</Text>
-             <Text className="text-gray-500 mb-8" style={{ fontFamily: 'Outfit_400Regular' }}>This takes just a second</Text>
-             <ActivityIndicator color="#ff006e" size="large" />
+             <Text className="text-white text-lg font-headline font-bold uppercase tracking-widest mb-4">Analyzing Data...</Text>
+             <Text className="text-[#919191] font-label text-xs uppercase tracking-[0.2em] mb-8">This takes just a second</Text>
+             <ActivityIndicator color="#ffffff" size="large" />
           </View>
         ) : (
           <ScreenTimeReportStep 
@@ -183,6 +183,7 @@ export const OnboardingScreen = () => {
           <ReclaimTimeStep 
             onNext={handleNext} 
             preFetchedData={usageStats}
+            screenTimeGoal={screenTimeGoal}
           />
         )}
         {currentStep === 8 && (

@@ -1,47 +1,61 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 
 interface JourneyBeginStepProps {
   onFinish: () => void;
 }
 
 export const JourneyBeginStep: React.FC<JourneyBeginStepProps> = ({ onFinish }) => {
-  const { width } = Dimensions.get('window');
-
   return (
-    <View className="flex-1 bg-black px-6 pt-10 justify-center items-center">
-      <View className="items-center w-full mb-12">
-        {/* Eyes/Circles Illustration */}
-        <View className="flex-row space-x-12 mb-16">
-          <View className="w-28 h-18 bg-gray-600 rounded-full overflow-hidden relative">
-            <View className="absolute inset-x-2 top-2 bottom-0 bg-white rounded-full" />
-            <View className="absolute right-0 top-0 bottom-0 w-1/2 bg-gray-600" />
-          </View>
-          <View className="w-28 h-18 bg-gray-600 rounded-full overflow-hidden relative">
-            <View className="absolute inset-x-2 top-2 bottom-0 bg-white rounded-full" />
-            <View className="absolute right-0 top-0 bottom-0 w-1/2 bg-gray-600" />
-          </View>
+    <View className="flex-1 bg-black relative items-center justify-center pt-20 pb-32">
+        {/* Center Aesthetic & Logo */}
+        <View className="flex-col items-center justify-center w-full max-w-lg z-10 px-10 gap-20">
+            {/* Minimalist Logo Placeholder */}
+            <View className="relative mt-8">
+                <View className="w-32 h-32 border border-white/20 flex items-center justify-center">
+                    <View className="w-16 h-16 border-2 border-white flex items-center justify-center">
+                        <View className="w-2 h-2 bg-white" />
+                    </View>
+                </View>
+                {/* Decorative Crosshair corners for 'surgical' feel */}
+                <View className="absolute -top-2 -left-2 w-4 h-[1px] bg-white/40" />
+                <View className="absolute -top-2 -left-2 w-[1px] h-4 bg-white/40" />
+                
+                <View className="absolute -bottom-2 -right-2 w-4 h-[1px] bg-white/40" />
+                <View className="absolute -bottom-2 -right-2 w-[1px] h-4 bg-white/40" />
+            </View>
+
+            {/* Typography Cluster */}
+            <View className="flex-col items-center w-full mt-4">
+                <Text className="text-4xl md:text-5xl  text-white leading-tight tracking-tighter uppercase font-headline text-center">
+                    YOUR JOURNEY{'\n'}BEGINS NOW.
+                </Text>
+                
+                <View className="flex-row items-center justify-center space-x-6 mt-8 mb-8">
+                    <View className="h-[1px] w-8 bg-white/20" />
+                    <Text className="text-[9px] font-bold uppercase tracking-[0.5em] text-white/40">PHASE 01</Text>
+                    <View className="h-[1px] w-8 bg-white/20" />
+                </View>
+
+                <Text className="text-base font-body text-white/60 max-w-xs text-center leading-relaxed tracking-wide">
+                    Initialize your first blocking sequence to reclaim focus.
+                </Text>
+            </View>
         </View>
 
-        <Text className="text-5xl font-bold text-center text-white mb-6 px-2" style={{ fontFamily: 'Outfit_700Bold' }}>
-          Your Journey begins now!
-        </Text>
-        
-        <Text className="text-xl text-center text-gray-500 leading-8 px-8" style={{ fontFamily: 'Outfit_400Regular' }}>
-          Now let's set up your first blocking rule.
-        </Text>
-      </View>
+        {/* Primary Action */}
+        <View className="absolute bottom-12 w-full max-w-xs px-6 self-center z-50">
+            <TouchableOpacity 
+                onPress={onFinish}
+                activeOpacity={0.8}
+                className="w-full bg-white flex items-center justify-center py-6 px-8 rounded-none active:scale-[0.98] transition-transform border border-white"
+            >
+                <Text className="text-black font-headline text-xs tracking-[0.4em] uppercase">
+                    LET'S GO
+                </Text>
+            </TouchableOpacity>
+        </View>
 
-      <View className="w-full absolute bottom-12 px-6">
-        <TouchableOpacity
-          onPress={onFinish}
-          className="w-full rounded-full bg-[#ff006e] py-6 items-center shadow-lg shadow-pink-500/30 active:scale-95 transition-transform"
-        >
-          <Text className="text-white text-2xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>
-            Let's go!
-          </Text>
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };

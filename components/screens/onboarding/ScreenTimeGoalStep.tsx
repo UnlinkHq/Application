@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
-import Animated, { useSharedValue, useAnimatedStyle, runOnJS, interpolateColor, withSpring, interpolate, Extrapolation, withDelay } from 'react-native-reanimated';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, runOnJS, withSpring } from 'react-native-reanimated';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Haptics from 'expo-haptics';
+import { Ionicons } from '@expo/vector-icons';
 
 interface ScreenTimeGoalStepProps {
   onNext: () => void;
@@ -12,15 +13,14 @@ interface ScreenTimeGoalStepProps {
 
 export const ScreenTimeGoalStep: React.FC<ScreenTimeGoalStepProps> = ({ onNext, screenTimeGoal, setScreenTimeGoal }) => {
     const MAX_HOURS = 12;
-    // Shared values
-    const progress = useSharedValue(0); 
+    const progress = useSharedValue(Math.min(1, Math.max(0, screenTimeGoal / MAX_HOURS))); 
     const isPressed = useSharedValue(false);
     const context = useSharedValue(0); 
-    const sliderHeight = useSharedValue(400); // Default to reasonable height
+    const sliderWidth = useSharedValue(300); // Default, updated onLayout
 
     useEffect(() => {
         const targetProgress = Math.min(1, Math.max(0, screenTimeGoal / MAX_HOURS));
-        if (Math.abs(progress.value - targetProgress) > 0.01) {
+        if (Math.abs(progress.value - targetProgress) > 0.01 && !isPressed.value) {
              progress.value = withSpring(targetProgress, { damping: 20, stiffness: 100 });
         }
     }, [screenTimeGoal]);
@@ -38,11 +38,9 @@ export const ScreenTimeGoalStep: React.FC<ScreenTimeGoalStepProps> = ({ onNext, 
             context.value = progress.value;
         })
         .onUpdate((e) => {
-            const height = sliderHeight.value || 400; // robust default
-            const sensitivity = 1 / height;
-            
-            // Dragging up (negative Y) increases progress
-            let newProgress = context.value - (e.translationY * sensitivity);
+            const width = sliderWidth.value || 300;
+            const sensitivity = 1 / width;
+            let newProgress = context.value + (e.translationX * sensitivity);
             newProgress = Math.max(0, Math.min(1, newProgress));
             
             progress.value = newProgress;
@@ -54,98 +52,87 @@ export const ScreenTimeGoalStep: React.FC<ScreenTimeGoalStepProps> = ({ onNext, 
             isPressed.value = false;
         });
 
-    const containerAnimatedStyle = useAnimatedStyle(() => {
+    const thumbStyle = useAnimatedStyle(() => {
         return {
             transform: [
-                { scale: 1 }
-            ]
-        };
-    });
-
-    const fillAnimatedStyle = useAnimatedStyle(() => {
-        return {
-            height: `${progress.value * 100}%`,
-            backgroundColor: interpolateColor(
-                progress.value,
-                [0, 0.4, 0.8], 
-                ['#a3e635', '#fde047', '#ff453a'] 
-            ),
-        };
-    });
-
-    const eyesContainerStyle = useAnimatedStyle(() => {
-        // Eyes fade in quickly and move up slightly
-        return {
-            opacity: interpolate(progress.value, [0, 0.05], [0, 1], Extrapolation.CLAMP),
-            transform: [
-                { translateY: interpolate(progress.value, [0, 0.1], [20, 0], Extrapolation.CLAMP) }
+                { translateX: progress.value * sliderWidth.value }
             ]
         };
     });
 
     return (
-        <View className="flex-1 items-center justify-between py-6 px-6">
-            <View className="w-full flex-1">
-                 <Text className="text-2xl mb-6 font-bold text-center text-white" style={{ fontFamily: 'Outfit_700Bold' }}>
-                    Set your ideal daily{"\n"}screen time
-                </Text>
+        <View className="flex-1 bg-black flex-col px-6 pb-6 pt-16">
+            <View className="flex-1 w-full justify-between items-center">
                 
-                <View className="flex-row items-center justify-center space-x-2 mb-4">
-                    <Text className="text-4xl font-bold text-white" style={{ fontFamily: 'Outfit_700Bold' }}>
-                        🏁 {Math.round(screenTimeGoal) === 0 ? "0 seconds" : `${screenTimeGoal} hours`}
+                {/* Title Section */}
+                <View className="w-full mt-4">
+                    <Text className="font-headline  text-5xl text-white tracking-tighter uppercase" style={{ lineHeight: 45 }}>
+                        Set your{"\n"}daily limit.
                     </Text>
                 </View>
 
-                {/* Vertical Slider - Layout Fixed */}
-                <GestureHandlerRootView className="flex-1 w-full mb-4">
-                    <GestureDetector gesture={gesture}>
-                        <Animated.View 
-                            className="w-full h-full bg-[#1c1c1e] rounded-[44px] overflow-hidden relative border-2 border-white"
-                            style={containerAnimatedStyle}
-                            onLayout={(event) => {
-                                const { height } = event.nativeEvent.layout;
-                                if (height > 0) {
-                                    sliderHeight.value = height;
-                                }
-                            }}
-                        >
-                             <View className="flex-1 w-full justify-end">
-                                 {/* Filled part */}
-                                 <Animated.View style={[fillAnimatedStyle, { width: '100%', borderBottomLeftRadius: 44, borderBottomRightRadius: 44 }]}>
-                                    
-                                    {/* Eyes Container - absolute inside the filled view, anchored to top */}
-                                    <Animated.View style={[eyesContainerStyle, { position: 'absolute', top: 24, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 48 }]}>
-                                         
-                                         {/* Left Eye */}
-                                        <View className="w-16 h-10 bg-white rounded-full overflow-hidden relative">
-                                             {/* Pupil looking right */}
-                                             <View className="absolute right-2 top-1 w-10 h-10 bg-black rounded-full" />
-                                        </View>
-
-                                        {/* Right Eye */}
-                                        <View className="w-16 h-10 bg-white rounded-full overflow-hidden relative">
-                                             {/* Pupil looking left/center */}
-                                             <View className="absolute left-2 top-1 w-10 h-10 bg-black rounded-full" />
-                                        </View>
-
-                                    </Animated.View>
-
-                                 </Animated.View>
-                            </View>
-                        </Animated.View>
-                    </GestureDetector>
-                </GestureHandlerRootView>
-            </View>
-
-            <View className="w-full mt-10">
-                <TouchableOpacity 
-                    onPress={onNext}
-                    className="w-full rounded-full bg-[#ff006e] py-5 items-center shadow-lg shadow-pink-500/30 active:scale-95 transition-transform"
-                >
-                    <Text className="text-white text-2xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>
-                        Continue
+                {/* Main Display */}
+                <View className="mt-16 flex-col items-center">
+                    <Text className="font-label text-xs uppercase tracking-[2px] text-white/40 mb-2">
+                        Target Hours
                     </Text>
-                </TouchableOpacity>
+                    <View className="flex-row items-baseline space-x-2">
+                        <Text className="font-headline font-black text-8xl text-white tracking-tighter" style={{ fontSize: 130, lineHeight: 140 }}>
+                            {screenTimeGoal.toString().padStart(2, '0')}
+                        </Text>
+                        <Text className="font-label text-2xl uppercase font-light text-white/40 italic">
+                            hrs
+                        </Text>
+                    </View>
+                </View>
+
+                {/* Slider Ruler */}
+                <View className="w-full mt-24 px-4">
+                    <GestureHandlerRootView className="w-full h-16 relative justify-center">
+                        <GestureDetector gesture={gesture}>
+                            <Animated.View 
+                                className="w-full h-full relative justify-center"
+                                onLayout={(event) => {
+                                    const { width } = event.nativeEvent.layout;
+                                    if (width > 0) sliderWidth.value = width;
+                                }}
+                            >
+                                {/* Background Track */}
+                                <View className="absolute left-0 right-0 h-[1px] bg-white" />
+
+                                {/* Modern Thumb */}
+                                <Animated.View 
+                                    className="absolute w-2 h-8 bg-white"
+                                    style={[{ left: -4 }, thumbStyle]}
+                                />
+                            </Animated.View>
+                        </GestureDetector>
+                    </GestureHandlerRootView>
+                    
+                    <View className="flex-row justify-between mt-6">
+                        <Text className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-white">00:00</Text>
+                        <Text className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-white/40">06:00</Text>
+                        <Text className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-white">12:00</Text>
+                    </View>
+                </View>
+
+                <View className="flex-1" />
+
+
+
+                {/* Confirm Button */}
+                <View className="mt-10 w-full flex-col justify-end">
+                    <TouchableOpacity 
+                        onPress={onNext}
+                        activeOpacity={0.8}
+                        className="w-full py-6 bg-white flex-row items-center justify-center space-x-4 rounded-none active:scale-[0.98] transition-transform"
+                    >
+                        <Text className="text-black font-headline font-bold text-lg tracking-[2px] uppercase text-center ">
+                            Confirm Goal
+                        </Text>
+                        <Ionicons name="arrow-forward" size={20} color="black" />
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );

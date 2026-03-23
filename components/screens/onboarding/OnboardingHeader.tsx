@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 interface OnboardingHeaderProps {
@@ -17,29 +17,37 @@ export const OnboardingHeader: React.FC<OnboardingHeaderProps> = ({
 }) => {
   const { width } = Dimensions.get('window');
   const progress = (currentStep + 1) / totalSteps;
-  const progressBarWidth = width - 80;
 
   return (
-    <View className="flex-row items-center px-6 py-4 bg-black">
-      {/* Back Button */}
-      <View style={{ width: 32 }}>
-        {showBack && (
-          <TouchableOpacity onPress={onBack} activeOpacity={0.7}>
-            <Ionicons name="chevron-back" size={28} color="white" />
-          </TouchableOpacity>
-        )}
+    <View className="w-full bg-black">
+      <View className="w-full flex-row items-center justify-between px-6 py-4">
+        {/* Back Button */}
+        <View className="w-10 h-10 items-start justify-center">
+          {showBack && (
+            <TouchableOpacity onPress={onBack} activeOpacity={0.8} className="w-10 h-10 items-center justify-center -ml-2">
+              <Ionicons name="arrow-back" size={24} color="white" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* Center Text */}
+        <View className="flex-[2] items-center">
+          <Text className="text-xl font-black tracking-[3px] text-white font-headline uppercase">UNLINK</Text>
+        </View>
+
+        {/* Right Label */}
+        <View className="w-10 items-end justify-center">
+          <Text className="font-label text-[10px] tracking-[2px] text-white/40 uppercase hidden sm:flex">V.01</Text>
+        </View>
       </View>
 
-      {/* Progress Bar Container */}
-      <View className="flex-1 mx-4 h-1 bg-gray-800 rounded-full overflow-hidden">
+      {/* Sleek Progress Bar integrated as the bottom border */}
+      <View className="w-full h-[1px] bg-white/10 relative">
         <View 
-          className="h-full bg-white rounded-full" 
+          className="absolute left-0 top-0 bottom-0 bg-white" 
           style={{ width: `${progress * 100}%` }} 
         />
       </View>
-
-      {/* Spacer for centering */}
-      <View style={{ width: 32 }} />
     </View>
   );
 };

@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
-import { Svg, Rect, Line, Text as SvgText, G } from 'react-native-svg';
-import ScreenTimeModule, { getUsageStats } from '../../../modules/screen-time';
+import { getUsageStats } from '../../../modules/screen-time';
 import { formatDuration } from '../../../utils/screenTimeData';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 interface ScreenTimeReportStepProps {
   onNext: () => void;
@@ -17,14 +17,8 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
 }) => {
   const [loading, setLoading] = useState(!preFetchedData);
   const [weekData, setWeekData] = useState<{ day: string, duration: number }[]>(preFetchedData || []);
-  const [totalSeconds, setTotalSeconds] = useState(0);
   const [viewMode, setViewMode] = useState<'Day' | 'Week'>('Week');
-
-  const { width, height: screenHeight } = Dimensions.get('window');
-  const CHART_WIDTH = width - 48;
-  const CHART_HEIGHT = screenHeight * 0.42; 
-  const MAX_BAR_HEIGHT = CHART_HEIGHT - 60;
-  const LABEL_WIDTH = 30; 
+  const { width } = Dimensions.get('window');
 
   // Day labels for the last 7 days (including today)
   const getDays = useMemo(() => {
@@ -35,7 +29,6 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
       date.setDate(date.getDate() - i);
       result.push({
         label: days[date.getDay()],
-        timestamp: date.getTime(),
         startOfDay: new Date(date.setHours(0, 0, 0, 0)).getTime(),
         endOfDay: new Date(date.setHours(23, 59, 59, 999)).getTime()
       });
@@ -46,7 +39,6 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
   useEffect(() => {
     if (preFetchedData && preFetchedData.length > 0) {
       setWeekData(preFetchedData);
-      setTotalSeconds(preFetchedData.reduce((sum, d) => sum + d.duration, 0));
       setLoading(false);
       return;
     }
@@ -56,19 +48,17 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Fetch each day's total usage
       const dailyPromises = getDays.map(async (day) => {
         const stats = await getUsageStats(day.startOfDay, day.endOfDay);
         const totalDuration = Object.values(stats.daily || {}).reduce((sum, val) => (sum as number) + (val as number), 0);
         return {
           day: day.label,
-          duration: (totalDuration as number) / 1000 // duration from native is in ms
+          duration: (totalDuration as number) / 1000
         };
       });
 
       const results = await Promise.all(dailyPromises);
       setWeekData(results);
-      setTotalSeconds(results.reduce((sum, d) => sum + d.duration, 0));
     } catch (e) {
       console.error("Failed to fetch screen time data", e);
     } finally {
@@ -76,184 +66,148 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
     }
   };
 
-  const filteredWeekData = useMemo(() => {
-    return weekData.filter(d => d.duration >= 300); // Only show days >= 5 mins
-  }, [weekData]);
-
-  const maxDuration = useMemo(() => {
-    const weekMax = filteredWeekData.length > 0 ? Math.max(...filteredWeekData.map(d => d.duration)) : 0;
-    const todayUsage = weekData.length > 0 ? weekData[weekData.length - 1].duration : 0;
-    const goalSeconds = screenTimeGoal * 3600;
-    
-    const highestPoint = Math.max(weekMax, todayUsage, goalSeconds);
-    const highestHours = Math.ceil(highestPoint / 3600);
-    
-    // Find next "nice" number for the top of the chart
-    let targetHours = highestHours;
-    if (targetHours < screenTimeGoal + 2) targetHours = Math.ceil(screenTimeGoal + 2);
-    
-    // Ensure it's even or multiple of 5 for better grid lines
-    if (targetHours % 2 !== 0 && targetHours % 5 !== 0) {
-        targetHours += 1;
-    }
-    
-    return targetHours * 3600;
-  }, [filteredWeekData, weekData, screenTimeGoal]);
-
-  const chartScale = MAX_BAR_HEIGHT / maxDuration;
-
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-black">
-        <ActivityIndicator color="#ff006e" size="large" />
+        <ActivityIndicator color="#ffffff" size="large" />
       </View>
     );
   }
 
+  const todayData = weekData[weekData.length - 1];
+  const todaySeconds = todayData ? todayData.duration : 0;
+  
+  const totalSeconds = weekData.reduce((sum, d) => sum + d.duration, 0);
+
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
 
-  // Stats for the header text
-  const headerValue = viewMode === 'Week' ? `${hours}h ${minutes}m` : formatDuration(weekData.length > 0 ? weekData[weekData.length - 1].duration : 0);
+  const headerValue = viewMode === 'Week' ? `${hours}h ${minutes}m` : formatDuration(todaySeconds);
   const headerSubLabel = viewMode === 'Week' ? 'Total for the last 7 days' : 'Today\'s screen time';
 
+  const maxDuration = weekData.length > 0 ? Math.max(...weekData.map(d => d.duration)) : 10;
+  const recommendedLimit = screenTimeGoal * 3600;
+
+  // Calculate highest chart point for grid lines
+  const chartMaxSeconds = Math.max(maxDuration, recommendedLimit, 36000); // at least 10h
+
   return (
-    <View className="flex-1 items-center bg-black pt-6 pb-6 px-6">
-      <View className="flex-1 w-full items-center">
-        {/* Eyes/Arcs Illustration - Reduced margin */}
-        <View className="flex-row space-x-8 mb-4">
-             <View className="w-20 h-12 bg-gray-600 rounded-t-full overflow-hidden relative">
-                <View className="absolute inset-x-2 top-2 bottom-0 bg-black rounded-t-full" />
-             </View>
-             <View className="w-20 h-12 bg-gray-600 rounded-t-full overflow-hidden relative">
-                <View className="absolute inset-x-2 top-2 bottom-0 bg-black rounded-t-full" />
-             </View>
+    <View className="flex-1 bg-black pt-16 px-6 relative">
+      <View className="flex-1 mb-24">
+        {/* Header Section */}
+        <View className="mb-10">
+            <View className="flex-row items-baseline space-x-2 mb-1">
+                <Text className="text-[10px] font-label font-bold uppercase tracking-[0.3em] text-[#ffb4aa]">04</Text>
+                <View className="h-[1px] w-8 bg-[#474747] opacity-30 self-center" />
+            </View>
+            <Text className="text-4xl font-headline  tracking-tighter uppercase mb-2 text-white">Your actual screen time</Text>
+            <Text className="text-[#c6c6c6] font-label text-xs uppercase tracking-widest">{headerSubLabel}</Text>
         </View>
 
-        <Text className="text-3xl font-bold text-center text-white mb-0.5" style={{ fontFamily: 'Outfit_700Bold' }}>
-          Your actual screen time
-        </Text>
-        <Text className="text-lg text-gray-500 mb-2" style={{ fontFamily: 'Outfit_400Regular' }}>
-          {headerSubLabel}
-        </Text>
-
-        <Text className="text-6xl font-bold text-white mb-4" style={{ fontFamily: 'Outfit_700Bold' }}>
-          {headerValue}
-        </Text>
-
-        {/* View Mode Toggle - Reduced margin */}
-        <View className="bg-[#1c1c1e] rounded-full p-1 flex-row mb-6">
-          <TouchableOpacity 
-            onPress={() => setViewMode('Day')}
-            className={`px-8 py-2 rounded-full ${viewMode === 'Day' ? 'bg-[#ff006e]' : ''}`}
-          >
-            <Text className={`font-bold text-sm ${viewMode === 'Day' ? 'text-white' : 'text-gray-500'}`}>Day</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => setViewMode('Week')}
-            className={`px-8 py-2 rounded-full ${viewMode === 'Week' ? 'bg-[#ff006e]' : ''}`}
-          >
-            <Text className={`font-bold text-sm ${viewMode === 'Week' ? 'text-white' : 'text-gray-500'}`}>Week</Text>
-          </TouchableOpacity>
+        {/* Main Display Data */}
+        <View className="mb-8 flex-col items-start z-10">
+            <View className="flex-row items-baseline">
+                <Text className="text-7xl md:text-8xl font-headline font-black tracking-tighter text-white">{headerValue}</Text>
+            </View>
+            
+            {/* Warning Badge */}
+            {todaySeconds > recommendedLimit && (
+              <View className="mt-4 flex-row space-x-4">
+                  <View className="flex-row items-center space-x-2 py-1.5 px-3 bg-[#2a2a2a] rounded">
+                      <MaterialIcons name="warning" size={14} color="#ffb4aa" />
+                      <Text className="font-label text-[10px] uppercase tracking-wider text-[#e2e2e2] font-bold">Latency Detected</Text>
+                  </View>
+              </View>
+            )}
         </View>
 
-        {/* Chart Container - flex-1 stretches between toggle and button */}
-        <View className="flex-1 w-full justify-center">
-            <View style={{ height: CHART_HEIGHT, width: CHART_WIDTH }}>
-              <Svg width={CHART_WIDTH} height={CHART_HEIGHT}>
-                {/* 0h Base Line */}
-                <Line x1="0" y1={MAX_BAR_HEIGHT} x2={CHART_WIDTH - LABEL_WIDTH} y2={MAX_BAR_HEIGHT} stroke="#3f3f46" strokeWidth="1" opacity="0.3" />
-                <SvgText x={CHART_WIDTH} y={MAX_BAR_HEIGHT + 14} fontSize="10" fill="#71717a" textAnchor="end">0h</SvgText>
+        {/* View Toggle */}
+        <View className="mb-4 self-center w-full max-w-xs z-20">
+            <View className="flex-row border border-[#474747]/50 rounded p-1">
+                <TouchableOpacity 
+                  onPress={() => setViewMode('Day')}
+                  className={`flex-1 py-3 items-center justify-center rounded ${viewMode === 'Day' ? 'bg-white' : ''}`}
+                >
+                  <Text className={`text-[10px] font-label font-bold uppercase tracking-widest ${viewMode === 'Day' ? 'text-black' : 'text-[#e2e2e2]/40'}`}>Day</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  onPress={() => setViewMode('Week')}
+                  className={`flex-1 py-3 items-center justify-center rounded ${viewMode === 'Week' ? 'bg-white' : ''}`}
+                >
+                  <Text className={`text-[10px] font-label font-bold uppercase tracking-widest ${viewMode === 'Week' ? 'text-black' : 'text-[#e2e2e2]/40'}`}>Week</Text>
+                </TouchableOpacity>
+            </View>
+        </View>
 
-                {/* Grid Lines */}
-                {(() => {
-                    const steps = [];
-                    const maxHours = Math.floor(maxDuration / 3600);
-                    // Determine smart intervals
-                    let interval = 2;
-                    if (maxHours > 20) interval = 10;
-                    else if (maxHours > 10) interval = 5;
+        {/* Minimalism Instrument Chart */}
+        <View className="flex-[1] flex-col mt-4 w-full pt-4">
+            <View className="flex-1 w-full flex-row items-end justify-between relative pb-[20px]">
+                {/* Chart Background Indicators */}
+                <View className="absolute inset-0 flex-col justify-between pointer-events-none pb-[20px]">
                     
-                    for (let h = interval; h <= maxHours; h += interval) {
-                        steps.push(h);
-                    }
-                    return steps.map(h => (
-                        <G key={h}>
-                            <Line 
-                                x1="0" 
-                                y1={MAX_BAR_HEIGHT - (h * 3600 * chartScale)} 
-                                x2={CHART_WIDTH - LABEL_WIDTH} 
-                                y2={MAX_BAR_HEIGHT - (h * 3600 * chartScale)} 
-                                stroke="#3f3f46" 
-                                strokeWidth="1" 
-                                opacity="0.2" 
-                                strokeDasharray={viewMode === 'Day' ? "4,4" : undefined}
-                            />
-                            <SvgText x={CHART_WIDTH} y={MAX_BAR_HEIGHT - (h * 3600 * chartScale) + 4} fontSize="10" fill="#71717a" textAnchor="end">{`${h}h`}</SvgText>
-                        </G>
-                    ));
-                })()}
+                    <View className="border-t border-white/5 w-full absolute top-0" />
+                    <Text className="absolute top-0 right-0 text-[10px] font-label text-[#e2e2e2]/50 -translate-y-[12px] bg-black px-1">{Math.ceil(chartMaxSeconds/3600)}H</Text>
 
-                {viewMode === 'Week' ? (
-                    <>
-                        {/* Goal line */}
-                        <Line x1="0" y1={MAX_BAR_HEIGHT - (screenTimeGoal * 3600 * chartScale)} x2={CHART_WIDTH - LABEL_WIDTH} y2={MAX_BAR_HEIGHT - (screenTimeGoal * 3600 * chartScale)} stroke="white" strokeWidth="1.5" strokeDasharray="4,4" />
-                        <SvgText x="5" y={MAX_BAR_HEIGHT - (screenTimeGoal * 3600 * chartScale) - 8} fontSize="16" fontWeight="bold" fill="white">Goal</SvgText>
+                    <View className="border-t border-white/20 w-full absolute" style={{ top: `${(1 - (recommendedLimit / chartMaxSeconds)) * 100}%` }} />
+                    <Text className="absolute right-0 bg-black px-1 text-[10px] font-label text-[#e2e2e2]/80 tracking-tighter -translate-y-[12px]" style={{ top: `${(1 - (recommendedLimit / chartMaxSeconds)) * 100}%` }}>GOAL {screenTimeGoal}H</Text>
 
-                        {/* Bars - Accounting for LABEL_WIDTH */}
-                        {filteredWeekData.map((item, index) => {
-                            const availableWidth = CHART_WIDTH - LABEL_WIDTH;
-                            const barWidth = 32;
-                            const barSlot = availableWidth / filteredWeekData.length;
-                            const barHeight = Math.max(item.duration * chartScale, 4);
-                            const x = index * barSlot + (barSlot - barWidth) / 2;
-                            const y = MAX_BAR_HEIGHT - barHeight;
-                            const barColor = item.duration > (screenTimeGoal * 3600) ? '#ff453a' : '#facc15';
-                            return (
-                                <G key={index}>
-                                    <Rect x={x} y={y} width={barWidth} height={barHeight} fill={barColor} rx={8} />
-                                    <SvgText x={x + barWidth / 2} y={MAX_BAR_HEIGHT + 20} fontSize="12" fill="#a1a1aa" textAnchor="middle">{item.day}</SvgText>
-                                </G>
-                            );
-                        })}
-                    </>
-                ) : (
-                    <>
-                        {(() => {
-                            const availableWidth = CHART_WIDTH - LABEL_WIDTH;
-                            const barWidth = 100;
-                            const barSlot = availableWidth / 2;
-                            const todayUsage = weekData.length > 0 ? weekData[weekData.length - 1].duration : 0;
-                            const goalHeight = Math.max((screenTimeGoal * 3600) * chartScale, 4);
-                            const realHeight = Math.max(todayUsage * chartScale, 4);
-                            return (
-                                <>
-                                    <G>
-                                        <Rect x={barSlot/2 - barWidth/2} y={MAX_BAR_HEIGHT - goalHeight} width={barWidth} height={goalHeight} fill="#bbe73c" rx={24} />
-                                        <SvgText x={barSlot/2} y={MAX_BAR_HEIGHT + 30} fontSize="14" fill="#a1a1aa" textAnchor="middle">Goal</SvgText>
-                                    </G>
-                                    <G>
-                                        <Rect x={barSlot + barSlot/2 - barWidth/2} y={MAX_BAR_HEIGHT - realHeight} width={barWidth} height={realHeight} fill="#ffeb3b" rx={24} />
-                                        <SvgText x={barSlot + barSlot/2} y={MAX_BAR_HEIGHT + 30} fontSize="14" fill="#a1a1aa" textAnchor="middle">Real</SvgText>
-                                    </G>
-                                </>
-                            );
-                        })()}
-                    </>
-                )}
-              </Svg>
+                    <View className="border-t border-white/5 w-full absolute bottom-[20px]" />
+                    <Text className="absolute bottom-[20px] right-0 text-[10px] font-label text-[#e2e2e2]/50 translate-y-[2px] bg-black px-1">0H</Text>
+                </View>
+
+                {/* Chart Bars */}
+                <View className="flex-1 h-full flex-row items-end justify-between pr-14 z-10 w-full">
+                    {weekData.map((d, index) => {
+                      const isExcessive = d.duration > recommendedLimit;
+                      const heightPercent = Math.max(2, (d.duration / chartMaxSeconds) * 100);
+                      const isToday = index === weekData.length - 1;
+                      
+                      // Highlight logic: in Day mode, highlight only today. In Week mode, highlight all if excessive, or normal.
+                      const isActiveBar = viewMode === 'Week' || isToday;
+                      const barColor = !isActiveBar ? 'bg-[#c6c6c6]/10' : (isExcessive ? 'bg-[#ffb4aa]' : 'bg-[#c6c6c6]/60');
+                      const textColor = !isActiveBar ? 'text-[#e2e2e2]/20' : (isExcessive ? 'text-[#ffb4aa] font-bold' : 'text-[#e2e2e2]/60');
+
+                      return (
+                        <View key={index} className="flex-col items-center group w-8 h-full justify-end">
+                            <View className="w-full flex-col justify-end items-center mb-1">
+                                {isExcessive && isToday && (
+                                  <Text 
+                                    className={`absolute -top-5 text-[9px] font-label font-bold ${viewMode === 'Week' ? 'text-[#ffb4aa]' : 'text-white'}`}
+                                    style={{ width: 44, textAlign: 'center' }}
+                                    numberOfLines={1}
+                                  >
+                                      {formatDuration(d.duration).replace(' ', '')}
+                                  </Text>
+                                )}
+                                <View 
+                                  className={`w-2 rounded-t-sm transition-all ${barColor}`} 
+                                  style={{ height: `${heightPercent}%` }} 
+                                />
+                            </View>
+                            <Text className={`mt-2 text-[10px] font-label ${textColor}`}>
+                                {d.day[0]}
+                            </Text>
+                        </View>
+                      );
+                    })}
+                </View>
             </View>
         </View>
       </View>
 
-      <TouchableOpacity
-        onPress={onNext}
-        className="w-full rounded-full bg-[#ff006e] py-5 items-center shadow-lg shadow-pink-500/30 active:scale-95 transition-transform mt-4"
-      >
-        <Text className="text-white text-2xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>
-          Continue
-        </Text>
-      </TouchableOpacity>
+      {/* Fixed Action Button */}
+      <View className="absolute bottom-6 left-6 right-6 z-50 bg-black pt-4">
+          <TouchableOpacity 
+              onPress={onNext}
+              activeOpacity={0.8}
+              className="w-full  bg-white active:scale-[0.98] transition-transform flex-row items-center justify-center space-x-2 rounded-none"
+          >
+              <Text className="text-black font-headline font-black tracking-[0.2em] uppercase text-sm">
+                  Continue
+              </Text>
+              <MaterialIcons name="arrow-forward" size={16} color="black" />
+          </TouchableOpacity>
+      </View>
     </View>
   );
 };

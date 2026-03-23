@@ -67,7 +67,8 @@ export const FluidTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, n
                 // Update icons for 4 tabs
                 if (route.name === 'Today') iconName = isFocused ? 'stats-chart' : 'stats-chart-outline';
                 else if (route.name === 'Blocks') iconName = isFocused ? 'lock-closed' : 'lock-closed-outline';
-                else if (route.name === 'Extensions') iconName = isFocused ? 'extension-puzzle' : 'extension-puzzle-outline';
+                // else if (route.name === 'Extensions') iconName = isFocused ? 'extension-puzzle' : 'extension-puzzle-outline';
+                else if (route.name === 'Socials') iconName = isFocused ? 'shield' : 'shield-outline';
                 else if (route.name === 'Settings') iconName = isFocused ? 'options' : 'options-outline';
 
                 return (
