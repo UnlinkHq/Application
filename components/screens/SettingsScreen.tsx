@@ -118,7 +118,7 @@ export const SettingsScreen = () => {
                         </View>
                     </TouchableOpacity>
                     <SettingsItem icon="branding-watermark" label="Customize Block Screen" onPress={() => {}} />
-                    <SettingsItem icon="timer-10-alt-1" label="Rule Edit Cooldown" rightElement={<Text className="font-label text-[10px] text-zinc-500 uppercase">24H</Text>} onPress={() => {}} />
+                    <SettingsItem icon="timer" label="Rule Edit Cooldown" rightElement={<Text className="font-label text-[10px] text-zinc-500 uppercase">24H</Text>} onPress={() => {}} />
                     <SettingsItem icon="visibility-off" label="Exclude from Screen Time" onPress={() => {}} isLast />
                 </View>
 
