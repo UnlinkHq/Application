@@ -16,6 +16,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFonts, Outfit_400Regular, Outfit_700Bold } from '@expo-google-fonts/outfit';
+import { Inter_400Regular, Inter_700Bold, Inter_800ExtraBold, Inter_900Black } from '@expo-google-fonts/inter';
+import { SpaceGrotesk_300Light, SpaceGrotesk_400Regular, SpaceGrotesk_500Medium, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
 import './core/sdk/provider'; // Initialize the SDK Global
 
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +26,7 @@ import { BreakOverlay } from './components/blocking/BreakOverlay';
 import { HomeScreen } from './components/screens/HomeScreen';
 import { BlocksScreen } from './components/screens/BlocksScreen';
 import { ExtensionsScreen } from './components/screens/ExtensionsScreen';
+import { SocialsScreen } from './components/screens/SocialsScreen';
 import { SettingsScreen } from './components/screens/SettingsScreen';
 import { OnboardingScreen } from './components/screens/OnboardingScreen';
 import { FluidTabBar } from './components/navigation/FluidTabBar';
@@ -52,7 +55,7 @@ function TabNavigator() {
     >
       <Tab.Screen name="Today" component={HomeScreen} />
       <Tab.Screen name="Blocks" component={BlocksScreen} />
-      <Tab.Screen name="Extensions" component={ExtensionsScreen} />
+      <Tab.Screen name="Socials" component={SocialsScreen} />
       <Tab.Screen name="Settings" component={SettingsScreen} />
     </Tab.Navigator>
   );
@@ -63,6 +66,14 @@ export default function App() {
   const [fontsLoaded] = useFonts({
     Outfit_400Regular,
     Outfit_700Bold,
+    Inter_400Regular,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+    Inter_900Black,
+    SpaceGrotesk_300Light,
+    SpaceGrotesk_400Regular,
+    SpaceGrotesk_500Medium,
+    SpaceGrotesk_700Bold,
   });
 
   useEffect(() => {

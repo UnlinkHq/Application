@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platform, ActivityIndicator } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 export const InstagramSandbox = ({ 
@@ -238,235 +238,88 @@ const sandboxStyles = StyleSheet.create({
 });
 
 export const SocialsScreen = () => {
-  const navigation = useNavigation<any>();
-
-  // Use local state as requested to manage our 3 UI states
-  const [isEmpty, setIsEmpty] = useState(true);
-  const [isLocked, setIsLocked] = useState(false);
-  const [isCaughtUp, setIsCaughtUp] = useState(false);
-  const [showWebView, setShowWebView] = useState(false);
-
-  // VIP Setup State
-  const [vips, setVips] = useState<string[]>([]);
-  const [inputValue, setInputValue] = useState('');
-
-  // Lock Timer State (e.g. 10 seconds for testing instead of 12 hours)
-  // For production, this would be 12 * 60 * 60
-  const [timeLeft, setTimeLeft] = useState(5); // 5 seconds for easy testing
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isLocked && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isLocked, timeLeft]);
-
-  // Format seconds to HH:MM:SS
-  const formatTime = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
-
-  const handleAddVip = () => {
-    const trimmed = inputValue.trim();
-    if (trimmed && vips.length < 5 && !vips.includes(trimmed)) {
-      setVips([...vips, trimmed.startsWith('@') ? trimmed : `@${trimmed}`]);
-      setInputValue('');
-    }
-  };
-
-  const handleRemoveVip = (vipToRemove: string) => {
-    setVips(vips.filter(v => v !== vipToRemove));
-  };
-
-  const handleLockIn = () => {
-    if (vips.length > 0) {
-      setIsEmpty(false);
-      setIsLocked(true);
-      // setTimeLeft(12 * 60 * 60); // 12 hours for real usage
-      setTimeLeft(0); // 0 for testing per user request
-    }
-  };
-
-  const handleOpenWebView = () => {
-    // Show the Web View Sandbox
-    setShowWebView(true);
-  };
-  
-  const handleWebViewComplete = () => {
-    setShowWebView(false);
-    setIsLocked(false);
-    setIsCaughtUp(true);
-  };
-
-  const handleWebViewClose = () => {
-    // Abandon session back to State 2 (timer active)
-    setShowWebView(false);
-  };
-
-  const handleExit = () => {
-    // Reset back to locked state with new timer
-    setIsCaughtUp(false);
-    setIsLocked(true);
-    setTimeLeft(12 * 60 * 60); // Reset to 12 hours in production
+    const navigation = useNavigation<any>();
+    const [showSandbox, setShowSandbox] = useState(false);
     
-    // Navigate back to main dashboard
-    navigation.navigate('Today');
-  };
+    // Mock data for the gateway list
+    const gateways = [
+        { id: 'instagram', name: 'Instagram', status: 'UNFILTERED ACCESS', icon: 'logo-instagram', color: '#ffb4aa', library: 'Ionicons' },
+    ];
 
-  // ---------------------------------------------------------------------------
-  // STATE 1: VIP Setup
-  // ---------------------------------------------------------------------------
-  if (isEmpty) {
-    return (
-      <SafeAreaView className="flex-1 bg-black" edges={['top']}>
-        {/* Added pb-32 to fix the overlapping lock-in button with the tab bar */}
-        <View className="flex-1 px-6 pt-10 pb-32">
-          <Text className="text-white text-3xl font-bold mb-2 tracking-tight">
-            Who actually matters?
-          </Text>
-          <Text className="text-zinc-400 text-base mb-8">
-            Add up to 5 accounts. We block the rest.
-          </Text>
-
-          {/* Input Area */}
-          <View className="flex-row mb-6">
-            <TextInput
-              className="flex-1 border border-zinc-800 bg-zinc-900 rounded-lg p-4 text-white text-lg mr-3"
-              placeholder="@username"
-              placeholderTextColor="#52525B"
-              value={inputValue}
-              onChangeText={setInputValue}
-              autoCapitalize="none"
-              autoCorrect={false}
-              editable={vips.length < 5}
+    if (showSandbox) {
+        return (
+            <InstagramSandbox 
+                vipList={['@naval', '@sama', '@jack', '@elonmusk']} 
+                onComplete={() => setShowSandbox(false)} 
+                onClose={() => setShowSandbox(false)} 
             />
-            <TouchableOpacity 
-              className={`justify-center px-6 rounded-lg border ${vips.length >= 5 || !inputValue.trim() ? 'border-zinc-800 opacity-50' : 'border-zinc-300'}`}
-              onPress={handleAddVip}
-              disabled={vips.length >= 5 || !inputValue.trim()}
-            >
-              <Text className="text-white font-semibold">Add</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* VIP List */}
-          <ScrollView className="flex-1">
-            <View className="flex-row flex-wrap gap-3">
-              {vips.map((vip) => (
-                <View key={vip} className="flex-row items-center bg-zinc-900 border border-zinc-800 rounded-full py-2 px-4">
-                  <Text className="text-white font-medium mr-2">{vip}</Text>
-                  <TouchableOpacity onPress={() => handleRemoveVip(vip)}>
-                    <Ionicons name="close-circle" size={18} color="#71717A" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              {vips.length === 0 && (
-                <Text className="text-zinc-600 italic">No VIPs added yet.</Text>
-              )}
-            </View>
-          </ScrollView>
-
-          {/* Lock In Button */}
-          <View className="pb-10 pt-4">
-            <TouchableOpacity 
-              className={`py-4 rounded-xl items-center ${vips.length > 0 ? 'bg-white' : 'bg-zinc-800 opacity-50'}`}
-              onPress={handleLockIn}
-              disabled={vips.length === 0}
-            >
-              <Text className={`font-bold text-lg ${vips.length > 0 ? 'text-black' : 'text-zinc-500'}`}>
-                Lock In VIPs
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  // ---------------------------------------------------------------------------
-  // STATE 2: The Daily Check-In (Locked)
-  // ---------------------------------------------------------------------------
-  if (isLocked) {
-    if (showWebView) {
-      return (
-        <InstagramSandbox 
-          vipList={vips} 
-          onComplete={handleWebViewComplete} 
-          onClose={handleWebViewClose} 
-        />
-      );
+        );
     }
 
-    const isReady = true; // Always ready for testing as requested
-
     return (
-      <SafeAreaView className="flex-1 bg-black" edges={['top']}>
-        <View className="flex-1 px-6 pt-10 pb-32 items-center justify-center">
-          
-          <Text className="text-white text-2xl font-bold mt-8 mb-4">
-            Daily Socials Ready.
-          </Text>
+        <SafeAreaView className="flex-1 bg-black" edges={['top']}>
+            <View className="flex-1">
+                {/* TopAppBar */}
+                <View className="h-16 flex-row items-center justify-between px-6 border-b border-white/10 bg-black">
+                    <View className="flex-row items-center gap-2">
+                        <MaterialIcons name="sensors" size={24} color="white" />
+                        <Text className="font-headline font-black text-2xl tracking-[0.2em] text-white">UNLINK</Text>
+                    </View>
+                    <TouchableOpacity className="p-2">
+                        <MaterialIcons name="person" size={24} color="white" />
+                    </TouchableOpacity>
+                </View>
 
-          <View className="flex-row flex-wrap justify-center my-6 gap-2">
-            {vips.map((vip) => (
-              <View key={vip} className="bg-zinc-900 border border-zinc-800 rounded-full py-2 px-4">
-                <Text className="text-zinc-300">{vip}</Text>
-              </View>
-            ))}
-          </View>
+                <ScrollView 
+                    className="flex-1 px-6" 
+                    contentContainerStyle={{ paddingTop: 32, paddingBottom: 240 }}
+                >
+                    {/* Header Section */}
+                    <View className="mb-12">
+                        <View className="flex-row items-end justify-between mb-4">
+                            <Text className="font-headline  text-4xl tracking-tighter leading-[1] text-white uppercase">
+                                DISTRACTION{"\n"}GATEWAYS
+                            </Text>
+                            <View className="w-6 h-[1px] bg-white/40 mb-2" style={{ transform: [{ rotate: '-45deg' }] }} />
+                        </View>
+                        <Text className="font-label text-[10px] uppercase tracking-[0.2em] text-[#919191]">
+                       Be a part of something bigger
+                        </Text>
+                    </View>
 
-          <TouchableOpacity 
-            className="w-full py-4 rounded-xl items-center bg-white"
-            onPress={handleOpenWebView}
-          >
-            <Text className="font-bold text-lg text-black">
-              View Daily Update
-            </Text>
-          </TouchableOpacity>
-          
-        </View>
-      </SafeAreaView>
+                    {/* Socials List */}
+                    <View className="space-y-4">
+                        {gateways.map((gate) => (
+                            <TouchableOpacity 
+                                key={gate.id}
+                                activeOpacity={0.8}
+                                onPress={() => gate.id === 'instagram' ? setShowSandbox(true) : null}
+                                className="flex-row items-center justify-between p-6 bg-[#1b1b1b] border-l-2 border-transparent"
+                            >
+                                <View className="flex-row items-center gap-6">
+                                    <View className="w-12 h-12 bg-black items-center justify-center border border-white/10">
+                                        {gate.icon === 'logo-instagram' ? (
+                                            <Ionicons name="logo-instagram" size={24} color="white" />
+                                        ) : (
+                                            <MaterialIcons name={gate.icon as any} size={24} color="white" />
+                                        )}
+                                    </View>
+                                    <View>
+                                        <Text className="font-headline font-bold text-lg uppercase tracking-tight text-white">{gate.name}</Text>
+                                        <Text className="font-label text-[10px] tracking-[0.15em]" style={{ color: gate.color }}>
+                                            {gate.status}
+                                        </Text>
+                                    </View>
+                                </View>
+                                <MaterialIcons name="more-vert" size={24} color="#5d5f5f" />
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+
+                 
+
+                </ScrollView>
+            </View>
+        </SafeAreaView>
     );
-  }
-
-  // ---------------------------------------------------------------------------
-  // STATE 3: The "Caught Up" State
-  // ---------------------------------------------------------------------------
-  if (isCaughtUp) {
-    return (
-      <SafeAreaView className="flex-1 bg-black" edges={['top']}>
-        <View className="flex-1 px-6 pb-32 items-center justify-center">
-          
-          <View className="w-24 h-24 rounded-full bg-zinc-900 items-center justify-center mb-8 border border-zinc-800">
-            <Ionicons name="checkmark" size={48} color="#fff" />
-          </View>
-          
-          <Text className="text-white text-3xl font-bold text-center mb-4 tracking-tight">
-            You didn't miss anything.
-          </Text>
-          <Text className="text-zinc-400 text-lg text-center mb-12 px-4">
-            The world is not sleeping, but your feed is. Get back to work.
-          </Text>
-
-          <TouchableOpacity 
-            className="w-full bg-white py-4 rounded-xl items-center"
-            onPress={handleExit}
-          >
-            <Text className="text-black font-bold text-lg">
-              Exit
-            </Text>
-          </TouchableOpacity>
-          
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  return null;
 };

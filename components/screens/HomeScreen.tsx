@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform, AppState, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Platform, AppState, RefreshControl, Image } from 'react-native';
 import { useBlocking } from '../../context/BlockingContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { useIsFocused } from '@react-navigation/native';
 import { ScreenTimeChart } from '../ScreenTimeChart';
 import { ScreenTimeService } from '../../services/ScreenTimeService';
-import { DailyUsage, AppUsage, MOCK_DATA } from '../../utils/screenTimeData';
+import { DailyUsage, MOCK_DATA } from '../../utils/screenTimeData';
 import { DatePickerModal } from '../ui/DatePickerModal';
 import { PermissionBanner } from '../ui/PermissionBanner';
 
@@ -16,51 +16,42 @@ import { DailyOverview } from '../home/DailyOverview';
 import { AppUsageList } from '../home/AppUsageList';
 
 export const HomeScreen = () => {
-  const { isStrict, setStrict, triggerDemoBlock } = useBlocking();
-  const isFocused = useIsFocused(); // Check if screen is active
+  const { isStrict, triggerDemoBlock } = useBlocking();
+  const isFocused = useIsFocused();
   
-  const refreshCount = useRef(0); // Track auto-refreshes
+  const refreshCount = useRef(0);
 
   const [selectedDate, setSelectedDate] = useState(new Date().getDate()); 
   const [selectedHour, setSelectedHour] = useState<number | null>(null);
   const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
   
-  // Real Data State
   const [dailyData, setDailyData] = useState<DailyUsage | null>(null);
   const [hasPermission, setHasPermission] = useState(false);
 
-  // Date Picker State
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [currentMonth, setCurrentMonth] = useState(new Date().toLocaleString('default', { month: 'short' }));
 
-    // Loading State
-    const [isLoading, setIsLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Load Data Effect & Auto-Refresh
   useEffect(() => {
-    // Initial Load (always run on mount/date change)
     checkPermissionAndLoadData(false);
 
-    // Auto-Refresh every 60 seconds (Silent) - ONLY if Focused
     let intervalId: NodeJS.Timeout;
-
     if (isFocused) {
-        
         intervalId = setInterval(() => {
             if (AppState.currentState === 'active') {
                 refreshCount.current += 1;
-                checkPermissionAndLoadData(true); // Silent refresh
+                checkPermissionAndLoadData(true);
             }
         }, 60 * 1000);
     }
 
-    // Reload when app comes to foreground (and screen is focused)
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (nextAppState === 'active' && isFocused) {
         refreshCount.current += 1;
-        checkPermissionAndLoadData(true); // Silent refresh on foreground
+        checkPermissionAndLoadData(true);
       }
     });
 
@@ -68,10 +59,10 @@ export const HomeScreen = () => {
       if (intervalId) clearInterval(intervalId);
       subscription.remove();
     };
-  }, [selectedDate, isFocused]); // Re-run when focus changes
+  }, [selectedDate, isFocused]);
 
   const checkPermissionAndLoadData = async (silent = false) => {
-    if (!silent) setIsLoading(true); // Only show full loader if not silent
+    if (!silent) setIsLoading(true);
 
     if (Platform.OS === 'android') {
         try {
@@ -84,10 +75,6 @@ export const HomeScreen = () => {
                 const data = await ScreenTimeService.getDailyUsage(date.getTime());
                 setDailyData(data);
 
-                // Update the Extension SDK
-                // This part assumes ScreenTimeService can provide the necessary stats
-                // and that the SDK provider is accessible.
-                // For this example, we'll use a simplified structure based on `data`.
                 const { updateSDKState } = require('../../core/sdk/provider');
                 const totalMinutes = data?.totalDuration ? data.totalDuration / 60 : 0;
                 const appUsageMap = data?.apps ? Object.fromEntries(data.apps.map(a => [a.name, a.duration / 60])) : {};
@@ -114,20 +101,17 @@ export const HomeScreen = () => {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    checkPermissionAndLoadData(true); // specific pull-to-refresh state handles spinner
+    checkPermissionAndLoadData(true);
   }, []);
 
-  // ... (handlers remain the same) ...
   const handleRequestPermission = () => {
     ScreenTimeService.requestPermission();
-    // Re-check after a delay or on app foreground (handled by AppState)
   };
   
-  // Calculate displayed apps
   const displayedApps = useMemo(() => {
       if (!dailyData) return [];
       
-      // If we are looking at a specific hour, show apps from that hour
+      // If an hour is selected, show apps specific to that hour
       if (selectedHour !== null) {
           if (dailyData.hourly && dailyData.hourly[selectedHour]) {
               return dailyData.hourly[selectedHour].apps;
@@ -135,24 +119,14 @@ export const HomeScreen = () => {
           return [];
       } 
       
-      // If we have pre-aggregated apps (from Native Module), use them
+      // Default: Show all apps for the day (Most Used)
+      // dailyData.apps is now pre-aggregated by ScreenTimeService
       if (dailyData.apps && dailyData.apps.length > 0) {
           return dailyData.apps;
       }
 
-      // Otherwise, show aggregated daily totals from hourly data (Mock Data fallback)
-      const appMap = new Map();
-      if (dailyData.hourly) {
-          dailyData.hourly.forEach(h => {
-              h.apps.forEach(app => {
-                  const existing = appMap.get(app.id) || { ...app, duration: 0 };
-                  existing.duration += app.duration;
-                  appMap.set(app.id, existing);
-              });
-          });
-      }
-      return Array.from(appMap.values()).sort((a, b) => b.duration - a.duration) as AppUsage[];
-  }, [selectedDate, selectedHour, dailyData]);
+      return [];
+  }, [selectedHour, dailyData]);
 
   const handleSelectDate = useCallback((date: number) => {
     setSelectedDate(date);
@@ -185,10 +159,6 @@ export const HomeScreen = () => {
   const handleDatePickerClose = useCallback(() => {
       setShowDatePicker(false);
   }, []);
-  
-  const handleToggleStrict = useCallback(() => {
-      setStrict(!isStrict);
-  }, [isStrict, setStrict]);
 
   const selectedAppDuration = useMemo(() => {
       if (!selectedAppId || !dailyData) return 0;
@@ -198,36 +168,13 @@ export const HomeScreen = () => {
       }, 0);
   }, [selectedAppId, dailyData]);
 
-  // Determine color of selected hour bar for "theme" inheritance
-  const selectedBarColor = useMemo(() => {
-      if (selectedHour === null || !dailyData) return undefined;
-      
-      const hourData = dailyData.hourly.find(h => h.hour === selectedHour);
-      if (!hourData) return undefined;
-
-      const duration = hourData.totalDuration;
-      const minutes = duration / 60;
-      
-      // Dynamic color logic matching chart
-      if (minutes < 20) return "#4ade80"; // Green
-      else if (minutes < 45) return "#facc15"; // Yellow
-      return "#ef4444"; // Red
-  }, [selectedHour, dailyData]);
-
   if (isLoading && !dailyData) {
       return (
         <SafeAreaView className="flex-1 bg-black items-center justify-center">
              <View className="items-center">
-                 {/* Simple Loading Animation / Icon */}
-                 <View className="flex-row mb-6">
-                     <Ionicons name="hourglass-outline" size={48} color="gray" style={{ opacity: 0.8 }} />
-                 </View>
-                 <Text className="text-white text-lg font-medium mb-2">Analyzing Screen Time...</Text>
-                 <Text className="text-gray-400 text-sm text-center px-10">This may take a few seconds.</Text>
-                 
-                 <TouchableOpacity onPress={() => checkPermissionAndLoadData(false)} className="mt-8 bg-zinc-800 px-6 py-3 rounded-full">
-                     <Text className="text-white font-bold">Refresh</Text>
-                 </TouchableOpacity>
+                  <MaterialIcons name="hourglass-empty" size={48} color="white" style={{ opacity: 0.2 }} />
+                  <Text className="text-white text-lg font-headline font-black uppercase tracking-widest mt-6 mb-2">Analyzing Logic...</Text>
+                  <Text className="text-[#919191] font-label text-[10px] uppercase tracking-[0.2em]">Executing Data Protocol</Text>
              </View>
         </SafeAreaView>
       );
@@ -237,38 +184,49 @@ export const HomeScreen = () => {
     <SafeAreaView className="flex-1 bg-black" edges={['top']}>
       <View className="flex-1">
         
-        {/* Header */}
-        <View className="px-5 pt-2 pb-4 flex-row justify-between items-center bg-black z-10">
-            <Text className="text-white text-xl font-bold">Screen Save</Text>
-            <View className="flex-row">
+        {/* Header - Optical Instrument Branding */}
+        <View className="h-16 flex-row items-center justify-between px-6 border-b border-white/10 bg-black">
+            <View className="flex-row items-center gap-2">
+                <MaterialIcons name="link-off" size={24} color="white" />
+                <Text className="font-headline font-black text-2xl tracking-[0.2em] text-white">UNLINK</Text>
+            </View>
+            <View className="flex-row items-center gap-4">
                 <TouchableOpacity onPress={() => checkPermissionAndLoadData(false)}>
-                    <Ionicons name="refresh" size={20} color="white" />
+                    <MaterialIcons name="notifications-none" size={24} color="#5d5f5f" />
                 </TouchableOpacity>
+                <View className="w-8 h-8 rounded-full border border-white/20 overflow-hidden">
+                    <Image 
+                        source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUeGsbHEB8rtvHLaZZi0isp6NjjJYjjkG9WZgStcPLCpV4x7f6VkiU0LvcS7mkFKDkmJCC_dPdOdSpXat487hhko57AJqN0OW9PA9W8kHSLmj_AQ0WMApqSJ1kofXMfaBKFs_hzCf0YmqYXwaVzSMzAfvSINvlRYfXm3-f-ubC0i_tVkcyrhuD0HiBYF7pBeXl1uQ2uBsaE4ggCfi2pb8YhFnJyQBE7r9GZTh6alGDQLTaEwp5pP1pzP_nie35iYk-EQ3HTlA7gD8' }} 
+                        className="w-full h-full"
+                    />
+                </View>
             </View>
         </View>
 
-        {/* Permission Banner */}
-        {!hasPermission && Platform.OS === 'android' && (
-            <PermissionBanner onPress={handleRequestPermission} />
-        )}
-
-        {/* Date Strip */}
-        <DateStrip 
-            currentYear={currentYear}
-            currentMonth={currentMonth}
-            selectedDate={selectedDate}
-            onSelectDate={handleSelectDate}
-            onOpenDatePicker={handleOpenDatePicker}
-        />
-
         <ScrollView 
             className="flex-1" 
-            contentContainerStyle={{ paddingBottom: 120 }}
+            contentContainerStyle={{ paddingBottom: 240 }}
             refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" title="Pull to refresh" titleColor="#fff" />
+                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
             }
         >
-            {/* Daily Overview Card */}
+            {/* Permission Banner */}
+            {!hasPermission && Platform.OS === 'android' && (
+                <View className="px-6 mb-8">
+                    <PermissionBanner onPress={handleRequestPermission} />
+                </View>
+            )}
+
+            {/* Section 01: Date Picker */}
+            <DateStrip 
+                currentYear={currentYear}
+                currentMonth={currentMonth}
+                selectedDate={selectedDate}
+                onSelectDate={handleSelectDate}
+                onOpenDatePicker={handleOpenDatePicker}
+            />
+
+            {/* Section 02: Main Overview */}
             <DailyOverview 
                 dailyData={dailyData ?? undefined}
                 selectedAppId={selectedAppId}
@@ -276,10 +234,8 @@ export const HomeScreen = () => {
                 onClearAppSelection={handleClearAppSelection}
             />
 
-            {/* Chart Card */}
-            <View className="mx-5 mb-6 p-5 bg-zinc-900 rounded-[28px]">
-                <Text className="text-white font-semibold text-lg mb-4">Hourly Screen Time Breakdown</Text>
-                
+            {/* Section 03: Hourly Intensity Chart */}
+            <View className="px-6">
                 <ScreenTimeChart 
                     selectedDate={selectedDate} 
                     selectedHour={selectedHour} 
@@ -287,37 +243,21 @@ export const HomeScreen = () => {
                     onSelectHour={setSelectedHour}
                     dailyData={dailyData ?? undefined}
                 />
+            </View>
 
-                {selectedHour !== null && (
-                    <View className="flex-row items-center justify-between mt-4">
-                        <View className="flex-row items-center bg-[#ec4899] px-4 py-2 rounded-full">
-                            <Text className="text-white font-bold text-sm mr-2">
-                                {selectedHour === 0 ? '12 AM' : selectedHour < 12 ? `${selectedHour} AM` : selectedHour === 12 ? '12 PM' : `${selectedHour - 12} PM`}
-                                {' - '}
-                                {selectedHour + 1 === 24 ? '12 AM' : selectedHour + 1 < 12 ? `${selectedHour + 1} AM` : selectedHour + 1 === 12 ? '12 PM' : `${selectedHour + 1 - 12} PM`}
-                            </Text>
-                            <TouchableOpacity onPress={() => setSelectedHour(null)}>
-                                <Ionicons name="close-circle" size={18} color="white" />
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                )}
-
-                {/* Separator */}
-                <View className="h-[1px] bg-zinc-800 my-4" />
-
-                {/* App List (Nested Inside) */}
-                <Text className="text-white text-lg font-bold mb-4">
-                    {selectedHour !== null 
-                        ? `Apps used at ${selectedHour}:00` 
-                        : "Most Used Apps"}
-                </Text>
+            {/* Section 04: Consumption Logic (Apps) */}
+            <View className="px-6 pb-12">
                 <AppUsageList 
                     apps={displayedApps}
                     selectedAppId={selectedAppId}
                     onAppPress={handleAppPress}
-                    overrideColor={selectedBarColor}
+                    isHourlyView={selectedHour !== null}
                 />
+            </View>
+
+            {/* Aesthetic Separator */}
+            <View className="flex-row justify-center py-10 opacity-20">
+                <Text className="font-label text-2xl text-white transform rotate-45">//</Text>
             </View>
         </ScrollView>
 

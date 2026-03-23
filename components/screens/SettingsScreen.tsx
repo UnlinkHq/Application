@@ -3,101 +3,144 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useBlocking } from '../../context/BlockingContext';
 import { Ionicons } from '@expo/vector-icons';
 
+import { MaterialIcons } from '@expo/vector-icons';
+
 export const SettingsScreen = () => {
     const { isStrict, setStrict } = useBlocking();
 
-  return (
-    <SafeAreaView className="flex-1 bg-gray-50" edges={['top']}>
-      <ScrollView className="flex-1 px-4" contentContainerStyle={{ paddingBottom: 120 }}>
-        
-        {/* Pro Banner */}
-        <View className="bg-green-100 rounded-2xl p-6 mt-6 mb-8 border border-green-200">
-            <Text className="text-green-800 font-bold text-lg mb-1">Unlock Pro</Text>
-            <Text className="text-green-700 mb-4">Less Distractions, More Focus.</Text>
-            <View className="flex-row flex-wrap gap-2 mb-4">
-                <View className="bg-white/50 px-2 py-1 rounded">
-                    <Text className="text-green-800 text-xs font-bold">LIFETIME</Text>
-                </View>
-                <View className="bg-white/50 px-2 py-1 rounded">
-                    <Text className="text-green-800 text-xs font-bold">{'>'} 50% OFF</Text>
-                </View>
-            </View>
-            <TouchableOpacity className="bg-red-500 py-3 rounded-xl items-center">
-                <Text className="text-white font-bold">Claim Free Membership</Text>
-            </TouchableOpacity>
+    const SectionHeader = ({ title }: { title: string }) => (
+        <View className="flex-row items-center gap-2 mb-6">
+            <Text className="font-label text-[10px] uppercase tracking-[0.4em] text-zinc-500">{title}</Text>
+            <View className="h-[1px] flex-1 bg-white/20" />
         </View>
+    );
 
-        {/* Stats Card */}
-        <View className="flex-row space-x-4 mb-6">
-            <View className="flex-1 bg-white p-4 rounded-xl shadow-sm">
-                <Text className="text-gray-400 text-xs uppercase font-bold mb-2">Journey</Text>
-                <Text className="text-3xl font-bold">12</Text>
-                <Text className="text-gray-500 text-xs">Days Active</Text>
+    const SettingsItem = ({ icon, label, rightElement, onPress, isLast = false }: { 
+        icon: string, label: string, rightElement?: React.ReactNode, onPress?: () => void, isLast?: boolean 
+    }) => (
+        <TouchableOpacity 
+            activeOpacity={0.7}
+            onPress={onPress}
+            className={`flex-row items-center justify-between p-6 border-white/10 ${!isLast ? 'border-b' : ''} border-x border-t last:border-b`}
+            style={{ borderStyle: 'solid', borderWidth: 1, borderColor: '#ffffff20' }}
+        >
+            <View className="flex-row items-center gap-4">
+                <MaterialIcons name={icon as any} size={20} color="white" />
+                <Text className="font-label text-xs uppercase tracking-[0.2em] text-white">{label}</Text>
             </View>
-            <View className="flex-1 bg-white p-4 rounded-xl shadow-sm">
-                <Text className="text-gray-400 text-xs uppercase font-bold mb-2">Mindfulness</Text>
-                <Text className="text-3xl font-bold">84</Text>
-                <Text className="text-gray-500 text-xs">Breaks Taken</Text>
+            <View className="flex-row items-center gap-2">
+                {rightElement}
+                {onPress && <MaterialIcons name="chevron-right" size={20} color="#5d5f5f" />}
             </View>
-        </View>
-
-        {/* Weekly Report Banner */}
-        <TouchableOpacity className="bg-yellow-100 p-4 rounded-xl mb-8 flex-row justify-between items-center border border-yellow-200">
-            <View>
-                <Text className="text-yellow-800 font-bold text-lg">Weekly Report</Text>
-                <Text className="text-yellow-700">Check your usage analysis</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#854d0e" />
         </TouchableOpacity>
+    );
 
-        {/* General Settings */}
-        <Text className="text-lg font-bold mb-4 ml-1">General</Text>
-        
-        <View className="bg-white rounded-xl overflow-hidden mb-8">
-            <View className="flex-row items-center justify-between p-4 border-b border-gray-100">
-                <Text className="text-base">Strict Mode</Text>
-                <Switch 
-                    value={isStrict}
-                    onValueChange={setStrict}
-                    trackColor={{ false: '#e2e2e2', true: '#000' }}
-                />
+    return (
+        <SafeAreaView className="flex-1 bg-black" edges={['top']}>
+            {/* Header */}
+            <View className="h-16 flex-row items-center justify-between px-6 border-b border-white/10 bg-black">
+                <View className="flex-row items-center gap-2">
+                    <MaterialIcons name="link-off" size={24} color="white" />
+                    <Text className="font-headline font-black text-2xl tracking-[0.2em] text-white uppercase">UNLINK</Text>
+                </View>
+                <View className="flex-row items-center gap-4">
+                    <MaterialIcons name="sensors" size={24} color="white" />
+                    <View className="w-8 h-8 border border-white items-center justify-center">
+                        <MaterialIcons name="person" size={20} color="white" />
+                    </View>
+                </View>
             </View>
-             <TouchableOpacity className="flex-row items-center justify-between p-4 border-b border-gray-100">
-                <Text className="text-base">Customize Block Screen</Text>
-                <Text className="text-gray-400">{'>'}</Text>
-            </TouchableOpacity>
-             <View className="flex-row items-center justify-between p-4 border-b border-gray-100">
-                <Text className="text-base">Rule Edit Cooldown</Text>
-                <Switch value={false} trackColor={{ false: '#e2e2e2', true: '#000' }} />
-            </View>
-             <TouchableOpacity className="flex-row items-center justify-between p-4 border-b border-gray-100">
-                <Text className="text-base">Exclude from Screen Time</Text>
-                <Text className="text-gray-400">{'>'}</Text>
-            </TouchableOpacity>
-             <TouchableOpacity className="flex-row items-center justify-between p-4 border-b border-gray-100">
-                <Text className="text-base">App Icon</Text>
-                <View className="w-8 h-8 bg-black rounded-lg" />
-            </TouchableOpacity>
-             <TouchableOpacity className="flex-row items-center justify-between p-4">
-                <Text className="text-base">Language</Text>
-                <Text className="text-gray-500">English</Text>
-            </TouchableOpacity>
-        </View>
 
-        {/* Support */}
-        <Text className="text-lg font-bold mb-4 ml-1">Support</Text>
-        <View className="bg-white rounded-xl overflow-hidden mb-8">
-             <TouchableOpacity className="flex-row items-center justify-between p-4 border-b border-gray-100">
-                <Text className="text-base">Refresh Block Rules</Text>
-            </TouchableOpacity>
-             <TouchableOpacity className="flex-row items-center justify-between p-4">
-                <Text className="text-base">Contact Support</Text>
-            </TouchableOpacity>
-        </View>
+            <ScrollView 
+                className="flex-1 px-6" 
+                contentContainerStyle={{ paddingTop: 32, paddingBottom: 240 }}
+            >
+                {/* Premium Banner */}
+                <View className="border border-white p-8 mb-12 relative overflow-hidden">
+                    <View className="flex-row justify-between items-start mb-6">
+                        <View>
+                            <Text className="font-label text-[10px] tracking-[0.3em] text-zinc-500 uppercase mb-2">System Status: Restricted</Text>
+                            <Text className="font-headline font-black text-4xl tracking-tighter uppercase text-white">Unlock Pro</Text>
+                        </View>
+                        <MaterialIcons name="workspace-premium" size={24} color="rgba(255,255,255,0.2)" />
+                    </View>
+                    <Text className="text-zinc-400 font-label text-xs uppercase tracking-wider mb-6">
+                        Deep-focus protocols // Biometric unlinking // Encrypted data export
+                    </Text>
+                    <TouchableOpacity className="bg-white py-4 items-center">
+                        <Text className="text-black font-label font-bold text-[10px] uppercase tracking-[0.2em]">Claim Membership</Text>
+                    </TouchableOpacity>
+                </View>
 
-        <Text className="text-gray-400 text-center text-xs mb-8">Version 1.0.0 (Build 42)</Text>
+                {/* Diagnostics */}
+                <SectionHeader title="System Diagnostics" />
+                <View className="flex-row gap-4 mb-12">
+                    <View className="flex-1 border border-white/20 p-6 h-32 justify-between">
+                        <Text className="font-label text-[10px] uppercase tracking-[0.2em] text-zinc-500">Journey</Text>
+                        <View>
+                            <View className="flex-row items-baseline gap-2">
+                                <Text className="font-headline font-black text-4xl text-white">12</Text>
+                                <Text className="font-label text-[10px] text-zinc-400 uppercase tracking-widest">Days</Text>
+                            </View>
+                            <View className="mt-2 h-0.5 bg-zinc-900 w-full">
+                                <View className="h-full bg-white w-2/5" />
+                            </View>
+                        </View>
+                    </View>
+                    <View className="flex-1 border border-white/20 p-6 h-32 justify-between">
+                        <Text className="font-label text-[10px] uppercase tracking-[0.2em] text-zinc-500">Mindfulness</Text>
+                        <View>
+                            <View className="flex-row items-baseline gap-2">
+                                <Text className="font-headline font-black text-4xl text-white">84</Text>
+                                <Text className="font-label text-[10px] text-zinc-400 uppercase tracking-widest">Breaks</Text>
+                            </View>
+                            <View className="mt-2 h-0.5 bg-zinc-900 w-full">
+                                <View className="h-full bg-white w-3/4" />
+                            </View>
+                        </View>
+                    </View>
+                </View>
 
-      </ScrollView>
-    </SafeAreaView>
-  );
+                {/* Parameters */}
+                <SectionHeader title="General Parameters" />
+                <View className="mb-12">
+                    <TouchableOpacity 
+                        onPress={() => setStrict(!isStrict)}
+                        activeOpacity={0.7}
+                        className="flex-row items-center justify-between p-6 border border-white/20 border-b-0"
+                    >
+                        <View className="flex-row items-center gap-4">
+                            <MaterialIcons name="security" size={20} color="white" />
+                            <Text className="font-label text-xs uppercase tracking-[0.2em] text-white">Strict Mode</Text>
+                        </View>
+                        <View className={`w-12 h-6 border border-white flex justify-center px-1 ${isStrict ? 'items-end' : 'items-start'}`}>
+                            <View className="w-4 h-4 bg-white" />
+                        </View>
+                    </TouchableOpacity>
+                    <SettingsItem icon="branding-watermark" label="Customize Block Screen" onPress={() => {}} />
+                    <SettingsItem icon="timer-10-alt-1" label="Rule Edit Cooldown" rightElement={<Text className="font-label text-[10px] text-zinc-500 uppercase">24H</Text>} onPress={() => {}} />
+                    <SettingsItem icon="visibility-off" label="Exclude from Screen Time" onPress={() => {}} isLast />
+                </View>
+
+                {/* Socials */}
+                <SectionHeader title="Follow Our Socials" />
+                <View className="mb-12">
+                    <SettingsItem icon="share" label="Xiaohongshu" onPress={() => {}} />
+                    <SettingsItem icon="close" label="X" onPress={() => {}} />
+                    <SettingsItem icon="forum" label="Reddit" onPress={() => {}} isLast />
+                </View>
+
+                {/* Gateways */}
+                
+                {/* Version Footer */}
+                <View className="pt-12 pb-8 items-center gap-6">
+                    <MaterialIcons name="sensors" size={32} color="rgba(255,255,255,0.2)" />
+                    <View className="items-center">
+                        <Text className="font-label text-[10px] uppercase tracking-[0.4em] text-white">Unlink  v-0.1 beta</Text>
+                     
+                    </View>
+                </View>
+            </ScrollView>
+        </SafeAreaView>
+    );
 };

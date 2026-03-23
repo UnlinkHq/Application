@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import { DailyUsage, formatDuration } from '../../utils/screenTimeData';
 
 interface Props {
@@ -18,78 +18,53 @@ export const DailyOverview = memo(({
 }: Props) => {
   const displayDuration = selectedAppId 
     ? formatDuration(selectedAppDuration) 
-    : (dailyData ? formatDuration(dailyData.totalDuration) : "0m");
+    : (dailyData ? formatDuration(dailyData.totalDuration) : "0h 00m");
 
-  /* 
-   Dynamic Status Logic:
-   < 4h -> Balanced (Green)
-   4h - 6h -> Caution (Yellow)
-   > 6h -> Severe (Red)
-  */
   const totalSeconds = dailyData?.totalDuration || 0;
-  const totalHours = totalSeconds / 3600;
-
-  let statusText = "Balanced";
-  let statusColor = "bg-green-500";
-  let barColor = "bg-green-400";
-
-  if (totalHours >= 6) {
-      statusText = "Severe";
-      statusColor = "bg-red-500";
-      barColor = "bg-red-500";
-  } else if (totalHours >= 4) {
-      statusText = "Caution";
-      statusColor = "bg-yellow-500";
-      barColor = "bg-yellow-400";
-  }
-
-  const progressPercent = Math.min(100, (totalSeconds / (16 * 3600)) * 100);
+  // Use 12 hours as default max for the bar if no explicit goal, 
+  // though HTML mentions 6H goal.
+  const progressPercent = Math.min(100, (totalSeconds / (12 * 3600)) * 100);
 
   return (
-    <View className="mx-5 mb-4 p-5 bg-zinc-900 rounded-[28px]">
-      {/* Status Header */}
-      <View className="flex-row items-center mb-6">
-        <View className={`w-3 h-3 rounded-full ${statusColor} mr-2`} />
-        <Text className="text-white font-medium text-base">{statusText}</Text>
+    <View className="px-6 mb-12 space-y-4">
+      {/* Label and Large Counter */}
+      <View className="flex-col gap-1">
+        <Text className="font-label text-xs uppercase tracking-widest text-[#919191]">
+          Total Digital Footprint
+        </Text>
+        <Text className="font-headline text-6xl font-black tracking-tighter leading-none text-white">
+          {displayDuration}
+        </Text>
       </View>
 
-      {/* Stats Row */}
-      <View className="flex-row items-start">
-          {/* Screen Time Column */}
-          <View className="mr-10">
-              <Text className="text-zinc-500 font-bold text-xs tracking-widest mb-1">SCREEN TIME</Text>
-              <Text className="text-white text-4xl font-bold">
-                {displayDuration}
-              </Text>
-          </View>
-
-          {/* Pickups Column */}
-          <View>
-              <Text className="text-zinc-500 font-bold text-xs tracking-widest mb-1">PICKUPS</Text>
-              <Text className="text-white text-4xl font-bold">
-                {dailyData?.pickups || 0}
-              </Text>
-          </View>
+      {/* Pickups and Goal Meta Row */}
+      <View className="flex-row items-end justify-between border-b border-white/10 pb-4">
+        <View className="flex-row items-center gap-2">
+            <MaterialIcons name="pan-tool" size={16} color="#ffb4aa" />
+            <Text className="font-label text-sm uppercase tracking-tighter text-white">
+                Pickups: {dailyData?.pickups || 0}
+            </Text>
+        </View>
+        <Text className="font-label text-[10px] text-[#72fe88]">
+            DAILY GOAL: 6H 00M
+        </Text>
       </View>
 
-      {/* Horizontal Daily Bar */}
-      <View className="h-10 bg-zinc-800 rounded-full w-full justify-center px-1 overflow-hidden relative mt-6">
+      {/* Thin Monochrome Progress Bar */}
+      <View className="w-full h-1 bg-[#2a2a2a] overflow-hidden">
         <View 
-          className={`h-8 rounded-full ${barColor}`} 
+          className="h-full bg-white" 
           style={{ width: `${progressPercent}%` }} 
         />
       </View>
-      <View className="flex-row justify-between mt-1 px-1">
-        <Text className="text-gray-500 text-[10px]">0s</Text>
-        <Text className="text-gray-500 text-[10px]">4h</Text>
-        <Text className="text-gray-500 text-[10px]">8h</Text>
-        <Text className="text-gray-500 text-[10px]">12h</Text>
-        <Text className="text-gray-500 text-[10px]">16h</Text>
-      </View>
 
       {selectedAppId && (
-        <TouchableOpacity onPress={onClearAppSelection} className="absolute top-5 right-5 bg-zinc-800 p-2 rounded-full">
-            <Ionicons name="close" size={16} color="white" />
+        <TouchableOpacity 
+            onPress={onClearAppSelection} 
+            className="flex-row items-center mt-2 px-3 py-1 bg-white/10 self-start"
+        >
+            <Text className="text-white font-label text-[10px] uppercase mr-2">Clear Filter</Text>
+            <MaterialIcons name="close" size={12} color="white" />
         </TouchableOpacity>
       )}
     </View>

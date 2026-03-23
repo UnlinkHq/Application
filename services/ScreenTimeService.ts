@@ -93,7 +93,7 @@ export const ScreenTimeService = {
                 return SYSTEM_PACKAGES.includes(pkg);
             };
 
-            // 1. Process Hourly Data
+            // 1. Process Hourly Data for Timeline
             const hourlyUsage: HourlyUsage[] = [];
             for (let h = 0; h < 24; h++) {
                 const hourKey = h.toString();
@@ -103,12 +103,12 @@ export const ScreenTimeService = {
                 let hourTotal = 0;
 
                 Object.keys(hourAppsNative).forEach(pkg => {
-                    if (isSystemApp(pkg)) return; // Skip system apps
+                    if (isSystemApp(pkg)) return;
 
                     const timeMs = hourAppsNative[pkg];
                     const seconds = Math.floor(timeMs / 1000);
 
-                    if (seconds > 60) { // Filter out < 1 minute usage to reduce noise
+                    if (seconds > 0) { // Keep even small usage for accurate timeline
                         const appPickups = pickupMapNative[pkg] || 0;
                         hourTotal += seconds;
                         hourApps.push({
@@ -118,41 +118,38 @@ export const ScreenTimeService = {
                                 ? `data:image/png;base64,${appMap[pkg].icon}`
                                 : 'apps',
                             duration: seconds,
-                            category: 'Unknown',
-                            color: '#8b5cf6',
+                            category: 'Social', // Placeholder, could be improved
+                            color: '#ffffff',
                             pickups: appPickups,
-                            notifications: 0 // Placeholder
+                            notifications: 0
                         });
                     }
                 });
 
                 hourApps.sort((a, b) => b.duration - a.duration);
-
-                hourlyUsage.push({
-                    hour: h,
-                    totalDuration: hourTotal,
-                    apps: hourApps
-                });
+                hourlyUsage.push({ hour: h, totalDuration: hourTotal, apps: hourApps });
             }
 
-            // 2. Process Daily Aggregated Apps
+            // 2. Process Daily Aggregated Apps for the List
             const allDayApps: AppUsage[] = [];
             let totalDailyDuration = 0;
+            let aggregatedPickups = 0;
 
             Object.keys(dailyTotalMapNative).forEach(pkg => {
-                if (isSystemApp(pkg)) return; // Skip blocked system apps
+                if (isSystemApp(pkg)) return;
 
                 const timeMs = dailyTotalMapNative[pkg];
                 const seconds = Math.floor(timeMs / 1000);
+                const appPickups = pickupMapNative[pkg] || 0;
+                
+                aggregatedPickups += appPickups;
 
-                if (seconds > 60) { // Filter out < 1 minute usage
-                    totalDailyDuration += seconds; // Include EVERYTHING (even launchers if they passed isSystemApp)
+                if (seconds > 0) {
+                    totalDailyDuration += seconds;
 
-                    // Exclude Launchers from the visualization list
-                    const isLauncher = pkg.includes('launcher') || pkg.includes('home');
-                    if (isLauncher) return;
+                    // Exclude specific launcher types from visual list but keep time
+                    if (pkg.includes('launcher') || pkg.includes('home')) return;
 
-                    const appPickups = pickupMapNative[pkg] || 0;
                     allDayApps.push({
                         id: pkg,
                         name: appMap[pkg]?.label || pkg,
@@ -160,26 +157,26 @@ export const ScreenTimeService = {
                             ? `data:image/png;base64,${appMap[pkg].icon}`
                             : 'apps',
                         duration: seconds,
-                        category: 'Unknown',
-                        color: '#ec4899', // Pink default
+                        category: seconds > 1800 ? 'HIGH USAGE' : 'CONSUMPTION',
+                        color: seconds > 1800 ? '#ffb4aa' : '#ffffff',
                         pickups: appPickups,
-                        notifications: 0 // Placeholder
+                        notifications: 0
                     });
                 }
             });
 
-            // Sort Daily Apps: Most used first
             allDayApps.sort((a, b) => b.duration - a.duration);
 
-            // Get total pickups from special key
-            const totalPickupsValid = pickupMapNative["total_pickups"] || 0;
+            // Use native total if available and GT sum, otherwise use sum
+            const nativeTotalPickups = pickupMapNative["total_pickups"] || 0;
+            const finalPickups = Math.max(nativeTotalPickups, aggregatedPickups);
 
             return {
                 date: startOfDay.getDate(),
                 totalDuration: totalDailyDuration,
                 hourly: hourlyUsage,
                 apps: allDayApps,
-                pickups: totalPickupsValid
+                pickups: finalPickups
             };
 
         } catch (e) {
