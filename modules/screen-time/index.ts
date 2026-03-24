@@ -4,12 +4,27 @@ import { requireNativeModule } from 'expo-modules-core';
 interface ScreenTimeModuleInterface {
     hasPermission(): Promise<boolean>;
     requestPermission(): void;
-    getUsageStats(startTime: number, endTime: number): Promise<any>; // Returns complex object
+    getUsageStats(startTime: number, endTime: number): Promise<any>;
     getInstalledApps(): Promise<{ packageName: string, label: string, icon: string }[]>;
 }
 
-// Get the native module
-const ScreenTimeModule = requireNativeModule<ScreenTimeModuleInterface>('ScreenTime');
+// Get the native module with a safe fallback
+let ScreenTimeModule: ScreenTimeModuleInterface;
+
+try {
+    ScreenTimeModule = requireNativeModule<ScreenTimeModuleInterface>('ScreenTime');
+} catch (error) {
+    console.warn('[ScreenTime] Native module not found. Using fallbacks. Error:', error);
+    // Mock implementation for development/Expo Go
+    ScreenTimeModule = {
+        hasPermission: async () => false,
+        requestPermission: () => {
+            console.warn('[ScreenTime] requestPermission: Native module missing.');
+        },
+        getUsageStats: async () => ({}),
+        getInstalledApps: async () => []
+    };
+}
 
 export default ScreenTimeModule;
 

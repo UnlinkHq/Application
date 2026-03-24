@@ -1,8 +1,11 @@
 {
   "name": "screen-time",
-  "platforms": ["android"],
+  "platforms": ["android", "ios"],
   "android": {
     "package": "com.shahil.screentime",
     "modules": ["com.shahil.screentime.ScreenTimeModule"]
+  },
+  "ios": {
+    "modules": ["ScreenTimeModule"]
   }
 }

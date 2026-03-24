@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, AppState, AppStateStatus } from 'react-native';
-import ScreenTimeModule, { hasPermission, requestPermission } from '../../../modules/screen-time';
+import { MaterialIcons } from '@expo/vector-icons';
+import { hasPermission, requestPermission } from '../../../modules/screen-time';
 
 interface PermissionStepProps {
   onPermissionGranted: () => void;
+  onBack?: () => void;
 }
 
-export const PermissionStep: React.FC<PermissionStepProps> = ({ onPermissionGranted }) => {
+export const PermissionStep: React.FC<PermissionStepProps> = ({ onPermissionGranted, onBack }) => {
   const [checking, setChecking] = useState(false);
 
   const checkPermissionAndProceed = async () => {
@@ -27,7 +29,6 @@ export const PermissionStep: React.FC<PermissionStepProps> = ({ onPermissionGran
   };
 
   useEffect(() => {
-    // Initial check on mount
     checkPermissionAndProceed();
 
     const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
@@ -42,37 +43,59 @@ export const PermissionStep: React.FC<PermissionStepProps> = ({ onPermissionGran
   }, [checking]);
 
   return (
-    <View className="flex-1 items-center justify-between py-8 px-6 bg-black">
-      <View className="flex-1 justify-center items-center w-full">
-        {/* Eyes/Circles Illustration */}
-        <View className="flex-row space-x-12 mb-12">
-          <View className="w-24 h-16 bg-white rounded-full overflow-hidden relative">
-             <View className="absolute right-2 top-2 w-12 h-12 bg-gray-600 rounded-full" />
+    <View className="flex-1 bg-black">
+      <View className="flex-1 items-center justify-center px-4 pb-28">
+        {/* Custom Unlink Icon (Surgical Precision) */}
+        <View className="relative w-32 h-32 mb-16 items-center justify-center">
+          {/* Boxy Link 1 */}
+          <View className="absolute top-0 left-0 w-20 h-20 border-4 border-white" />
+          {/* Boxy Link 2 (Interlocking / Fractured) */}
+          <View className="absolute bottom-0 right-0 w-20 h-20 border-4 border-white bg-black p-1">
+            <View className="w-full h-full border-2 border-white/20" />
           </View>
-          <View className="w-24 h-16 bg-white rounded-full overflow-hidden relative">
-             <View className="absolute left-2 top-2 w-12 h-12 bg-gray-600 rounded-full" />
-          </View>
+          {/* Fracture Point */}
+          <View 
+            className="absolute w-8 h-8 bg-black" 
+            style={{ transform: [{ rotate: '45deg' }, { translateX: -4 }, { translateY: 4 }] }} 
+          />
         </View>
 
-        <Text className="text-4xl font-bold text-center text-white mb-6 px-4" style={{ fontFamily: 'Outfit_700Bold' }}>
-          Ready to see your real screen time?
+        {/* Headline */}
+        <Text className="font-headline text-4xl text-center leading-[1.1] tracking-tighter text-white mb-8">
+          Ready to see your{"\n"}real screen time?
         </Text>
 
-        <Text className="text-lg text-center text-gray-400 px-6 leading-6" style={{ fontFamily: 'Outfit_400Regular' }}>
+        {/* Body Text */}
+        <Text className="font-body text-zinc-400 text-center text-lg leading-relaxed max-w-md font-light">
           Enable ScreenBreak to access Screen Time to generate your personal report. Your data stays private and never leaves your device.
         </Text>
       </View>
 
-      <View className="w-full pb-8">
-        <TouchableOpacity
-          onPress={handleGivePermission}
-          className="w-full rounded-full bg-[#ff006e] py-5 items-center shadow-lg shadow-pink-500/30 active:scale-95 transition-transform"
-        >
-          <Text className="text-white text-2xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>
-            Give Permission
-          </Text>
-        </TouchableOpacity>
+      {/* CALL TO ACTION - Fixed Bottom */}
+      <View className="absolute bottom-0 w-full p-8 bg-black">
+        <View className="max-w-md mx-auto w-full">
+          {/* Primary Action */}
+          <TouchableOpacity 
+            onPress={handleGivePermission}
+            activeOpacity={0.9}
+            className="w-full bg-white h-20 flex-row items-center justify-center gap-3 px-4"
+          >
+            <Text className="font-headline font-black text-sm tracking-[0.15em] uppercase text-black">
+              GIVE PERMISSION
+            </Text>
+            <MaterialIcons name="arrow-forward" size={18} color="black" />
+          </TouchableOpacity>
+
+          {/* Security Note */}
+          <View className="mt-6 flex-row items-center justify-center gap-2">
+            <MaterialIcons name="verified-user" size={14} color="#72fe88" />
+            <Text className="font-label text-[9px] uppercase tracking-widest text-[#72fe88]">
+              Encrypted Local Processing Only
+            </Text>
+          </View>
+        </View>
       </View>
+
     </View>
   );
 };

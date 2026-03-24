@@ -1,7 +1,10 @@
 {
   "name": "screen-time",
   "version": "1.0.0",
-  "description": "Local Expo module for accessing Android Screen Time usage stats",
+  "description": "Local Expo module for accessing Screen Time usage stats",
+  "author": "shahil",
+  "license": "MIT",
+  "homepage": "https://github.com/shahil/Unlink",
   "main": "index.ts",
   "types": "index.ts",
   "peerDependencies": {
