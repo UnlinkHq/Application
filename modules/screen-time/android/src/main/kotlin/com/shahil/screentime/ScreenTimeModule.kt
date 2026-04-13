@@ -20,30 +20,43 @@ class ScreenTimeModule : Module() {
     Name("ScreenTime")
 
     Function("isAdminActive") {
-      val context = appContext.reactContext ?: return@Function false
-      val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-      val adminComponent = ComponentName(context, UnlinkDeviceAdminReceiver::class.java)
-      return@Function dpm.isAdminActive(adminComponent)
+      try {
+        val context = appContext.reactContext ?: return@Function false
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponent = ComponentName(context.packageName, "com.shahil.screentime.UnlinkDeviceAdminReceiver")
+        return@Function dpm.isAdminActive(adminComponent)
+      } catch (e: Exception) {
+        return@Function false
+      }
     }
 
     Function("requestAdmin") {
-      val context = appContext.reactContext
-      if (context != null) {
-        val adminComponent = ComponentName(context, UnlinkDeviceAdminReceiver::class.java)
-        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
-        intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
-        intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Enabling this prevents Unlink from being uninstalled.")
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
+      appContext.reactContext?.let { context ->
+        try {
+          val adminComponent = ComponentName(context.packageName, "com.shahil.screentime.UnlinkDeviceAdminReceiver")
+          val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+          intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
+          intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Enabling this prevents Unlink from being uninstalled.")
+          intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+          context.startActivity(intent)
+        } catch (e: Exception) {
+          // Silently fail to maintain stability
+        }
       }
     }
 
     Function("deactivateAdmin") {
-      val context = appContext.reactContext
-      if (context != null) {
-        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-        val adminComponent = ComponentName(context, UnlinkDeviceAdminReceiver::class.java)
-        dpm.removeActiveAdmin(adminComponent)
+      appContext.reactContext?.let { context ->
+        try {
+          val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+          val adminComponent = ComponentName(context.packageName, "com.shahil.screentime.UnlinkDeviceAdminReceiver")
+          
+          if (dpm.isAdminActive(adminComponent)) {
+            dpm.removeActiveAdmin(adminComponent)
+          }
+        } catch (e: Exception) {
+          // Silently fail - the JS layer will sync state via isAdminActive on next app resume
+        }
       }
     }
 

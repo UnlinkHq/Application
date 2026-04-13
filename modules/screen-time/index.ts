@@ -1,4 +1,5 @@
-import { requireNativeModule } from 'expo-modules-core';
+import { requireNativeModule, requireNativeViewManager } from 'expo-modules-core';
+import { ViewProps } from 'react-native';
 
 // Define the native module interface
 interface ScreenTimeModuleInterface {
@@ -9,6 +10,10 @@ interface ScreenTimeModuleInterface {
     deactivateAdmin(): void;
     getUsageStats(startTime: number, endTime: number): Promise<any>;
     getInstalledApps(): Promise<{ packageName: string, label: string, icon: string, category?: number }[]>;
+    // iOS Shield functions
+    activateShield(): void;
+    deactivateShield(): void;
+    getSelectionCount(): number;
 }
 
 // Get the native module with a safe fallback
@@ -28,11 +33,17 @@ try {
         requestAdmin: () => {},
         deactivateAdmin: () => {},
         getUsageStats: async () => ({}),
-        getInstalledApps: async () => []
+        getInstalledApps: async () => [],
+        activateShield: () => {},
+        deactivateShield: () => {},
+        getSelectionCount: () => 0
     };
 }
 
 export default ScreenTimeModule;
+
+// Native View for iOS App Picker
+export const FamilyPickerView = requireNativeViewManager('ScreenTime');
 
 export async function hasPermission(): Promise<boolean> {
     return await ScreenTimeModule.hasPermission();
@@ -60,4 +71,16 @@ export async function getUsageStats(startTime: number, endTime: number): Promise
 
 export async function getInstalledApps(): Promise<{ packageName: string, label: string, icon: string, category?: number }[]> {
     return await ScreenTimeModule.getInstalledApps();
+}
+
+export function activateShield(): void {
+    ScreenTimeModule.activateShield();
+}
+
+export function deactivateShield(): void {
+    ScreenTimeModule.deactivateShield();
+}
+
+export function getSelectionCount(): number {
+    return ScreenTimeModule.getSelectionCount();
 }

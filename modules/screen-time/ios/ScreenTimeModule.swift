@@ -31,29 +31,70 @@ public class ScreenTimeModule: Module {
       }
     }
 
-    AsyncFunction("getUsageStats") { (startTime: Double, endTime: Double) -> [String: Any] in
-      return [:]
+    // Shielding Logic (Opal-style Blocking)
+    Function("activateShield") {
+      if #available(iOS 16.0, *) {
+        let selection = FamilySelectionStore.shared.selection
+        let store = ManagedSettingsStore()
+        
+        // Apply the shield to categories and applications
+        store.shield.applications = selection.applicationTokens
+        store.shield.applicationCategories = selection.categoryTokens.isEmpty ? nil : ShieldSettings.ActivityCategoryPolicy.specific(selection.categoryTokens)
+        store.shield.webDomainCategories = selection.categoryTokens.isEmpty ? nil : ShieldSettings.ActivityCategoryPolicy.specific(selection.categoryTokens)
+      }
     }
 
-    AsyncFunction("getInstalledApps") { () -> [[String: String]] in
-      return []
+    Function("deactivateShield") {
+      if #available(iOS 16.0, *) {
+        let store = ManagedSettingsStore()
+        store.shield.applications = nil
+        store.shield.applicationCategories = nil
+        store.shield.webDomainCategories = nil
+      }
     }
 
-    // Register the Native View
-    View(ScreenTimeReportBridgeView.self) {
-      // Define properties or events here if needed
+    Function("getSelectionCount") { () -> Int in
+      if #available(iOS 16.0, *) {
+        let selection = FamilySelectionStore.shared.selection
+        return selection.applicationTokens.count + selection.categoryTokens.count
+      }
+      return 0
+    }
+
+    // Register Native View for Picker
+    View(FamilyPickerExpoView.self) {
+      // Logic for the view can be added here
     }
   }
 }
 
 @available(iOS 16.0, *)
-struct ScreenTimeReportBridgeView: ExpoView {
-    @State private var context: DeviceActivityReport.Context = .init(rawValue: "Interactive Report")
-    @State private var filter = DeviceActivityFilter(
-        segment: .daily(during: Calendar.current.dateInterval(of: .day, for: .now)!)
-    )
-    
-    var body: some View {
-        DeviceActivityReport(context, filter: filter)
+class FamilyPickerExpoView: ExpoView {
+    private var hostingController: UIHostingController<FamilyPickerView>?
+
+    // Using a simple wrapper around the SwiftUI View
+    required init(appContext: AppContext? = nil) {
+        super.init(appContext: appContext)
+        
+        let store = FamilySelectionStore.shared
+        // Binding to the shared store
+        let contentView = FamilyPickerView(selection: Binding(
+            get: { store.selection },
+            set: { store.selection = $0 }
+        ))
+        
+        let controller = UIHostingController(rootView: contentView)
+        self.hostingController = controller
+        
+        // Ensure the hosting controller's view stays matched to our size
+        if let pickerView = controller.view {
+            pickerView.backgroundColor = .clear
+            addSubview(pickerView)
+        }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        hostingController?.view.frame = bounds
     }
 }
