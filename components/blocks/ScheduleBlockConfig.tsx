@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, Switch, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, Switch, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
 interface ScheduleBlockConfigProps {
     onBack: () => void;
@@ -22,7 +23,7 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
 
   return (
     <View className="flex-1 bg-transparent">
-      <View className="flex-1">
+      <BottomSheetScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         
         <View className="items-center mb-8 px-6">
              <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.2em] text-center mb-2">
@@ -99,8 +100,8 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
              </View>
         </View>
 
-        <View className="h-24" />
-      </View>
+        <View className="h-12" />
+      </BottomSheetScrollView>
 
       {/* Action Button - Surgical Style */}
       <TouchableOpacity 

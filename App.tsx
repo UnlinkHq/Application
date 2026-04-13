@@ -134,9 +134,9 @@ export default function App() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <BottomSheetModalProvider>
-        <SafeAreaProvider>
+    <SafeAreaProvider>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <BottomSheetModalProvider>
           <BlockingProvider>
             <SelectionProvider>
               <NavigationTree isFirstLaunch={Boolean(isFirstLaunch)} />
@@ -144,8 +144,8 @@ export default function App() {
             </SelectionProvider>
             <StatusBar style="auto" /> 
           </BlockingProvider>
-        </SafeAreaProvider>
-      </BottomSheetModalProvider>
-    </GestureHandlerRootView>
+        </BottomSheetModalProvider>
+      </GestureHandlerRootView>
+    </SafeAreaProvider>
   );
 }

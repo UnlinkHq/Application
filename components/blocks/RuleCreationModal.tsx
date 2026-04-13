@@ -50,6 +50,8 @@ export const RuleCreationModal = ({
             onClose={onClose}
             title="MANAGE"
             snapPoints={['45%']}
+            detached={true}
+            enableDynamicSizing={true}
         >
             <View className="space-y-4">
                 {RULES.map((rule) => (
