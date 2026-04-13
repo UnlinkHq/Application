@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useEffect } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Platform } from 'react-native';
 import {
   BottomSheetModal,
   BottomSheetBackdrop,
@@ -20,21 +20,33 @@ interface BottomSheetWrapperProps {
   enableDynamicSizing?: boolean;
 }
 
-const AttachedBackground = ({ style }: BottomSheetBackgroundProps) => (
-  <View
-    pointerEvents="none"
-    style={[
-      style,
-      {
-        backgroundColor: '#000',
-        borderTopWidth: 2,
-        borderColor: '#FFF',
-        borderTopLeftRadius: 24,
-        borderTopRightRadius: 24,
-      }
-    ]}
-  />
-);
+const AttachedBackground = ({ style }: BottomSheetBackgroundProps) => {
+  const dynamicShadow = Platform.OS === 'android' ? 
+    { elevation: 8 } : 
+    {
+      shadowColor: '#FFF',
+      shadowOffset: { width: 0, height: -10 },
+      shadowOpacity: 0.15,
+      shadowRadius: 20,
+    };
+
+  return (
+    <View
+      pointerEvents="none"
+      style={[
+        style,
+        {
+          backgroundColor: '#000',
+          borderTopWidth: 2,
+          borderColor: '#FFF',
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          ...dynamicShadow
+        }
+      ]}
+    />
+  );
+};
 
 
 

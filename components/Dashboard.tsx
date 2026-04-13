@@ -1,28 +1,27 @@
-import React from 'react';
-import { View, Text, Switch, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useMemo, useCallback } from 'react';
+import { View, Text, Switch, FlatList, TouchableOpacity } from 'react-native';
 import { useBlocking } from '../context/BlockingContext';
 import { AppSelector } from './settings/AppSelector';
 import { ScheduleBuilder } from './settings/ScheduleBuilder';
 
-export const Dashboard = () => {
-  const {
-    isStrict,
-    setStrict,
-    timeLeft,
-    timerState,
-    usageLimit,
-    setUsageLimit,
-    resetTimer,
-  } = useBlocking();
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  return (
-    <ScrollView className="flex-1 bg-white pt-12 px-4">
+const DashboardHeader = React.memo(({ 
+    timerState, 
+    timeLeft, 
+    formatTime, 
+    resetTimer, 
+    setUsageLimit, 
+    isStrict, 
+    setStrict 
+}: { 
+    timerState: string; 
+    timeLeft: number; 
+    formatTime: (s: number) => string; 
+    resetTimer: () => void; 
+    setUsageLimit: (n: number) => void; 
+    isStrict: boolean; 
+    setStrict: (b: boolean) => void;
+}) => (
+    <View className="px-4 pt-12">
       <Text className="text-3xl font-bold mb-6">ScreenBreak</Text>
 
       {/* Stat Card */}
@@ -86,11 +85,53 @@ export const Dashboard = () => {
         />
       </View>
 
-      {/* Settings Components */}
       <ScheduleBuilder />
-      <AppSelector />
-      
-      <View className="h-20" /> 
-    </ScrollView>
+    </View>
+));
+
+export const Dashboard = () => {
+  const {
+    isStrict,
+    setStrict,
+    timeLeft,
+    timerState,
+    usageLimit,
+    setUsageLimit,
+    resetTimer,
+  } = useBlocking();
+
+  const formatTime = useCallback((seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  }, []);
+
+  const renderHeader = useCallback(() => (
+    <DashboardHeader 
+        timerState={timerState}
+        timeLeft={timeLeft}
+        formatTime={formatTime}
+        resetTimer={resetTimer}
+        setUsageLimit={setUsageLimit}
+        isStrict={isStrict}
+        setStrict={setStrict}
+    />
+  ), [timerState, timeLeft, formatTime, resetTimer, setUsageLimit, isStrict, setStrict]);
+
+  const renderFooter = useCallback(() => <View className="h-20" />, []);
+
+  // Using FlatList with a single item for the selector to maintain virtualization benefits of the root
+  // while avoiding nested ScrollView issues.
+  return (
+    <FlatList
+      className="flex-1 bg-white"
+      ListHeaderComponent={renderHeader}
+      ListFooterComponent={renderFooter}
+      data={['app_selector']}
+      keyExtractor={item => item}
+      renderItem={() => <AppSelector />}
+      removeClippedSubviews={true}
+      initialNumToRender={2}
+    />
   );
 };

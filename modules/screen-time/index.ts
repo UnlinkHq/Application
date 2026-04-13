@@ -4,8 +4,11 @@ import { requireNativeModule } from 'expo-modules-core';
 interface ScreenTimeModuleInterface {
     hasPermission(): Promise<boolean>;
     requestPermission(): void;
+    isAdminActive(): boolean;
+    requestAdmin(): void;
+    deactivateAdmin(): void;
     getUsageStats(startTime: number, endTime: number): Promise<any>;
-    getInstalledApps(): Promise<{ packageName: string, label: string, icon: string }[]>;
+    getInstalledApps(): Promise<{ packageName: string, label: string, icon: string, category?: number }[]>;
 }
 
 // Get the native module with a safe fallback
@@ -21,6 +24,9 @@ try {
         requestPermission: () => {
             console.warn('[ScreenTime] requestPermission: Native module missing.');
         },
+        isAdminActive: () => false,
+        requestAdmin: () => {},
+        deactivateAdmin: () => {},
         getUsageStats: async () => ({}),
         getInstalledApps: async () => []
     };
@@ -36,10 +42,22 @@ export function requestPermission(): void {
     ScreenTimeModule.requestPermission();
 }
 
+export function isAdminActive(): boolean {
+    return ScreenTimeModule.isAdminActive();
+}
+
+export function requestAdmin(): void {
+    ScreenTimeModule.requestAdmin();
+}
+
+export function deactivateAdmin(): void {
+    ScreenTimeModule.deactivateAdmin();
+}
+
 export async function getUsageStats(startTime: number, endTime: number): Promise<any> {
     return await ScreenTimeModule.getUsageStats(startTime, endTime);
 }
 
-export async function getInstalledApps(): Promise<{ packageName: string, label: string, icon: string }[]> {
+export async function getInstalledApps(): Promise<{ packageName: string, label: string, icon: string, category?: number }[]> {
     return await ScreenTimeModule.getInstalledApps();
 }

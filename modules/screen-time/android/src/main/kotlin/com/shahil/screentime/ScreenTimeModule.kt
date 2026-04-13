@@ -8,6 +8,8 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Process
 import android.provider.Settings
+import android.app.admin.DevicePolicyManager
+import android.content.ComponentName
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -16,6 +18,34 @@ import java.util.Calendar
 class ScreenTimeModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("ScreenTime")
+
+    Function("isAdminActive") {
+      val context = appContext.reactContext ?: return@Function false
+      val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+      val adminComponent = ComponentName(context, UnlinkDeviceAdminReceiver::class.java)
+      return@Function dpm.isAdminActive(adminComponent)
+    }
+
+    Function("requestAdmin") {
+      val context = appContext.reactContext
+      if (context != null) {
+        val adminComponent = ComponentName(context, UnlinkDeviceAdminReceiver::class.java)
+        val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
+        intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
+        intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Enabling this prevents Unlink from being uninstalled.")
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
+      }
+    }
+
+    Function("deactivateAdmin") {
+      val context = appContext.reactContext
+      if (context != null) {
+        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
+        val adminComponent = ComponentName(context, UnlinkDeviceAdminReceiver::class.java)
+        dpm.removeActiveAdmin(adminComponent)
+      }
+    }
 
     Function("hasPermission") {
       val context = appContext.reactContext ?: return@Function false
@@ -130,19 +160,33 @@ class ScreenTimeModule : Module() {
     }
 
     AsyncFunction("getInstalledApps") {
-      val context = appContext.reactContext ?: return@AsyncFunction listOf<Map<String, String>>()
+      val context = appContext.reactContext ?: return@AsyncFunction listOf<Map<String, Any>>()
       val packageManager = context.packageManager
       
-      val installedPackages = packageManager.getInstalledPackages(0)
-      val appList = mutableListOf<Map<String, String>>()
+      val mainIntent = Intent(Intent.ACTION_MAIN, null)
+      mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
+      
+      // Resolve launchable activities only to filter out background noise/extensions
+      val resolvedActivities = packageManager.queryIntentActivities(mainIntent, 0)
+      val appList = mutableListOf<Map<String, Any>>()
+      val seenPackages = mutableSetOf<String>()
 
-      for (packageInfo in installedPackages) {
-        val packageName = packageInfo.packageName
-        
+      for (resolveInfo in resolvedActivities) {
+        val packageName = resolveInfo.activityInfo.packageName
+        if (seenPackages.contains(packageName)) continue
+        seenPackages.add(packageName)
+
         try {
             val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
             val label = packageManager.getApplicationLabel(applicationInfo).toString()
             
+            // Get Category (API 26+)
+            val category = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                applicationInfo.category
+            } else {
+                -1 // Undefined
+            }
+
             // Get Icon as Base64
             val iconDrawable = packageManager.getApplicationIcon(applicationInfo)
             val iconBase64 = bitmapToBase64(iconDrawable)
@@ -151,7 +195,8 @@ class ScreenTimeModule : Module() {
                 appList.add(mapOf(
                     "packageName" to packageName,
                     "label" to label,
-                    "icon" to (iconBase64 ?: "")
+                    "icon" to (iconBase64 ?: ""),
+                    "category" to category
                 ))
             }
         } catch (e: Exception) {

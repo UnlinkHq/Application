@@ -1,27 +1,30 @@
-import React from 'react';
-import { View, TouchableOpacity, Text, useWindowDimensions } from 'react-native';
+import React, { useMemo, memo } from 'react';
+import { View, TouchableOpacity, Text, useWindowDimensions, Platform } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelection } from '../../context/SelectionContext';
 
-export const FluidTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
+export const FluidTabBar: React.FC<BottomTabBarProps> = memo(({ state, descriptors, navigation }) => {
   const { width: SCREEN_WIDTH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const { openSelection } = useSelection();
 
   // Optimized Layout Widths
-  const CONTAINER_PADDING = 24;
-  const FAB_SIZE = 56;
-  const GAP = 12;
-  const BAR_WIDTH = SCREEN_WIDTH - (CONTAINER_PADDING * 2) - FAB_SIZE - GAP;
+  const { barWidth, fabSize, containerPadding, gap } = useMemo(() => {
+    const CONTAINER_PADDING = 24;
+    const FAB_SIZE = 56;
+    const GAP = 12;
+    const BAR_WIDTH = SCREEN_WIDTH - (CONTAINER_PADDING * 2) - FAB_SIZE - GAP;
+    return { barWidth: BAR_WIDTH, fabSize: FAB_SIZE, containerPadding: CONTAINER_PADDING, gap: GAP };
+  }, [SCREEN_WIDTH]);
 
   return (
     <View 
         style={{ 
             bottom: insets.bottom + 16, 
-            width: SCREEN_WIDTH - (CONTAINER_PADDING * 2),
-            left: CONTAINER_PADDING,
+            width: SCREEN_WIDTH - (containerPadding * 2),
+            left: containerPadding,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between'
@@ -30,8 +33,11 @@ export const FluidTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, n
     >
         {/* Navigation Pill */}
         <View 
-            style={{ width: BAR_WIDTH }}
-            className="flex-row items-center bg-[#131313] border border-white/20 p-1 shadow-[0_0_40px_rgba(0,0,0,0.8)] overflow-hidden"
+            style={{ 
+                width: barWidth,
+                elevation: Platform.OS === 'android' ? 4 : 0
+            }}
+            className="flex-row items-center bg-[#131313] border border-white/20 p-1 shadow-2xl overflow-hidden"
         >
             <View className="flex-row items-center h-full w-full divide-x divide-white/10">
                 {state.routes.map((route, index) => {
@@ -88,7 +94,11 @@ export const FluidTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, n
         <TouchableOpacity
             onPress={openSelection}
             activeOpacity={0.9}
-            style={{ width: FAB_SIZE, height: FAB_SIZE }}
+            style={{ 
+                width: fabSize, 
+                height: fabSize,
+                elevation: Platform.OS === 'android' ? 6 : 0
+            }}
             className="items-center justify-center bg-[#131313] border border-white/20 rounded-full shadow-2xl"
         >
             <View className="w-8 h-8 rounded-full bg-white items-center justify-center">
@@ -97,4 +107,4 @@ export const FluidTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, n
         </TouchableOpacity>
     </View>
   );
-};
+});

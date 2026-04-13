@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, memo } from 'react';
 import { View, Text, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { Svg, Rect, Line, Text as SvgText, G } from 'react-native-svg';
 import { DailyUsage } from '../utils/screenTimeData';
@@ -13,7 +13,87 @@ interface Props {
     dailyData?: DailyUsage;
 }
 
-export const ScreenTimeChart: React.FC<Props> = ({ selectedHour, selectedAppId, onSelectHour, dailyData }) => {
+const ChartBar = memo(({ 
+    item, 
+    index, 
+    barSlotWidth, 
+    barWidth, 
+    maxUsage, 
+    selectedHour, 
+    onSelect 
+}: { 
+    item: any; 
+    index: number; 
+    barSlotWidth: number; 
+    barWidth: number; 
+    maxUsage: number; 
+    selectedHour: number | null; 
+    onSelect: (h: number | null) => void;
+}) => {
+    const h = Math.max((item.value / maxUsage) * MAX_BAR_HEIGHT, item.value > 0 ? 4 : 0);
+    const x = index * barSlotWidth + 1;
+    const isSelected = selectedHour === item.hour;
+    const intensity = item.value / maxUsage;
+    
+    let barColor = "#72fe88";
+    if (intensity > 0.75) barColor = "#ffb4aa";
+    else if (intensity > 0.3) barColor = "#ffab5e";
+    
+    let barOpacity = 1;
+    if (item.value === 0) barOpacity = 0;
+    else if (intensity < 0.2) barOpacity = 0.6;
+    
+    if (selectedHour !== null && !isSelected) {
+        barOpacity *= 0.1;
+    }
+
+    return (
+        <G key={item.hour}>
+            <Rect
+                x={x}
+                y={0}
+                width={barWidth}
+                height={MAX_BAR_HEIGHT}
+                fill="rgba(255,255,255,0.03)"
+            />
+
+            {isSelected && (
+                <Rect 
+                    x={x + barWidth/2 - 0.5} 
+                    y={0} 
+                    width={1} 
+                    height={MAX_BAR_HEIGHT} 
+                    fill="white" 
+                    opacity={0.3} 
+                />
+            )}
+
+            {item.value > 0 && (
+                <Rect
+                    x={x}
+                    y={MAX_BAR_HEIGHT - h}
+                    width={barWidth}
+                    height={h}
+                    fill={barColor}
+                    opacity={barOpacity}
+                    rx={0}
+                />
+            )}
+            
+            {/* Transparent touch target inside Svg to avoid overlay View issues on some android builds */}
+            <Rect
+                x={x}
+                y={0}
+                width={barSlotWidth}
+                height={MAX_BAR_HEIGHT}
+                fill="transparent"
+                onPress={() => onSelect(isSelected ? null : item.hour)}
+            />
+        </G>
+    );
+});
+
+export const ScreenTimeChart: React.FC<Props> = memo(({ selectedHour, selectedAppId, onSelectHour, dailyData }) => {
     const { width } = useWindowDimensions();
     const totalAvailableWidth = width - 48;
 
@@ -59,68 +139,21 @@ export const ScreenTimeChart: React.FC<Props> = ({ selectedHour, selectedAppId, 
 
             <View style={{ height: MAX_BAR_HEIGHT + 40 }}>
                 <Svg width={totalAvailableWidth} height={MAX_BAR_HEIGHT + 40}>
-                    {/* Background Grid Lines */}
                     <Line x1="0" y1={MAX_BAR_HEIGHT} x2={totalAvailableWidth} y2={MAX_BAR_HEIGHT} stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
                     
-                    {items.map((item, index) => {
-                        const h = Math.max((item.value / maxUsage) * MAX_BAR_HEIGHT, item.value > 0 ? 4 : 0);
-                        const x = index * barSlotWidth + 1;
-                        const isSelected = selectedHour === item.hour;
-                        const intensity = item.value / maxUsage;
-                        
-                        // 1. Determine Color based on Intensity
-                        let barColor = "#72fe88"; // Low/Healthy (Green)
-                        if (intensity > 0.75) barColor = "#ffb4aa"; // High/Severe (Rose)
-                        else if (intensity > 0.3) barColor = "#ffab5e"; // Medium/Caution (Orange)
-                        
-                        // 2. Determine Intensity Opacity
-                        let barOpacity = 1;
-                        if (item.value === 0) barOpacity = 0;
-                        else if (intensity < 0.2) barOpacity = 0.6; // Slight dim for extremely low
-                        
-                        // 3. Selection Dimming
-                        if (selectedHour !== null && !isSelected) {
-                            barOpacity *= 0.1;
-                        }
+                    {items.map((item, index) => (
+                        <ChartBar 
+                            key={item.hour}
+                            item={item}
+                            index={index}
+                            barSlotWidth={barSlotWidth}
+                            barWidth={barWidth}
+                            maxUsage={maxUsage}
+                            selectedHour={selectedHour}
+                            onSelect={onSelectHour}
+                        />
+                    ))}
 
-                        return (
-                            <G key={item.hour}>
-                                {/* Permanent Background Track for each slot */}
-                                <Rect
-                                    x={x}
-                                    y={0}
-                                    width={barWidth}
-                                    height={MAX_BAR_HEIGHT}
-                                    fill="rgba(255,255,255,0.03)"
-                                />
-
-                                {isSelected && (
-                                    <Rect 
-                                        x={x + barWidth/2 - 0.5} 
-                                        y={0} 
-                                        width={1} 
-                                        height={MAX_BAR_HEIGHT} 
-                                        fill="white" 
-                                        opacity={0.3} 
-                                    />
-                                )}
-
-                                {item.value > 0 && (
-                                    <Rect
-                                        x={x}
-                                        y={MAX_BAR_HEIGHT - h}
-                                        width={barWidth}
-                                        height={h}
-                                        fill={barColor}
-                                        opacity={barOpacity}
-                                        rx={0}
-                                    />
-                                )}
-                            </G>
-                         );
-                    })}
-
-                    {/* Timeline Labels in 12H format */}
                     {[0, 6, 12, 18, 23].map((h) => (
                         <SvgText
                             key={h}
@@ -136,18 +169,7 @@ export const ScreenTimeChart: React.FC<Props> = ({ selectedHour, selectedAppId, 
                         </SvgText>
                     ))}
                 </Svg>
-
-                <View className="absolute inset-0 flex-row">
-                    {items.map((item) => (
-                        <TouchableOpacity 
-                            key={item.hour}
-                            onPress={() => onSelectHour(selectedHour === item.hour ? null : item.hour)}
-                            style={{ width: barSlotWidth, height: MAX_BAR_HEIGHT }}
-                            activeOpacity={0.6}
-                        />
-                    ))}
-                </View>
             </View>
         </View>
     );
-};
+});

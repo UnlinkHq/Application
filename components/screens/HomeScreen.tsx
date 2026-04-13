@@ -15,7 +15,7 @@ import { DateStrip } from '../home/DateStrip';
 import { DailyOverview } from '../home/DailyOverview';
 import { AppUsageList } from '../home/AppUsageList';
 
-export const HomeScreen = React.memo(() => {
+export const HomeScreen = () => {
     const navigation = useNavigation<any>();
     const { isStrict, triggerDemoBlock } = useBlocking();
     const isFocused = useIsFocused();
@@ -317,4 +317,4 @@ export const HomeScreen = React.memo(() => {
             </View>
         </SafeAreaView>
     );
-});
+};

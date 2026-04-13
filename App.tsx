@@ -50,7 +50,7 @@ LogBox.ignoreLogs([
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-const TabNavigator = React.memo(() => {
+const TabNavigator = () => {
   return (
     <Tab.Navigator
         tabBar={props => <FluidTabBar {...props} />}
@@ -68,9 +68,9 @@ const TabNavigator = React.memo(() => {
       )}
     </Tab.Navigator>
   );
-});
+};
 
-const NavigationTree = React.memo(({ isFirstLaunch }: { isFirstLaunch: boolean }) => {
+const NavigationTree = ({ isFirstLaunch }: { isFirstLaunch: boolean }) => {
   return (
     <NavigationContainer
         theme={{
@@ -91,7 +91,7 @@ const NavigationTree = React.memo(({ isFirstLaunch }: { isFirstLaunch: boolean }
       <BreakOverlay />
     </NavigationContainer>
   );
-});
+};
 
 export default function App() {
   const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
