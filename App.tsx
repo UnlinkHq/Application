@@ -1,4 +1,7 @@
 import 'react-native-gesture-handler';
+import { enableScreens } from 'react-native-screens';
+
+enableScreens();
 import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
@@ -13,7 +16,7 @@ configureReanimatedLogger({
   strict: false, 
 });
 
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -53,6 +56,7 @@ function TabNavigator() {
             headerShown: false,
             // Hide default background since our custom bar handles it
             tabBarStyle: { position: 'absolute' }, 
+            freezeOnBlur: true,
         }}
     >
       <Tab.Screen name="Today" component={HomeScreen} />
@@ -108,7 +112,15 @@ export default function App() {
       <BottomSheetModalProvider>
         <SafeAreaProvider>
           <BlockingProvider>
-            <NavigationContainer>
+            <NavigationContainer
+                theme={{
+                    ...DefaultTheme,
+                    colors: {
+                        ...DefaultTheme.colors,
+                        background: 'black',
+                    },
+                }}
+            >
                 <Stack.Navigator screenOptions={{ headerShown: false }}>
                     {isFirstLaunch && (
                         <Stack.Screen name="Onboarding" component={OnboardingScreen} />

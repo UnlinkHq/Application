@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Platform, AppState, RefreshControl, Image } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Platform, AppState, RefreshControl, Image, InteractionManager } from 'react-native';
 import { useBlocking } from '../../context/BlockingContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -36,16 +36,18 @@ export const HomeScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    checkPermissionAndLoadData(false);
+    // Priority 1: Instant load from Interactions/Cache
+    InteractionManager.runAfterInteractions(() => {
+        checkPermissionAndLoadData(false);
+    });
 
     let intervalId: NodeJS.Timeout;
     if (isFocused) {
         intervalId = setInterval(() => {
             if (AppState.currentState === 'active') {
-                refreshCount.current += 1;
                 checkPermissionAndLoadData(true);
             }
-        }, 60 * 1000);
+        }, 30 * 1000); // Check every 30s
     }
 
     const subscription = AppState.addEventListener('change', nextAppState => {
@@ -61,8 +63,8 @@ export const HomeScreen = () => {
     };
   }, [selectedDate, isFocused]);
 
-  const checkPermissionAndLoadData = async (silent = false) => {
-    if (!silent) setIsLoading(true);
+  const checkPermissionAndLoadData = async (silent = false, forceRefresh = false) => {
+    if (!silent && !dailyData) setIsLoading(true);
 
     if (Platform.OS === 'android') {
         try {
@@ -72,8 +74,22 @@ export const HomeScreen = () => {
             if (hasPerm) {
                 const date = new Date();
                 date.setDate(selectedDate);
-                const data = await ScreenTimeService.getDailyUsage(date.getTime());
-                setDailyData(data);
+
+                // 1. Instant Cache Render
+                const cachedData = ScreenTimeService.getCachedUsage(date.getTime());
+                if (cachedData) {
+                    setDailyData(cachedData); 
+                }
+
+                // 2. Background Revalidation (bypass cache if forceRefresh is true)
+                const data = await ScreenTimeService.getDailyUsage(date.getTime(), forceRefresh);
+                
+                // Only update state if data actually changed
+                // (prevents unnecessary re-renders)
+                setDailyData(prev => {
+                    if (JSON.stringify(prev) === JSON.stringify(data)) return prev;
+                    return data;
+                });
 
                 const { updateSDKState } = require('../../core/sdk/provider');
                 const totalMinutes = data?.totalDuration ? data.totalDuration / 60 : 0;
@@ -101,7 +117,7 @@ export const HomeScreen = () => {
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    checkPermissionAndLoadData(true);
+    checkPermissionAndLoadData(true, true); // Silent = true, forceRefresh = true
   }, []);
 
   const handleRequestPermission = () => {
@@ -203,63 +219,88 @@ export const HomeScreen = () => {
             </View>
         </View>
 
-        <ScrollView 
-            className="flex-1" 
+        <FlatList
+            data={displayedApps}
+            keyExtractor={(item) => item.id}
             contentContainerStyle={{ paddingBottom: 240 }}
             refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#fff" />
             }
-        >
-            {/* Permission Banner */}
-            {!hasPermission && Platform.OS === 'android' && (
-                <View className="px-6 mb-8">
-                    <PermissionBanner onPress={handleRequestPermission} />
-                </View>
+            ListHeaderComponent={
+                <>
+                    {/* Permission Banner */}
+                    {!hasPermission && Platform.OS === 'android' && (
+                        <View className="px-6 mb-8 mt-4">
+                            <PermissionBanner onPress={handleRequestPermission} />
+                        </View>
+                    )}
+
+                    {/* Section 01: Date Picker */}
+                    <DateStrip 
+                        currentYear={currentYear}
+                        currentMonth={currentMonth}
+                        selectedDate={selectedDate}
+                        onSelectDate={handleSelectDate}
+                        onOpenDatePicker={handleOpenDatePicker}
+                    />
+
+                    {/* Section 02: Main Overview */}
+                    <DailyOverview 
+                        dailyData={dailyData ?? undefined}
+                        selectedAppId={selectedAppId}
+                        selectedAppDuration={selectedAppDuration}
+                        onClearAppSelection={handleClearAppSelection}
+                    />
+
+                    {/* Section 03: Hourly Intensity Chart */}
+                    <View className="px-6">
+                        <ScreenTimeChart 
+                            selectedDate={selectedDate} 
+                            selectedHour={selectedHour} 
+                            selectedAppId={selectedAppId}
+                            onSelectHour={setSelectedHour}
+                            dailyData={dailyData ?? undefined}
+                        />
+                    </View>
+
+                    {/* Section 04: Consumption Label */}
+                    <View className="px-6 mt-8">
+                        <Text className="font-label text-xs uppercase tracking-[0.2em] text-[#919191] mb-8">
+                            {selectedHour !== null ? 'Hourly Intensity' : 'Most Used Apps'}
+                        </Text>
+                    </View>
+                </>
+            }
+            renderItem={({ item }) => (
+                 <View className="px-6">
+                    <AppUsageList 
+                        apps={[item]} 
+                        selectedAppId={selectedAppId}
+                        onAppPress={handleAppPress}
+                        isHourlyView={selectedHour !== null}
+                        hideHeader
+                    />
+                 </View>
             )}
-
-            {/* Section 01: Date Picker */}
-            <DateStrip 
-                currentYear={currentYear}
-                currentMonth={currentMonth}
-                selectedDate={selectedDate}
-                onSelectDate={handleSelectDate}
-                onOpenDatePicker={handleOpenDatePicker}
-            />
-
-            {/* Section 02: Main Overview */}
-            <DailyOverview 
-                dailyData={dailyData ?? undefined}
-                selectedAppId={selectedAppId}
-                selectedAppDuration={selectedAppDuration}
-                onClearAppSelection={handleClearAppSelection}
-            />
-
-            {/* Section 03: Hourly Intensity Chart */}
-            <View className="px-6">
-                <ScreenTimeChart 
-                    selectedDate={selectedDate} 
-                    selectedHour={selectedHour} 
-                    selectedAppId={selectedAppId}
-                    onSelectHour={setSelectedHour}
-                    dailyData={dailyData ?? undefined}
-                />
-            </View>
-
-            {/* Section 04: Consumption Logic (Apps) */}
-            <View className="px-6 pb-12">
-                <AppUsageList 
-                    apps={displayedApps}
-                    selectedAppId={selectedAppId}
-                    onAppPress={handleAppPress}
-                    isHourlyView={selectedHour !== null}
-                />
-            </View>
-
-            {/* Aesthetic Separator */}
-            <View className="flex-row justify-center py-10 opacity-20">
-                <Text className="font-label text-2xl text-white transform rotate-45">//</Text>
-            </View>
-        </ScrollView>
+            ListEmptyComponent={
+                <View className="px-6 pb-12">
+                     <Text className="text-[#919191] font-label text-center py-10 uppercase text-[10px] tracking-widest border border-white/5">
+                        No active usage detected
+                    </Text>
+                </View>
+            }
+            ListFooterComponent={
+                 /* Aesthetic Separator */
+                 <View className="flex-row justify-center py-10 opacity-20">
+                     <Text className="font-label text-2xl text-white transform rotate-45">//</Text>
+                 </View>
+            }
+            // Optimization Props
+            initialNumToRender={8}
+            maxToRenderPerBatch={10}
+            windowSize={5}
+            removeClippedSubviews={Platform.OS === 'android'}
+        />
 
         <DatePickerModal 
             visible={showDatePicker}

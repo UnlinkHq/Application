@@ -21,7 +21,7 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
   };
 
   return (
-    <View className="flex-1 bg-black">
+    <View className="flex-1 bg-transparent">
       <View className="flex-1">
         
         <View className="items-center mb-8 px-6">

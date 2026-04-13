@@ -50,7 +50,7 @@ export const FluidTabBar: React.FC<BottomTabBarProps> = ({ state, descriptors, n
                     key={index}
                     onPress={onPress}
                     activeOpacity={1}
-                    className={`flex-1 h-14 flex items-center justify-center transition-all ${
+                    className={`flex-1 h-14 flex items-center justify-center ${
                         isFocused ? 'bg-white' : 'bg-transparent'
                     }`}
                 >

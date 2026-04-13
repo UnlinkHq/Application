@@ -78,16 +78,19 @@ interface AppUsageListProps {
   onAppPress: (appId: string) => void;
   overrideColor?: string;
   isHourlyView?: boolean;
+  hideHeader?: boolean;
 }
 
-export const AppUsageList = memo(({ apps, selectedAppId, onAppPress, overrideColor, isHourlyView }: AppUsageListProps) => {
+export const AppUsageList = memo(({ apps, selectedAppId, onAppPress, overrideColor, isHourlyView, hideHeader }: AppUsageListProps) => {
   const activeApps = apps.filter(app => app.duration >= 60);
 
   return (
-    <View className="mt-8">
-      <Text className="font-label text-xs uppercase tracking-[0.2em] text-[#919191] mb-8">
-        {isHourlyView ? 'Hourly Intensity' : 'Most Used Apps'}
-      </Text>
+    <View className={hideHeader ? "" : "mt-8"}>
+      {!hideHeader && activeApps.length > 0 && (
+        <Text className="font-label text-xs uppercase tracking-[0.2em] text-[#919191] mb-8">
+            {isHourlyView ? 'Hourly Intensity' : 'Most Used Apps'}
+        </Text>
+      )}
       
       <View className="space-y-4">
         {activeApps.map((app, index) => (
@@ -101,7 +104,7 @@ export const AppUsageList = memo(({ apps, selectedAppId, onAppPress, overrideCol
         ))}
       </View>
 
-      {activeApps.length === 0 && (
+      {!hideHeader && activeApps.length === 0 && (
         <Text className="text-[#919191] font-label text-center py-10 uppercase text-[10px] tracking-widest border border-white/5">
             No active usage detected
         </Text>

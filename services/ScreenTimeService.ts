@@ -2,8 +2,9 @@ import { Platform } from 'react-native';
 import * as ScreenTimeModule from '../modules/screen-time';
 import { DailyUsage, HourlyUsage, AppUsage } from '../utils/screenTimeData';
 
-const CACHE_DURATION = 60 * 1000; // 1 minute cache
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minute cache for maximum smoothness
 let appCache: { [packageName: string]: { label: string; icon: string } } | null = null;
+let usageCache: { [timestamp: number]: { data: DailyUsage; fetchedAt: number } } = {};
 
 export const ScreenTimeService = {
     async hasPermission(): Promise<boolean> {
@@ -38,7 +39,14 @@ export const ScreenTimeService = {
         }
     },
 
-    async getDailyUsage(dateTimestamp: number): Promise<DailyUsage> {
+    getCachedUsage(dateTimestamp: number): DailyUsage | null {
+        const startOfDay = new Date(dateTimestamp);
+        startOfDay.setHours(0, 0, 0, 0);
+        const dayKey = startOfDay.getTime();
+        return usageCache[dayKey]?.data || null;
+    },
+
+    async getDailyUsage(dateTimestamp: number, skipCache = false): Promise<DailyUsage> {
         if (Platform.OS !== 'android') {
             // Return mock data for non-Android
             // logic to find mock data for date
@@ -51,6 +59,14 @@ export const ScreenTimeService = {
 
         const startOfDay = new Date(dateTimestamp);
         startOfDay.setHours(0, 0, 0, 0);
+        const dayKey = startOfDay.getTime();
+
+        // Check Cache
+        const cached = usageCache[dayKey];
+        if (!skipCache && cached && (Date.now() - cached.fetchedAt) < CACHE_DURATION) {
+            return cached.data;
+        }
+
         const endOfDay = new Date(dateTimestamp);
         endOfDay.setHours(23, 59, 59, 999);
 
@@ -171,13 +187,21 @@ export const ScreenTimeService = {
             const nativeTotalPickups = pickupMapNative["total_pickups"] || 0;
             const finalPickups = Math.max(nativeTotalPickups, aggregatedPickups);
 
-            return {
+            const finalUsage: DailyUsage = {
                 date: startOfDay.getDate(),
                 totalDuration: totalDailyDuration,
                 hourly: hourlyUsage,
                 apps: allDayApps,
                 pickups: finalPickups
             };
+
+            // Update Cache
+            usageCache[dayKey] = {
+                data: finalUsage,
+                fetchedAt: Date.now()
+            };
+
+            return finalUsage;
 
         } catch (e) {
             console.error("Failed to fetch usage stats", e);

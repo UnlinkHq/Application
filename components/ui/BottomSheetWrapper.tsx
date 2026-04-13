@@ -1,14 +1,13 @@
 import React, { useCallback, useRef, useEffect } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
-import { 
-  BottomSheetModal, 
-  BottomSheetBackdrop, 
+import {
+  BottomSheetModal,
+  BottomSheetBackdrop,
   BottomSheetScrollView,
   BottomSheetBackdropProps,
   BottomSheetBackgroundProps
 } from '@gorhom/bottom-sheet';
 import { Ionicons } from '@expo/vector-icons';
-import { SharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface BottomSheetWrapperProps {
@@ -18,11 +17,10 @@ interface BottomSheetWrapperProps {
   title?: string;
   children: React.ReactNode;
   snapPoints?: (string | number)[];
-  animatedIndex?: SharedValue<number>;
 }
 
 const CustomBackground = ({ style }: BottomSheetBackgroundProps) => (
-  <View 
+  <View
     pointerEvents="none"
     style={[
       style,
@@ -30,22 +28,19 @@ const CustomBackground = ({ style }: BottomSheetBackgroundProps) => (
         backgroundColor: '#000',
         borderWidth: 2,
         borderColor: '#FFF',
-        // borderTopLeftRadius: 24,
-        // borderTopRightRadius: 24,
-        // borderBottomWidth: 30, // Let the content handle the bottom closure for better control
+        borderRadius: 24,
       }
-    ]} 
+    ]}
   />
 );
 
-export const BottomSheetWrapper = ({ 
-  visible, 
-  onClose, 
+export const BottomSheetWrapper = ({
+  visible,
+  onClose,
   onBack,
-  title, 
-  children, 
+  title,
+  children,
   snapPoints = ['100%'], // Default to a high snap point to show full content at first
-  animatedIndex
 }: BottomSheetWrapperProps) => {
   const bottomSheetModalRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
@@ -87,8 +82,12 @@ export const BottomSheetWrapper = ({
       backdropComponent={renderBackdrop}
       backgroundComponent={CustomBackground}
       handleIndicatorStyle={styles.indicator}
-      animatedIndex={animatedIndex}
       stackBehavior="push"
+      detached={true}
+      bottomInset={insets.bottom + 20}
+      style={{
+        marginHorizontal: 16,
+      }}
     >
       <View style={[styles.contentContainer]}>
         {title && (
@@ -108,19 +107,17 @@ export const BottomSheetWrapper = ({
             </TouchableOpacity>
           </View>
         )}
-        
-        <BottomSheetScrollView 
+
+        <BottomSheetScrollView
           showsVerticalScrollIndicator={false}
           style={{ flex: 1 }}
-          contentContainerStyle={{ 
-            flexGrow: 1, 
-            paddingBottom: insets.bottom +20
+          contentContainerStyle={{
+            flexGrow: 1,
+            paddingBottom: 40
           }}
         >
           {children}
 
-          {/* Explicit Bottom Surgical Boundary */}
-          <View className="h-4 border-t-2 border-white/20 mt-10 mb-4" />
         </BottomSheetScrollView>
       </View>
     </BottomSheetModal>
@@ -135,7 +132,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    paddingHorizontal: 20, 
+    paddingHorizontal: 20,
   },
   header: {
     flexDirection: 'row',

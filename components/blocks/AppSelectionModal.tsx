@@ -18,47 +18,47 @@ interface AppSelectionModalProps {
     onToggleApp: (appId: string) => void;
 }
 
-export const AppSelectionModal = ({ 
-    visible, 
-    onClose, 
-    selectedApps, 
-    onToggleApp 
+export const AppSelectionModal = ({
+    visible,
+    onClose,
+    selectedApps,
+    onToggleApp
 }: AppSelectionModalProps) => {
-  return (
-    <BottomSheetWrapper 
-        visible={visible} 
-        onClose={onClose} 
-        title="SELECT APPS"
-        snapPoints={['70%']}
-    >
-        <ScrollView showsVerticalScrollIndicator={false} className="mt-4">
-            <View className="space-y-2">
-                {MOCK_APPS.map((app) => (
-                    <TouchableOpacity 
-                        key={app.id}
-                        onPress={() => onToggleApp(app.id)}
-                        activeOpacity={0.7}
-                        className="flex-row items-center border border-white/10 p-4 mb-2 bg-white/5"
-                    >
-                        <Image source={{ uri: app.icon }} className="w-8 h-8 rounded-lg mr-4 grayscale" />
-                        <Text className="text-white font-headline font-black text-sm uppercase tracking-tight flex-1">
-                            {app.name}
-                        </Text>
-                        <View className={`w-6 h-6 border-2 items-center justify-center ${selectedApps.includes(app.id) ? 'bg-white border-white' : 'bg-transparent border-white/20'}`}>
-                            {selectedApps.includes(app.id) && (
-                                <Ionicons name="checkmark" size={16} color="black" />
-                            )}
-                        </View>
-                    </TouchableOpacity>
-                ))}
-            </View>
-            <TouchableOpacity 
-                onPress={onClose}
-                className="bg-white h-12 items-center justify-center mt-6 mb-8"
-            >
-                <Text className="text-black font-headline font-black text-sm uppercase tracking-[0.2em]">COMPLETE_SELECTION</Text>
-            </TouchableOpacity>
-        </ScrollView>
-    </BottomSheetWrapper>
-  );
+    return (
+        <BottomSheetWrapper
+            visible={visible}
+            onClose={onClose}
+            title="SELECT APPS"
+            snapPoints={['70%']}
+        >
+            <ScrollView showsVerticalScrollIndicator={false} className="mt-4">
+                <View className="space-y-2">
+                    {MOCK_APPS.map((app) => (
+                        <TouchableOpacity
+                            key={app.id}
+                            onPress={() => onToggleApp(app.id)}
+                            activeOpacity={0.7}
+                            className="flex-row items-center border border-white/10 p-4 mb-2 bg-white/5"
+                        >
+                            <Image source={{ uri: app.icon }} className="w-8 h-8 rounded-lg mr-4 grayscale" />
+                            <Text className="text-white font-headline font-black text-sm uppercase tracking-tight flex-1">
+                                {app.name}
+                            </Text>
+                            <View className={`w-6 h-6 border-2 items-center justify-center ${selectedApps.includes(app.id) ? 'bg-white border-white' : 'bg-transparent border-white/20'}`}>
+                                {selectedApps.includes(app.id) && (
+                                    <Ionicons name="checkmark" size={16} color="black" />
+                                )}
+                            </View>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+                <TouchableOpacity
+                    onPress={onClose}
+                    className="bg-white h-12 items-center justify-center mt-6 mb-8"
+                >
+                    <Text className="text-black font-headline font-black text-sm uppercase tracking-[0.2em]">COMPLETE_SELECTION</Text>
+                </TouchableOpacity>
+            </ScrollView>
+        </BottomSheetWrapper>
+    );
 };

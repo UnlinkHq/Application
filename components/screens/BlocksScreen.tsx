@@ -2,12 +2,6 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  interpolate, 
-  Extrapolation 
-} from 'react-native-reanimated';
 import { RuleCreationModal } from '../blocks/RuleCreationModal';
 import { UsageBudgetConfig } from '../blocks/UsageBudgetConfig';
 import { ScheduleBlockConfig } from '../blocks/ScheduleBlockConfig';
@@ -18,28 +12,9 @@ export const BlocksScreen = () => {
   const [isSelectionVisible, setIsSelectionVisible] = useState(false);
   const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
 
-  const selectionIndex = useSharedValue(-1);
-  const configIndex = useSharedValue(-1);
-
   const handleSelectRule = useCallback((ruleId: string) => {
     setActiveConfigId(ruleId);
   }, []);
-
-  const animatedContainerStyle = useAnimatedStyle(() => {
-    const activeIndex = Math.max(selectionIndex.value, configIndex.value);
-    
-    const scale = interpolate(activeIndex, [-1, 0], [1, 0.94], Extrapolation.CLAMP);
-    const borderRadius = interpolate(activeIndex, [-1, 0], [0, 16], Extrapolation.CLAMP);
-    const opacity = interpolate(activeIndex, [-1, 0], [1, 0.6], Extrapolation.CLAMP);
-
-    return {
-      transform: [{ scale }],
-      borderRadius,
-      opacity,
-      overflow: 'hidden' as const,
-      backgroundColor: '#000',
-    };
-  });
 
   const renderActiveConfig = () => {
     switch (activeConfigId) {
@@ -96,7 +71,7 @@ export const BlocksScreen = () => {
 
   return (
     <View style={styles.root}>
-      <Animated.View style={[styles.container, animatedContainerStyle]}>
+      <View style={styles.container}>
         <SafeAreaView className="flex-1 bg-black" edges={['top']}>
           <View className="flex-1">
             {/* Header - Optical Instrument Branding */}
@@ -156,13 +131,12 @@ export const BlocksScreen = () => {
             </View>
           </View>
         </SafeAreaView>
-      </Animated.View>
+      </View>
 
       <RuleCreationModal 
           visible={isSelectionVisible}
           onClose={() => setIsSelectionVisible(false)}
           onSelectRule={handleSelectRule}
-          animatedIndex={selectionIndex}
       />
 
       <BottomSheetWrapper
@@ -170,7 +144,6 @@ export const BlocksScreen = () => {
           onClose={() => setActiveConfigId(null)}
           onBack={() => setActiveConfigId(null)}
           snapPoints={['90%']}
-          animatedIndex={configIndex}
           title={
               activeConfigId === 'usage' ? 'SET TIME LIMITS' :
               activeConfigId === 'schedule' ? 'SCHEDULE BLOCKING' :
