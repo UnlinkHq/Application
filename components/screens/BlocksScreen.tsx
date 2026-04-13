@@ -2,72 +2,9 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons } from '@expo/vector-icons';
-import { RuleCreationModal } from '../blocks/RuleCreationModal';
-import { UsageBudgetConfig } from '../blocks/UsageBudgetConfig';
-import { ScheduleBlockConfig } from '../blocks/ScheduleBlockConfig';
-import { LaunchLimitConfig } from '../blocks/LaunchLimitConfig';
-import { BottomSheetWrapper } from '../ui/BottomSheetWrapper';
-
+import { useNavigation } from '@react-navigation/native';
 export const BlocksScreen = () => {
-  const [isSelectionVisible, setIsSelectionVisible] = useState(false);
-  const [activeConfigId, setActiveConfigId] = useState<string | null>(null);
-
-  const handleSelectRule = useCallback((ruleId: string) => {
-    setActiveConfigId(ruleId);
-  }, []);
-
-  const renderActiveConfig = () => {
-    switch (activeConfigId) {
-      case 'usage':
-        return <UsageBudgetConfig onBack={() => setActiveConfigId(null)} />;
-      case 'schedule':
-        return <ScheduleBlockConfig onBack={() => setActiveConfigId(null)} />;
-      case 'launch':
-        return <LaunchLimitConfig onBack={() => setActiveConfigId(null)} />;
-      case 'block_now':
-        return (
-          <View className="items-center justify-center py-10 px-6">
-            <View className="border-4 border-white p-6 mb-8">
-              <MaterialIcons name="bolt" size={48} color="white" />
-            </View>
-            <Text className="text-white font-headline font-black text-2xl uppercase tracking-tighter text-center mb-4">
-              CONFIRM_PROTOCOL_00
-            </Text>
-            <Text className="text-white/40 font-label text-xs uppercase tracking-[0.2em] text-center mb-10">
-              Immediate system-wide focus activation
-            </Text>
-            <TouchableOpacity 
-              className="bg-white px-12 py-5 no-corners w-full"
-              onPress={() => setActiveConfigId(null)}
-            >
-              <Text className="text-black font-headline font-black text-lg uppercase text-center tracking-widest">ACTIVATE_NOW</Text>
-            </TouchableOpacity>
-          </View>
-        );
-      case 'stop':
-        return (
-          <View className="items-center justify-center py-10 px-6">
-             <View className="border-4 border-white p-6 mb-8">
-              <MaterialIcons name="stop" size={48} color="white" />
-            </View>
-            <Text className="text-white font-headline font-black text-2xl uppercase tracking-tighter text-center mb-4">
-              EMERGENCY_OVERRIDE
-            </Text>
-             <Text className="text-white/40 font-label text-xs uppercase tracking-[0.2em] text-center mb-10 ">
-              PROTOCOL_03: TERMINATE_ALL_BLOCKS
-            </Text>
-            <TouchableOpacity 
-              className="bg-red-600 px-12 py-5 no-corners w-full"
-              onPress={() => setActiveConfigId(null)}
-            >
-              <Text className="text-white font-headline font-black text-lg uppercase text-center tracking-widest">TERMINATE_ALL</Text>
-            </TouchableOpacity>
-          </View>
-        );
-      default:
-        return null;
-    }
-  };
+  const navigation = useNavigation<any>();
 
   return (
     <View style={styles.root}>
@@ -81,6 +18,9 @@ export const BlocksScreen = () => {
                     <Text className="font-headline font-black text-2xl tracking-[0.1em] text-white uppercase italic">UNLINK</Text>
                 </View>
                 <View className="flex-row items-center gap-4">
+                    <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+                        <MaterialIcons name="settings" size={20} color="white" />
+                    </TouchableOpacity>
                     <TouchableOpacity>
                         <MaterialIcons name="notifications-none" size={24} color="#5d5f5f" />
                     </TouchableOpacity>
@@ -93,7 +33,7 @@ export const BlocksScreen = () => {
                 </View>
             </View>
 
-            <ScrollView className="flex-1 px-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 240 }}>
+            <ScrollView className="flex-1 px-6" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingBottom: 120 }}>
                 <View className="items-center text-center">
                     <View className="w-32 h-32 items-center justify-center">
                         <View className="absolute inset-0 border border-white/5 rounded-full" />
@@ -110,51 +50,14 @@ export const BlocksScreen = () => {
                             No active block rules
                         </Text>
                         <Text className="font-label text-sm text-white/40 uppercase tracking-[0.2em] text-center mt-2 px-4 max-w-[280px]">
-                            Block and gain freedom from the endless scroll.
+                            Use the [+] button to gain freedom from the endless scroll.
                         </Text>
                     </View>
                 </View>
             </ScrollView>
-
-            {/* Massive Action Button */}
-            <View className="absolute bottom-36 left-0 w-full px-6 flex items-center">
-                <TouchableOpacity 
-                    onPress={() => setIsSelectionVisible(true)}
-                    activeOpacity={0.9}
-                    className="w-full bg-white h-16 flex-row items-center justify-center shadow-2xl no-corners"
-                >
-                    <MaterialIcons name="add" size={24} color="black" />
-                    <Text className="font-headline font-black text-lg tracking-[0.3em] uppercase text-black ml-2">
-                        Add Block Rule
-                    </Text>
-                </TouchableOpacity>
-            </View>
           </View>
         </SafeAreaView>
       </View>
-
-      <RuleCreationModal 
-          visible={isSelectionVisible}
-          onClose={() => setIsSelectionVisible(false)}
-          onSelectRule={handleSelectRule}
-      />
-
-      <BottomSheetWrapper
-          visible={activeConfigId !== null}
-          onClose={() => setActiveConfigId(null)}
-          onBack={() => setActiveConfigId(null)}
-          snapPoints={['90%']}
-          title={
-              activeConfigId === 'usage' ? 'SET TIME LIMITS' :
-              activeConfigId === 'schedule' ? 'SCHEDULE BLOCKING' :
-              activeConfigId === 'launch' ? 'APP LAUNCH LIMIT' :
-              activeConfigId === 'block_now' ? 'BLOCK NOW' :
-              activeConfigId === 'stop' ? 'STOP BLOCKING' :
-              undefined
-          }
-      >
-          {renderActiveConfig()}
-      </BottomSheetWrapper>
     </View>
   );
 };

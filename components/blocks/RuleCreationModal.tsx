@@ -15,22 +15,21 @@ const RULES: Rule[] = [
     {
         id: 'block_now',
         title: 'BLOCK NOW',
-        description: 'PROTOCOL_00: IMMEDIATE FOCUS ACTIVATION',
+        description: 'INSTANT FOCUS ACTIVATION',
         icon: 'flash-outline',
     },
     {
         id: 'schedule',
         title: 'SCHEDULE BLOCKING',
-        description: 'PROTOCOL_01: AUTOMATED FOCUS WINDOW',
+        description: 'AUTOMATED FOCUS WINDOWS',
         icon: 'calendar-outline',
     },
     {
         id: 'usage',
         title: 'SET TIME LIMITS',
-        description: 'PROTOCOL_02: DAILY TEMPORAL CONSTRAINT',
+        description: 'DAILY USAGE CONSTRAINTS',
         icon: 'time-outline',
     },
-
 ];
 
 interface RuleCreationModalProps {
@@ -50,7 +49,7 @@ export const RuleCreationModal = ({
             visible={visible}
             onClose={onClose}
             title="MANAGE"
-            snapPoints={['80%']}
+            snapPoints={['45%']}
         >
             <View className="space-y-4">
                 {RULES.map((rule) => (

@@ -6,7 +6,7 @@ import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-rean
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { LogBox, View, ActivityIndicator } from 'react-native';
+import { LogBox, View, ActivityIndicator, Platform } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
@@ -35,6 +35,8 @@ import { SocialsScreen } from './components/screens/SocialsScreen';
 import { SettingsScreen } from './components/screens/SettingsScreen';
 import { OnboardingScreen } from './components/screens/OnboardingScreen';
 import { FluidTabBar } from './components/navigation/FluidTabBar';
+import { SelectionProvider } from './context/SelectionContext';
+import { GlobalModals } from './components/ui/GlobalModals';
 import './global.css';
 
 // Build 0.81.5 has fixed safeAreaView but dependencies might still use it
@@ -48,7 +50,7 @@ LogBox.ignoreLogs([
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-function TabNavigator() {
+const TabNavigator = React.memo(() => {
   return (
     <Tab.Navigator
         tabBar={props => <FluidTabBar {...props} />}
@@ -61,11 +63,35 @@ function TabNavigator() {
     >
       <Tab.Screen name="Today" component={HomeScreen} />
       <Tab.Screen name="Blocks" component={BlocksScreen} />
-      <Tab.Screen name="Socials" component={SocialsScreen} />
-      <Tab.Screen name="Settings" component={SettingsScreen} />
+      {Platform.OS === 'ios' && (
+        <Tab.Screen name="Socials" component={SocialsScreen} />
+      )}
     </Tab.Navigator>
   );
-}
+});
+
+const NavigationTree = React.memo(({ isFirstLaunch }: { isFirstLaunch: boolean }) => {
+  return (
+    <NavigationContainer
+        theme={{
+            ...DefaultTheme,
+            colors: {
+                ...DefaultTheme.colors,
+                background: 'black',
+            },
+        }}
+    >
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+            {isFirstLaunch && (
+                <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+            )}
+            <Stack.Screen name="Main" component={TabNavigator} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+        </Stack.Navigator>
+      <BreakOverlay />
+    </NavigationContainer>
+  );
+});
 
 export default function App() {
   const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
@@ -112,23 +138,10 @@ export default function App() {
       <BottomSheetModalProvider>
         <SafeAreaProvider>
           <BlockingProvider>
-            <NavigationContainer
-                theme={{
-                    ...DefaultTheme,
-                    colors: {
-                        ...DefaultTheme.colors,
-                        background: 'black',
-                    },
-                }}
-            >
-                <Stack.Navigator screenOptions={{ headerShown: false }}>
-                    {isFirstLaunch && (
-                        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-                    )}
-                    <Stack.Screen name="Main" component={TabNavigator} />
-                </Stack.Navigator>
-               <BreakOverlay />
-            </NavigationContainer>
+            <SelectionProvider>
+              <NavigationTree isFirstLaunch={Boolean(isFirstLaunch)} />
+              <GlobalModals />
+            </SelectionProvider>
             <StatusBar style="auto" /> 
           </BlockingProvider>
         </SafeAreaProvider>

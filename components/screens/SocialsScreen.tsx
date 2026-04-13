@@ -265,9 +265,14 @@ export const SocialsScreen = () => {
                         <MaterialIcons name="sensors" size={24} color="white" />
                         <Text className="font-headline font-black text-2xl tracking-[0.2em] text-white">UNLINK</Text>
                     </View>
-                    <TouchableOpacity className="p-2">
-                        <MaterialIcons name="person" size={24} color="white" />
-                    </TouchableOpacity>
+                    <View className="flex-row items-center gap-4">
+                        <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+                            <MaterialIcons name="settings" size={20} color="white" />
+                        </TouchableOpacity>
+                        <TouchableOpacity className="p-1">
+                            <MaterialIcons name="person" size={24} color="white" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
                 <ScrollView 
