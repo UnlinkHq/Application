@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&amp;family=Space+Grotesk:wght@300;400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-background": "#e2e2e2",
+              "inverse-on-surface": "#303030",
+              "tertiary-fixed": "#006e28",
+              "surface": "#131313",
+              "primary-fixed": "#5d5f5f",
+              "surface-container-low": "#1b1b1b",
+              "secondary-fixed": "#ffb4aa",
+              "outline-variant": "#474747",
+              "outline": "#919191",
+              "surface-bright": "#393939",
+              "secondary-container": "#930005",
+              "primary-fixed-dim": "#454747",
+              "on-tertiary-fixed-variant": "#72fe88",
+              "on-secondary-fixed-variant": "#7e0004",
+              "surface-dim": "#131313",
+              "surface-container-high": "#2a2a2a",
+              "on-primary-fixed-variant": "#e2e2e2",
+              "on-error": "#690005",
+              "on-tertiary-container": "#000000",
+              "error": "#ffb4ab",
+              "on-secondary": "#410001",
+              "secondary-fixed-dim": "#ff8a7b",
+              "surface-tint": "#c6c6c7",
+              "on-primary": "#1a1c1c",
+              "on-primary-fixed": "#ffffff",
+              "on-error-container": "#ffdad6",
+              "tertiary-fixed-dim": "#00531c",
+              "on-secondary-container": "#ffdad5",
+              "secondary": "#ffb4aa",
+              "error-container": "#93000a",
+              "inverse-surface": "#e2e2e2",
+              "primary": "#ffffff",
+              "on-primary-container": "#000000",
+              "on-tertiary": "#002107",
+              "on-surface": "#e2e2e2",
+              "tertiary-container": "#00a741",
+              "surface-container": "#1f1f1f",
+              "on-secondary-fixed": "#410001",
+              "tertiary": "#72fe88",
+              "background": "#000000",
+              "on-surface-variant": "#c6c6c6",
+              "primary-container": "#d4d4d4",
+              "inverse-primary": "#5d5f5f",
+              "surface-container-highest": "#353535",
+              "surface-variant": "#353535",
+              "surface-container-lowest": "#0e0e0e",
+              "on-tertiary-fixed": "#ffffff"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Space Grotesk"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+        body {
+            min-height: 100dvh;
+        }
+    </style>
+</head>
+<body class="bg-black text-on-surface font-body selection:bg-primary selection:text-on-primary flex flex-col min-h-screen">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-xl border-b border-white/10 flex justify-between items-center px-6 h-16">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-white" data-icon="blur_on">blur_on</span>
+<h1 class="font-['Inter'] font-black tracking-widest text-white text-2xl uppercase">UNLINK</h1>
+</div>
+<nav class="hidden md:flex gap-8">
+<a class="font-label text-xs uppercase tracking-widest text-white hover:opacity-70 transition-opacity active:scale-95 duration-200" href="#">Today</a>
+<a class="font-label text-xs uppercase tracking-widest text-white/50 hover:opacity-70 transition-opacity active:scale-95 duration-200" href="#">Blocks</a>
+<a class="font-label text-xs uppercase tracking-widest text-white/50 hover:opacity-70 transition-opacity active:scale-95 duration-200" href="#">Socials</a>
+<a class="font-label text-xs uppercase tracking-widest text-white/50 hover:opacity-70 transition-opacity active:scale-95 duration-200" href="#">Settings</a>
+</nav>
+<button class="material-symbols-outlined text-white md:hidden" data-icon="menu">menu</button>
+</header>
+<main class="flex-1 pt-16 flex flex-col items-center justify-center overflow-hidden">
+<!-- Carousel Container -->
+<div class="w-full max-w-5xl px-6 py-8">
+<div class="flex flex-col gap-8 md:gap-12">
+<!-- Main Slider Area -->
+<div class="relative overflow-x-auto snap-x snap-mandatory flex hide-scrollbar gap-8">
+<!-- Screen 1 -->
+<section class="min-w-full md:min-w-[80%] snap-center flex flex-col md:flex-row items-center gap-8 md:gap-16">
+<div class="w-full md:w-1/2 aspect-square bg-surface-container-lowest border border-outline-variant/20 flex items-center justify-center p-12 relative">
+<div class="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white via-transparent to-transparent"></div>
+<span class="material-symbols-outlined text-9xl text-white opacity-20" data-icon="motion_photos_off">motion_photos_off</span>
+<div class="absolute bottom-12 left-12 right-12 h-1 bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-secondary w-1/3"></div>
+</div>
+</div>
+<div class="w-full md:w-1/2 flex flex-col gap-6">
+<span class="font-label text-xs tracking-[0.3em] uppercase text-white/40">INSTRUMENT 01</span>
+<h2 class="font-headline text-5xl md:text-7xl font-black tracking-tighter leading-[0.9] text-white">Break the autopilot scroll.</h2>
+<p class="text-lg md:text-xl text-on-surface-variant font-light leading-relaxed max-w-md">
+                                ScreenBreak's Focus Challenge adds a playful pause before distractions. Intercept the habit before it consumes your morning.
+                            </p>
+</div>
+</section>
+</div>
+<!-- Carousel Controls & Status -->
+<div class="flex items-center justify-between mt-4">
+<div class="flex flex-col gap-4">
+<div class="flex gap-4">
+<div class="h-1 w-12 bg-white"></div>
+<div class="h-1 w-12 bg-white/20"></div>
+<div class="h-1 w-12 bg-white/20"></div>
+</div>
+<span class="font-label text-[10px] tracking-[0.3em] uppercase text-white/60">STEP 04 / 05</span>
+</div>
+<div class="flex gap-4">
+<button class="w-12 h-12 flex items-center justify-center border border-outline-variant/30 hover:bg-white hover:text-black transition-colors duration-300">
+<span class="material-symbols-outlined" data-icon="chevron_left">chevron_left</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center border border-outline-variant/30 hover:bg-white hover:text-black transition-colors duration-300">
+<span class="material-symbols-outlined" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Fixed Bottom Actions -->
+<div class="w-full px-6 pb-8 md:pb-12 max-w-5xl mx-auto">
+<button class="w-full bg-white text-black font-label text-sm font-bold tracking-[0.4em] py-6 uppercase hover:bg-white/90 active:scale-[0.98] transition-all duration-200 border-none">
+            Continue
+        </button>
+</div>
+</body></html>

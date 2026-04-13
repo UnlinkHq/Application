@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>UNLINK | Hook</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800;900&amp;family=Space_Grotesk:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "primary": "#ffffff",
+              "on-primary": "#000000",
+              "background": "#000000",
+              "on-background": "#e2e2e2",
+              "surface": "#000000",
+              "outline": "#333333",
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Space_Grotesk"]
+            },
+            borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            min-height: 100dvh;
+        }
+        .surgical-text {
+            letter-spacing: 0.15em;
+        }
+    </style>
+</head>
+<body class="font-body selection:bg-primary selection:text-on-primary overflow-hidden flex flex-col h-screen">
+<!-- Header Area -->
+<header class="w-full flex items-center justify-between px-8 py-8 z-20 border-b border-white/10">
+<div class="flex-1"></div>
+<div class="flex-grow text-center">
+<span class="text-lg font-black tracking-[0.3em] text-white font-headline">UNLINK</span>
+</div>
+<div class="flex-1 flex justify-end">
+<span class="font-label text-[10px] tracking-widest text-white/40 uppercase">V.01-BETA</span>
+</div>
+</header>
+<!-- Main Content Area: Centered Alignment -->
+<main class="flex-grow flex flex-col items-center justify-center px-8 z-10 text-center">
+<div class="max-w-xl">
+<h1 class="text-5xl md:text-7xl font-black font-headline leading-[0.95] tracking-tighter text-white uppercase">
+                THE 48-HOUR<br/>CRASH IS REAL.
+            </h1>
+</div>
+</main>
+<!-- Footer Action Area: Button at the Bottom -->
+<footer class="w-full p-8 flex flex-col items-center gap-8 z-20">
+<div class="max-w-md w-full text-center">
+<p class="text-white/40 font-body text-[10px] tracking-[0.2em] uppercase mb-8 leading-relaxed">
+                The dopamine cycle is quantifiable.<br/>Break it now.
+            </p>
+<button class="w-full bg-white text-black font-headline font-bold py-6 px-8 rounded-none active:scale-[0.98] transition-all duration-150 uppercase tracking-[0.2em] text-xs">
+                BREAK THE CYCLE
+            </button>
+</div>
+<!-- Subtle Pagination / Progress -->
+<div class="flex gap-4 pb-4">
+<div class="w-1.5 h-1.5 bg-white"></div>
+<div class="w-1.5 h-1.5 border border-white/20"></div>
+<div class="w-1.5 h-1.5 border border-white/20"></div>
+</div>
+</footer>
+<!-- Pure Black Foundation -->
+<div class="fixed inset-0 pointer-events-none z-[-1] bg-black"></div>
+</body></html>

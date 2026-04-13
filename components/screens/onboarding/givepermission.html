@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Unlink Onboarding</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&amp;family=Space_Grotesk:wght@300;400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "tertiary-fixed-dim": "#00531c",
+              "surface-tint": "#c6c6c7",
+              "secondary-fixed-dim": "#ff8a7b",
+              "surface-container-low": "#1b1b1b",
+              "on-tertiary": "#002107",
+              "on-background": "#e2e2e2",
+              "tertiary": "#72fe88",
+              "secondary-fixed": "#ffb4aa",
+              "on-surface-variant": "#c6c6c6",
+              "surface-container": "#1f1f1f",
+              "on-secondary": "#410001",
+              "outline": "#919191",
+              "on-primary-fixed-variant": "#e2e2e2",
+              "inverse-primary": "#5d5f5f",
+              "on-primary": "#1a1c1c",
+              "tertiary-fixed": "#006e28",
+              "on-tertiary-fixed": "#ffffff",
+              "primary-container": "#d4d4d4",
+              "primary": "#ffffff",
+              "surface-variant": "#353535",
+              "on-tertiary-container": "#000000",
+              "outline-variant": "#474747",
+              "on-primary-container": "#000000",
+              "on-tertiary-fixed-variant": "#72fe88",
+              "surface-container-highest": "#353535",
+              "surface": "#131313",
+              "error-container": "#93000a",
+              "on-surface": "#e2e2e2",
+              "on-primary-fixed": "#ffffff",
+              "on-secondary-fixed-variant": "#7e0004",
+              "on-secondary-container": "#ffdad5",
+              "surface-container-high": "#2a2a2a",
+              "primary-fixed-dim": "#454747",
+              "primary-fixed": "#5d5f5f",
+              "tertiary-container": "#00a741",
+              "on-secondary-fixed": "#410001",
+              "surface-container-lowest": "#0e0e0e",
+              "secondary": "#ffb4aa",
+              "surface-dim": "#131313",
+              "on-error": "#690005",
+              "error": "#ffb4ab",
+              "surface-bright": "#393939",
+              "secondary-container": "#930005",
+              "background": "#000000",
+              "inverse-surface": "#e2e2e2",
+              "on-error-container": "#ffdad6",
+              "inverse-on-surface": "#303030"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Space Grotesk"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #000000;
+            color: #ffffff;
+            -webkit-font-smoothing: antialiased;
+        }
+        .unlinked-icon-clip {
+            clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%, 0% 60%, 40% 60%, 40% 40%, 0% 40%);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-[#000000] text-primary selection:bg-primary selection:text-on-primary overflow-hidden h-screen flex flex-col">
+<!-- TopAppBar - Execution based on Shared Components JSON hierarchy but customized for Onboarding context (Back Arrow) -->
+<header class="fixed top-0 w-full z-50 bg-[#000000] border-b border-white/10 flex items-center justify-between px-6 h-16">
+<div class="flex items-center justify-start w-12">
+<button class="hover:bg-surface-container-low transition-colors p-2 -ml-2 active:scale-95 duration-75">
+<span class="material-symbols-outlined text-primary">arrow_back</span>
+</button>
+</div>
+<div class="flex-1 flex justify-center">
+<h1 class="font-['Inter'] font-black tracking-tighter uppercase text-2xl text-primary">UNLINK</h1>
+</div>
+<div class="w-12 flex justify-end">
+<!-- Space for balance -->
+</div>
+</header>
+<!-- Main Content - Optical Instrument Aesthetic -->
+<main class="flex-1 flex flex-col items-center justify-center px-8 pt-16 pb-32">
+<!-- Custom Unlink Icon (Surgical Precision) -->
+<div class="relative w-32 h-32 mb-16 flex items-center justify-center">
+<!-- Boxy Link 1 -->
+<div class="absolute top-0 left-0 w-20 h-20 border-4 border-primary"></div>
+<!-- Boxy Link 2 (Interlocking / Fractured) -->
+<div class="absolute bottom-0 right-0 w-20 h-20 border-4 border-primary bg-[#000000] p-1">
+<div class="w-full h-full border-2 border-primary/20"></div>
+</div>
+<!-- Fracture Point -->
+<div class="absolute w-8 h-8 bg-[#000000] rotate-45 transform translate-x-[-10%] translate-y-[10%]"></div>
+</div>
+<!-- Headline - Massive Scale (Inter Display) -->
+<h2 class="font-headline font-black text-4xl md:text-6xl text-center leading-[1.1] tracking-tighter mb-8 max-w-md">
+            Ready to see your real screen time?
+        </h2>
+<!-- Body - Clean Minimalist (Inter) -->
+<p class="font-body text-on-surface text-center text-lg leading-relaxed max-w-sm font-light opacity-80">
+            Enable ScreenBreak to access Screen Time to generate your personal report. Your data stays private and never leaves your device.
+        </p>
+</main>
+<!-- Call to Action - Fixed Bottom (High Density Void) -->
+<div class="fixed bottom-0 w-full p-8 bg-gradient-to-t from-[#000000] via-[#000000] to-transparent">
+<div class="max-w-md mx-auto">
+<!-- Technical Label (Space Grotesk) -->
+<div class="flex justify-between items-end mb-4 px-1">
+<span class="font-label text-[10px] uppercase tracking-[0.2em] text-outline">System Access Required</span>
+<span class="font-label text-[10px] uppercase tracking-[0.2em] text-outline">v4.0.1</span>
+</div>
+<!-- Primary Action -->
+<button class="w-full bg-primary text-on-primary font-headline font-black text-sm tracking-widest py-6 px-4 uppercase transition-all active:scale-[0.98] duration-100 flex items-center justify-center gap-3">
+                GIVE PERMISSION
+                <span class="material-symbols-outlined text-sm" style="font-variation-settings: 'wght' 700;">arrow_forward</span>
+</button>
+<!-- Security Note -->
+<div class="mt-6 flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[14px] text-tertiary" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<span class="font-label text-[9px] uppercase tracking-widest text-tertiary">Encrypted Local Processing Only</span>
+</div>
+</div>
+</div>
+<!-- Decorative Surgical Elements -->
+<div class="fixed top-24 left-6 hidden lg:block opacity-20">
+<div class="font-label text-[10px] space-y-2">
+<p>LAT: 34.0522 N</p>
+<p>LNG: 118.2437 W</p>
+<p>MODE: OPTICAL_REC</p>
+</div>
+</div>
+<div class="fixed bottom-32 right-6 hidden lg:block opacity-20">
+<div class="w-32 h-[1px] bg-primary mb-4"></div>
+<p class="font-label text-[10px] text-right">00:00:00:00</p>
+</div>
+</body></html>

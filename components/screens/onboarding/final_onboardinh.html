@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#ffffff",
+                        "on-primary": "#000000",
+                        "background": "#000000",
+                        "surface": "#000000",
+                        "on-surface": "#ffffff",
+                        "outline": "#333333",
+                        "outline-variant": "#222222",
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "0px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #000000;
+            color: #ffffff;
+        }
+        /* Strict adherence to the 'no rounding' rule */
+        * {
+            border-radius: 0 !important;
+        }
+    </style>
+<style>
+        body {
+            min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="font-body selection:bg-white selection:text-black">
+<!-- TopAppBar - Minimalist placeholder logo -->
+<header class="fixed top-0 w-full z-50 bg-black flex items-center justify-between px-8 h-20">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-white text-2xl" data-icon="close">close</span>
+</div>
+<div class="text-xs font-black text-white tracking-[0.5em] uppercase font-headline">
+        UNLINK
+    </div>
+<div class="w-6"></div> <!-- Spacer for centering -->
+</header>
+<main class="min-h-screen flex flex-col items-center justify-center px-10 pt-20 pb-32">
+<!-- Center Aesthetic & Logo -->
+<div class="flex flex-col items-center text-center space-y-24 w-full max-w-lg">
+<!-- Minimalist Logo Placeholder -->
+<div class="relative">
+<div class="w-32 h-32 border border-white/20 flex items-center justify-center">
+<div class="w-16 h-16 border-2 border-white flex items-center justify-center">
+<div class="w-2 h-2 bg-white"></div>
+</div>
+</div>
+<!-- Decorative Crosshair corners for 'surgical' feel -->
+<div class="absolute -top-2 -left-2 w-4 h-[1px] bg-white/40"></div>
+<div class="absolute -top-2 -left-2 w-[1px] h-4 bg-white/40"></div>
+<div class="absolute -bottom-2 -right-2 w-4 h-[1px] bg-white/40"></div>
+<div class="absolute -bottom-2 -right-2 w-[1px] h-4 bg-white/40"></div>
+</div>
+<!-- Typography Cluster -->
+<div class="space-y-8">
+<h1 class="text-4xl md:text-5xl font-black text-white leading-[1.1] tracking-tighter uppercase font-headline">
+                YOUR JOURNEY<br/>BEGINS NOW.
+            </h1>
+<div class="flex items-center justify-center gap-6">
+<div class="h-[1px] w-8 bg-white/20"></div>
+<div class="text-[9px] font-bold uppercase tracking-[0.5em] text-white/40">PHASE 01</div>
+<div class="h-[1px] w-8 bg-white/20"></div>
+</div>
+<p class="text-base font-body text-white/60 max-w-xs mx-auto leading-relaxed tracking-wide">
+                Initialize your first blocking sequence to reclaim focus.
+            </p>
+</div>
+</div>
+<!-- Primary Action -->
+<div class="fixed bottom-16 w-full max-w-xs px-6">
+<button class="w-full bg-white text-black py-6 px-8 font-black text-xs tracking-[0.4em] uppercase transition-all hover:bg-white/90 active:scale-[0.98] border border-white">
+            LET'S GO
+        </button>
+</div>
+</main>
+<!-- Background Subtle Textures (Pure Monochrome) -->
+<div class="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+<!-- Grid System Overlay -->
+<div class="absolute inset-0 opacity-[0.03]" style="background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 40px 40px;">
+</div>
+<!-- Coordinate Data -->
+<div class="absolute top-24 left-10 font-mono text-[8px] text-white/10 tracking-[0.3em] uppercase">
+        LOC_REF // 52.5200.13.4050
+    </div>
+<div class="absolute bottom-10 right-10 font-mono text-[8px] text-white/10 tracking-[0.3em] uppercase">
+        SYS_STATUS // ACTIVE
+    </div>
+<!-- Structural Guides -->
+<div class="absolute top-0 left-1/2 -translate-x-1/2 w-[1px] h-full bg-white/[0.05]"></div>
+<div class="absolute top-1/2 left-0 -translate-y-1/2 w-full h-[1px] bg-white/[0.05]"></div>
+</div>
+<!-- Navigation tabs removed for onboarding stage -->
+</body></html>

@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LogBox, View, ActivityIndicator } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 // Configure Reanimated Logger to disable strict mode warnings
 configureReanimatedLogger({
@@ -79,11 +81,7 @@ export default function App() {
   useEffect(() => {
     async function checkFirstLaunch() {
       try {
-        // FOR DEV: Clear storage to test onboarding
-        // await AsyncStorage.removeItem('hasLaunched');
-        
         const value = await AsyncStorage.getItem('hasLaunched');
-        
         if (value === 'true') {
           setIsFirstLaunch(false);
         } else {
@@ -106,19 +104,23 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <BlockingProvider>
-        <NavigationContainer>
-            <Stack.Navigator screenOptions={{ headerShown: false }}>
-                {isFirstLaunch && (
-                    <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-                )}
-                <Stack.Screen name="Main" component={TabNavigator} />
-            </Stack.Navigator>
-           <BreakOverlay />
-        </NavigationContainer>
-        <StatusBar style="auto" /> 
-      </BlockingProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <BottomSheetModalProvider>
+        <SafeAreaProvider>
+          <BlockingProvider>
+            <NavigationContainer>
+                <Stack.Navigator screenOptions={{ headerShown: false }}>
+                    {isFirstLaunch && (
+                        <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+                    )}
+                    <Stack.Screen name="Main" component={TabNavigator} />
+                </Stack.Navigator>
+               <BreakOverlay />
+            </NavigationContainer>
+            <StatusBar style="auto" /> 
+          </BlockingProvider>
+        </SafeAreaProvider>
+      </BottomSheetModalProvider>
+    </GestureHandlerRootView>
   );
 }

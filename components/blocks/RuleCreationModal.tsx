@@ -1,6 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, Modal, TouchableWithoutFeedback } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BottomSheetWrapper } from '../ui/BottomSheetWrapper';
+import { SharedValue } from 'react-native-reanimated';
 
 interface Rule {
     id: string;
@@ -11,22 +13,34 @@ interface Rule {
 
 const RULES: Rule[] = [
     {
+        id: 'block_now',
+        title: 'BLOCK NOW',
+        description: 'PROTOCOL_00: IMMEDIATE FOCUS ACTIVATION',
+        icon: 'flash-outline',
+    },
+    {
         id: 'schedule',
-        title: 'Schedule Block',
-        description: 'Block apps during specific time windows',
+        title: 'SCHEDULE BLOCKING',
+        description: 'PROTOCOL_01: AUTOMATED FOCUS WINDOW',
         icon: 'calendar-outline',
     },
     {
+        id: 'usage',
+        title: 'SET TIME LIMITS',
+        description: 'PROTOCOL_02: DAILY TEMPORAL CONSTRAINT',
+        icon: 'time-outline',
+    },
+    {
         id: 'launch',
-        title: 'App Launch Limit',
-        description: 'Block apps after reaching daily or hourly launch limit',
+        title: 'APP LAUNCH LIMIT',
+        description: 'PROTOCOL_03: FREQUENCY THRESHOLD GATE',
         icon: 'finger-print-outline',
     },
     {
-        id: 'usage',
-        title: 'Usage Budget',
-        description: 'Block apps after reaching daily or hourly time limit',
-        icon: 'time-outline',
+        id: 'stop',
+        title: 'STOP BLOCKING',
+        description: 'PROTOCOL_04: EMERGENCY OVERRIDE MODIFIER',
+        icon: 'stop-circle-outline',
     },
 ];
 
@@ -34,51 +48,51 @@ interface RuleCreationModalProps {
     visible: boolean;
     onClose: () => void;
     onSelectRule: (ruleId: string) => void;
+    animatedIndex?: SharedValue<number>;
 }
 
-export const RuleCreationModal = ({ visible, onClose, onSelectRule }: RuleCreationModalProps) => {
+export const RuleCreationModal = ({ 
+    visible, 
+    onClose, 
+    onSelectRule,
+    animatedIndex 
+}: RuleCreationModalProps) => {
   return (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={visible}
-      onRequestClose={onClose}
+    <BottomSheetWrapper 
+        visible={visible} 
+        onClose={onClose} 
+        title="MANAGE"
+        snapPoints={['85%']}
+        animatedIndex={animatedIndex}
     >
-        <TouchableWithoutFeedback onPress={onClose}>
-            <View className="flex-1 justify-end bg-black/50">
-                <TouchableWithoutFeedback onPress={() => {}}>
-                    <View className="bg-gray-900 rounded-t-3xl p-6 h-[50%]">
-                        <View className="flex-row justify-between items-center mb-6">
-                            <Text className="text-white text-xl font-bold">How do you want to Block?</Text>
-                            <TouchableOpacity onPress={onClose}>
-                                <Ionicons name="close" size={24} color="#999" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View className="space-y-4">
-                            {RULES.map((rule) => (
-                                <TouchableOpacity 
-                                    key={rule.id}
-                                    onPress={() => {
-                                        onSelectRule(rule.id);
-                                        onClose();
-                                    }}
-                                    className="flex-row items-center bg-gray-800 p-4 rounded-xl mb-4"
-                                >
-                                    <View className="w-10 h-10 rounded-full bg-gray-700 items-center justify-center mr-4">
-                                        <Ionicons name={rule.icon} size={20} color="#FFF" />
-                                    </View>
-                                    <View className="flex-1">
-                                        <Text className="text-white font-bold text-base">{rule.title}</Text>
-                                        <Text className="text-gray-400 text-sm mt-1">{rule.description}</Text>
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
+        <View className="space-y-4">
+            {RULES.map((rule) => (
+                <TouchableOpacity 
+                    key={rule.id}
+                    onPress={() => onSelectRule(rule.id)}
+                    activeOpacity={0.7}
+                    className="flex-row items-center border-2 border-white bg-black p-4 mb-3"
+                >
+                    <View className="mr-4">
+                        <Ionicons name={rule.icon} size={22} color="white" />
                     </View>
-                </TouchableWithoutFeedback>
-            </View>
-        </TouchableWithoutFeedback>
-    </Modal>
+                    <View className="flex-1">
+                        <Text className="text-white font-headline font-black text-md tracking-tight uppercase">
+                            {rule.title}
+                        </Text>
+                        <Text className="text-white/40 font-label text-[9px] uppercase tracking-[0.15em] mt-1">
+                            {rule.description}
+                        </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.3)" />
+                </TouchableOpacity>
+            ))}
+        </View>
+        <View className="mt-4 pb-10">
+            <Text className="text-white/20 font-label text-[10px] tracking-[0.3em] uppercase text-right">
+                UNLINK_CORE_V1.0.4
+            </Text>
+        </View>
+    </BottomSheetWrapper>
   );
 };

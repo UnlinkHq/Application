@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>UNLINK - System Authorization</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;800&amp;family=Space+Grotesk:wght@300;400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "surface-container-lowest": "#000000",
+                        "background": "#000000",
+                        "inverse-on-surface": "#303030",
+                        "primary-container": "#d4d4d4",
+                        "on-secondary": "#000000",
+                        "tertiary-fixed": "#006e28",
+                        "on-secondary-fixed-variant": "#7e0004",
+                        "primary": "#ffffff",
+                        "secondary-fixed-dim": "#ff8a7b",
+                        "secondary-fixed": "#ffb4aa",
+                        "primary-fixed": "#5d5f5f",
+                        "on-surface": "#ffffff",
+                        "secondary": "#ffffff",
+                        "surface-container-low": "#111111",
+                        "surface-bright": "#333333",
+                        "primary-fixed-dim": "#454747",
+                        "on-primary": "#000000",
+                        "surface-variant": "#222222",
+                        "on-background": "#ffffff",
+                        "outline": "#666666",
+                        "on-primary-fixed": "#ffffff",
+                        "on-primary-container": "#000000",
+                        "surface-dim": "#000000",
+                        "surface-tint": "#ffffff",
+                        "on-secondary-fixed": "#000000",
+                        "outline-variant": "#333333",
+                        "on-primary-fixed-variant": "#ffffff",
+                        "on-tertiary-fixed-variant": "#72fe88",
+                        "tertiary-fixed-dim": "#00531c",
+                        "surface-container-high": "#1a1a1a",
+                        "surface-container": "#0f0f0f",
+                        "error": "#ffb4ab",
+                        "surface-container-highest": "#222222",
+                        "error-container": "#93000a",
+                        "secondary-container": "#930005",
+                        "on-secondary-container": "#ffdad5",
+                        "inverse-surface": "#ffffff",
+                        "on-tertiary": "#002107",
+                        "surface": "#000000",
+                        "inverse-primary": "#5d5f5f",
+                        "tertiary": "#ffffff",
+                        "on-tertiary-container": "#000000",
+                        "on-tertiary-fixed": "#ffffff",
+                        "on-error-container": "#ffdad6",
+                        "on-error": "#690005",
+                        "on-surface-variant": "#999999",
+                        "tertiary-container": "#00a741"
+                    },
+                    fontFamily: {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Space Grotesk"]
+                    },
+                    borderRadius: {"DEFAULT": "0px", "lg": "0px", "xl": "0px", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #000000;
+        }
+        .diagonal-line {
+            background: linear-gradient(45deg, transparent 48%, rgba(255,255,255,0.05) 49%, rgba(255,255,255,0.05) 51%, transparent 52%);
+            background-size: 8px 8px;
+        }
+    </style>
+</head>
+<body class="text-on-surface font-body min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-black/90 backdrop-blur-xl border-b border-white/10 flex justify-between items-center px-6 h-16">
+<div class="flex items-center">
+<span class="material-symbols-outlined text-white cursor-pointer hover:bg-zinc-900 transition-colors p-2" data-icon="close">close</span>
+</div>
+<h1 class="text-xl font-bold tracking-tighter text-white font-headline">UNLINK</h1>
+<div class="w-10"></div>
+</header>
+<main class="flex-grow flex flex-col pt-24 pb-32 px-8 max-w-2xl mx-auto w-full">
+<!-- Section Header -->
+<div class="mb-12">
+<div class="flex items-center gap-2 mb-2">
+<div class="h-[1px] w-8 bg-primary"></div>
+<span class="font-label text-xs tracking-[0.2em] text-outline uppercase">Critical Permission</span>
+</div>
+<h2 class="text-4xl md:text-5xl font-extrabold font-headline tracking-tighter leading-none mb-6">SYSTEM AUTHORIZATION</h2>
+<p class="font-body text-on-surface-variant leading-relaxed max-w-md">
+                Unlink requires system-level notifications to interrupt the dopamine loop. Without this, the intervention cannot be executed.
+            </p>
+</div>
+<!-- Notification Visual -->
+<div class="flex-grow flex items-center justify-center py-12">
+<div class="w-full aspect-square border border-white/10 relative flex items-center justify-center overflow-hidden">
+<div class="absolute inset-0 diagonal-line opacity-30"></div>
+<!-- Simplified Minimal Notification Card -->
+<div class="relative z-10 w-full max-w-[280px] bg-[#111111] border border-white/10 p-5 flex gap-4 items-start shadow-2xl">
+<div class="w-10 h-10 bg-white flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-black text-2xl" data-icon="notifications">notifications</span>
+</div>
+<div class="flex flex-col justify-center h-10">
+<p class="font-headline font-bold text-sm text-white leading-tight">Notification Required</p>
+<p class="font-label text-[10px] uppercase tracking-widest text-outline mt-1">System Override</p>
+</div>
+<!-- Corner Accents -->
+<div class="absolute -top-[1px] -left-[1px] w-2 h-2 border-t border-l border-white"></div>
+<div class="absolute -bottom-[1px] -right-[1px] w-2 h-2 border-b border-r border-white"></div>
+</div>
+<!-- Structural Grid Detail -->
+<div class="absolute inset-0 border-[0.5px] border-white/5 pointer-events-none"></div>
+</div>
+</div>
+</main>
+<!-- Fixed Action Block -->
+<footer class="fixed bottom-0 left-0 w-full p-6 md:p-8 bg-black/95 backdrop-blur-md border-t border-white/10 z-50">
+<button class="w-full py-6 bg-primary text-on-primary font-headline font-black text-lg tracking-tighter hover:bg-zinc-200 transition-all active:scale-[0.99] duration-100 flex items-center justify-center gap-3 rounded-none">
+            GIVE PERMISSION
+            <span class="material-symbols-outlined text-2xl" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<div class="mt-4 flex justify-center">
+<button class="font-label text-[10px] text-outline hover:text-white transition-colors uppercase tracking-[0.3em]">
+                Remind me later
+            </button>
+</div>
+</footer>
+<!-- Image for Context -->
+<div class="hidden">
+<img data-alt="Abstract minimalist interface showing notification system override" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCriqh-JwkUFcvFYNVmTFMfTln099OnrUiFHRgTie8ipeNPueQrvCAEWCo0Z_8banSY1AbggEG3y2bUqYHKJx-fvRV-9kJ1_PbAFx5MowZJEeCdX9A1WqjuNnBcVi4d9AGgwkdCb9exwxo8WFzQwjxnnIzUP70n4QjjTVyrUWtMq1i0E3PbNN8fIXU0OeicAwWe8qcGeKWG4D3NpCXVTowYGngyRfLvD28Yc3XxJDHySzARI4J_RgKCDXOyIwj1qP9dq_K185bNQUE"/>
+</div>
+</body></html>

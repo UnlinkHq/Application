@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&amp;family=Space_Grotesk:wght@300;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "inverse-surface": "#e2e2e2",
+              "surface-dim": "#131313",
+              "on-secondary-fixed-variant": "#7e0004",
+              "surface-container-high": "#2a2a2a",
+              "surface-container": "#1f1f1f",
+              "tertiary-fixed-dim": "#00531c",
+              "secondary-fixed": "#ffb4aa",
+              "surface-tint": "#c6c6c7",
+              "secondary-container": "#930005",
+              "secondary": "#ffb4aa",
+              "surface-container-low": "#1b1b1b",
+              "primary-fixed-dim": "#454747",
+              "primary": "#ffffff",
+              "surface-bright": "#393939",
+              "on-primary": "#1a1c1c",
+              "surface-container-highest": "#353535",
+              "on-tertiary-fixed": "#ffffff",
+              "on-error": "#690005",
+              "inverse-primary": "#5d5f5f",
+              "outline-variant": "#474747",
+              "inverse-on-surface": "#303030",
+              "on-secondary": "#410001",
+              "on-surface": "#e2e2e2",
+              "on-tertiary": "#002107",
+              "on-primary-fixed": "#ffffff",
+              "primary-fixed": "#5d5f5f",
+              "surface-variant": "#353535",
+              "on-surface-variant": "#c6c6c6",
+              "on-primary-container": "#000000",
+              "tertiary-fixed": "#006e28",
+              "on-tertiary-container": "#000000",
+              "on-secondary-container": "#ffdad5",
+              "tertiary": "#72fe88",
+              "surface-container-lowest": "#0e0e0e",
+              "on-secondary-fixed": "#410001",
+              "error": "#ffb4ab",
+              "tertiary-container": "#00a741",
+              "primary-container": "#d4d4d4",
+              "outline": "#919191",
+              "background": "#131313",
+              "on-primary-fixed-variant": "#e2e2e2",
+              "error-container": "#93000a",
+              "surface": "#131313",
+              "secondary-fixed-dim": "#ff8a7b",
+              "on-tertiary-fixed-variant": "#72fe88",
+              "on-error-container": "#ffdad6",
+              "on-background": "#e2e2e2"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Space_Grotesk"]
+            },
+            borderRadius: {"DEFAULT": "0rem", "lg": "0rem", "xl": "0rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        body { background-color: #000000; color: #e2e2e2; }
+        .no-corners { border-radius: 0 !important; }
+    </style>
+<style>
+        body {
+          min-height: max(884px, 100dvh);
+        }
+    </style>
+</head>
+<body class="font-body overflow-hidden">
+<!-- Header (Shared Component: TopAppBar) -->
+<nav class="bg-black/80 backdrop-blur-xl text-white fixed top-0 w-full z-50 border-b border-white/20 flex justify-between items-center px-6 h-16">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-white" data-icon="close_fullscreen">close_fullscreen</span>
+<span class="font-['Inter'] font-black uppercase tracking-tighter text-2xl text-white italic">UNLINK</span>
+</div>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-white" data-icon="settings">settings</span>
+</div>
+</nav>
+<!-- Main Content Background (Blocks Management) -->
+<main class="pt-20 px-6 pb-24 min-h-screen bg-black">
+<header class="mb-8">
+<div class="flex justify-between items-end mb-2">
+<h1 class="text-4xl font-black tracking-tighter uppercase font-headline">ACTIVE_BLOCKS</h1>
+<span class="font-label text-xs tracking-widest text-tertiary">SYSTEM_NOMINAL</span>
+</div>
+<div class="h-1 bg-surface-container-high w-full relative">
+<div class="absolute top-0 left-0 h-full w-2/3 bg-primary"></div>
+</div>
+</header>
+<!-- Bento Grid Layout for Background Content -->
+<div class="grid grid-cols-2 gap-4 opacity-40">
+<!-- App Block Card -->
+<div class="col-span-2 bg-surface-container p-6 border-l-4 border-secondary">
+<div class="flex justify-between items-start mb-6">
+<div>
+<p class="font-label text-[10px] uppercase tracking-[0.2em] text-outline">PROTOCOL_01</p>
+<h2 class="text-xl font-bold uppercase font-headline">SOCIAL_MEDIA_KILL</h2>
+</div>
+<span class="material-symbols-outlined text-secondary" data-icon="block">block</span>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between font-label text-xs">
+<span>TIME_REMAINING</span>
+<span class="text-secondary font-bold">04:22:15</span>
+</div>
+<div class="h-[2px] bg-outline-variant w-full"></div>
+</div>
+</div>
+<!-- Stats Card -->
+<div class="bg-surface-container-low p-4 flex flex-col justify-between aspect-square">
+<span class="material-symbols-outlined text-primary" data-icon="timeline">timeline</span>
+<div>
+<p class="font-label text-[10px] uppercase">UPTIME</p>
+<p class="text-2xl font-black font-headline">98.2%</p>
+</div>
+</div>
+<!-- Focus Card -->
+<div class="bg-surface-container-low p-4 flex flex-col justify-between aspect-square">
+<span class="material-symbols-outlined text-tertiary" data-icon="bolt">bolt</span>
+<div>
+<p class="font-label text-[10px] uppercase">INTENSITY</p>
+<p class="text-2xl font-black font-headline">MAX</p>
+</div>
+</div>
+</div>
+</main>
+<!-- Modal Backdrop -->
+<div class="fixed inset-0 bg-black/60 z-[60] backdrop-blur-sm flex items-end">
+<!-- Modern Bottom Sheet -->
+<div class="bg-black text-white w-full border-t border-x border-white/40 no-corners animate-in slide-in-from-bottom duration-300">
+<!-- Handle -->
+<div class="w-full flex justify-center py-3">
+<div class="w-12 h-1 bg-white/20 rounded-full"></div>
+</div>
+<div class="p-6 pb-12">
+<div class="flex justify-between items-center mb-8">
+<h3 class="font-headline font-black text-2xl uppercase tracking-tighter">MANAGE</h3>
+<span class="material-symbols-outlined font-black cursor-pointer" data-icon="close">close</span>
+</div>
+<div class="space-y-4">
+<!-- List Item 1 -->
+<button class="w-full flex items-center justify-between p-5 border-2 border-white bg-black hover:bg-white hover:text-black transition-colors group no-corners">
+<span class="font-headline font-black text-lg uppercase tracking-tight">SET TIME LIMIT</span>
+<span class="material-symbols-outlined text-2xl" data-icon="timer">timer</span>
+</button>
+<!-- List Item 2 -->
+<button class="w-full flex items-center justify-between p-5 border-2 border-white bg-black hover:bg-white hover:text-black transition-colors group no-corners">
+<span class="font-headline font-black text-lg uppercase tracking-tight">NIGHT BLOCK</span>
+<span class="material-symbols-outlined text-2xl" data-icon="dark_mode">dark_mode</span>
+</button>
+</div>
+<div class="mt-8 flex justify-end">
+<p class="font-label text-[10px] tracking-widest text-white/40 uppercase">UNLINK_CORE_V1.0.4</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Nav (Shared Component: BottomNavBar) -->
+<footer class="bg-black text-white fixed bottom-0 w-full z-50 h-20 border-t border-white/10 flex justify-around items-center px-8 pb-4">
+<!-- Destination 1: Stop -->
+<div class="flex flex-col items-center justify-center text-white/30 hover:text-white/60 active:bg-zinc-900 transition-all">
+<span class="material-symbols-outlined" data-icon="Stop">stop</span>
+</div>
+<!-- Destination 2: Timeline (Active based on management intent) -->
+<div class="flex flex-col items-center justify-center text-white scale-110 active:bg-zinc-900 transition-all">
+<span class="material-symbols-outlined" data-icon="Timeline" style="font-variation-settings: 'FILL' 1;">timeline</span>
+</div>
+<!-- Destination 3: Settings Ethernet -->
+<div class="flex flex-col items-center justify-center text-white/30 hover:text-white/60 active:bg-zinc-900 transition-all">
+<span class="material-symbols-outlined" data-icon="Settings_Ethernet">settings_ethernet</span>
+</div>
+<!-- Destination 4: Lock Open -->
+<div class="flex flex-col items-center justify-center text-white/30 hover:text-white/60 active:bg-zinc-900 transition-all">
+<span class="material-symbols-outlined" data-icon="Lock_Open">lock_open</span>
+</div>
+</footer>
+</body></html>

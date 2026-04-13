@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&amp;family=Space_Grotesk:wght@300;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "surface-dim": "#131313",
+              "surface-container-low": "#1b1b1b",
+              "tertiary-container": "#00a741",
+              "on-surface-variant": "#c6c6c6",
+              "on-primary-container": "#000000",
+              "surface-tint": "#c6c6c7",
+              "on-tertiary-fixed": "#ffffff",
+              "secondary-fixed": "#ffb4aa",
+              "error": "#ffb4ab",
+              "on-secondary-container": "#ffdad5",
+              "on-tertiary-fixed-variant": "#72fe88",
+              "primary-container": "#d4d4d4",
+              "secondary": "#ffb4aa",
+              "outline-variant": "#474747",
+              "primary-fixed-dim": "#454747",
+              "on-tertiary": "#002107",
+              "inverse-surface": "#e2e2e2",
+              "on-error": "#690005",
+              "on-background": "#e2e2e2",
+              "on-primary": "#1a1c1c",
+              "primary-fixed": "#5d5f5f",
+              "on-secondary-fixed": "#410001",
+              "secondary-container": "#930005",
+              "inverse-on-surface": "#303030",
+              "on-secondary": "#410001",
+              "tertiary": "#72fe88",
+              "on-secondary-fixed-variant": "#7e0004",
+              "surface-bright": "#393939",
+              "error-container": "#93000a",
+              "on-primary-fixed-variant": "#e2e2e2",
+              "tertiary-fixed-dim": "#00531c",
+              "outline": "#919191",
+              "on-error-container": "#ffdad6",
+              "secondary-fixed-dim": "#ff8a7b",
+              "background": "#131313",
+              "surface-container-lowest": "#0e0e0e",
+              "surface-container-high": "#2a2a2a",
+              "surface-variant": "#353535",
+              "on-surface": "#e2e2e2",
+              "tertiary-fixed": "#006e28",
+              "primary": "#ffffff",
+              "surface-container": "#1f1f1f",
+              "inverse-primary": "#5d5f5f",
+              "surface": "#131313",
+              "on-primary-fixed": "#ffffff",
+              "on-tertiary-container": "#000000",
+              "surface-container-highest": "#353535"
+            },
+            fontFamily: {
+              "headline": ["Inter"],
+              "body": ["Inter"],
+              "label": ["Space Grotesk"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+            height: 32px;
+            display: flex;
+            align-items: center;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 32px;
+            width: 8px;
+            background: #ffffff;
+            cursor: pointer;
+            border: none;
+            border-radius: 0;
+        }
+        input[type=range]::-moz-range-thumb {
+            height: 32px;
+            width: 8px;
+            background: #ffffff;
+            cursor: pointer;
+            border: none;
+            border-radius: 0;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 1px;
+            background: #ffffff;
+        }
+        input[type=range]::-moz-range-track {
+            width: 100%;
+            height: 1px;
+            background: #ffffff;
+        }
+    </style>
+<style>
+        body {
+          min-height: 100dvh;
+        }
+    </style>
+</head>
+<body class="bg-black text-white font-body selection:bg-white selection:text-black">
+<!-- Navigation -->
+<header class="fixed top-0 w-full z-50 flex items-center justify-between px-8 h-20 bg-black">
+<div class="flex items-center gap-4">
+<span class="material-symbols-outlined text-white text-xl">close</span>
+<span class="font-headline font-black tracking-tighter uppercase text-lg">UNLINK</span>
+</div>
+<div class="font-label text-[10px] uppercase tracking-[0.3em] font-medium opacity-50">Step 03 / 05</div>
+</header>
+<main class="min-h-screen pt-20 pb-12 flex flex-col px-8 max-w-2xl mx-auto">
+<!-- Title Section -->
+<section class="mt-16">
+<h1 class="font-headline font-black text-5xl md:text-6xl tracking-tighter uppercase leading-[0.9]">
+                Set your daily limit.
+            </h1>
+</section>
+<!-- Main Display -->
+<section class="mt-24 flex flex-col items-center">
+<div class="font-label text-[11px] uppercase tracking-[0.2em] opacity-40 mb-4">Target Hours</div>
+<div class="flex items-baseline gap-2">
+<span class="font-headline font-black text-[140px] leading-none tracking-tighter">04</span>
+<span class="font-label text-2xl uppercase font-light italic opacity-40">hrs</span>
+</div>
+</section>
+<!-- Slider Section -->
+<section class="mt-24 w-full px-4">
+<div class="relative h-16 flex items-center">
+<input class="w-full cursor-pointer relative z-10 appearance-none" max="12" min="0" type="range" value="4"/>
+</div>
+<div class="flex justify-between font-label text-[10px] uppercase tracking-[0.2em] font-bold mt-6">
+<span class="opacity-100">00:00</span>
+<span class="opacity-40">06:00</span>
+<span class="opacity-100">12:00</span>
+</div>
+</section>
+<!-- Progress Indicator (1px Line Style) -->
+<section class="mt-auto pt-16 w-full flex flex-col gap-12">
+<div class="w-full h-[1px] bg-white/10 relative">
+<div class="absolute top-0 left-0 w-3/5 h-[1px] bg-white"></div>
+</div>
+<button class="w-full py-6 bg-white text-black font-label font-bold uppercase tracking-[0.3em] text-xs hover:bg-neutral-200 transition-colors flex items-center justify-center gap-4">
+                Confirm Goal
+                <span class="material-symbols-outlined text-sm">arrow_forward</span>
+</button>
+</section>
+</main>
+<!-- Global Layout Lines -->
+<div class="fixed inset-0 pointer-events-none -z-10">
+<div class="absolute left-8 top-0 bottom-0 w-[1px] bg-white/[0.03]"></div>
+<div class="absolute right-8 top-0 bottom-0 w-[1px] bg-white/[0.03]"></div>
+</div>
+</body></html>

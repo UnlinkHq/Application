@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { View, Text, Switch, ScrollView, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 interface LaunchLimitConfigProps {
@@ -9,109 +8,91 @@ interface LaunchLimitConfigProps {
 
 export const LaunchLimitConfig = ({ onBack }: LaunchLimitConfigProps) => {
   const [isEnabled, setIsEnabled] = useState(true);
-  const [periodType, setPeriodType] = useState<'Daily' | 'Hourly'>('Daily');
-  const [limitCount, setLimitCount] = useState(5);
+  const [limit, setLimit] = useState(5);
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-900" edges={['top']}>
-      {/* Header */}
-      <View className="px-4 py-2 flex-row items-center justify-between mb-4">
-          <View className="flex-1">
-             <TouchableOpacity onPress={onBack} className="w-10 h-10 items-center justify-center bg-gray-800 rounded-full">
-               <Ionicons name="close" size={24} color="#FFF" />
-             </TouchableOpacity>
-          </View>
-      </View>
-
-      <ScrollView className="flex-1 px-4">
+    <View className="flex-1 bg-black">
+      <View className="flex-1">
         
-        <View className="items-center mb-6">
-            <Text className="text-3xl font-bold text-white mb-2">App Launch Limit</Text>
-            <Text className="text-gray-400 text-center text-sm px-4">
-                Set how many times the selected apps can launch before a Focus Challenge is required.
+        <View className="items-center mb-8 px-6">
+            <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.2em] text-center mb-2">
+                PROTOCOL_03: FREQUENCY_THRESHOLD
+            </Text>
+            <Text className="text-white font-headline font-black text-2xl uppercase tracking-tighter text-center">
+                Configure Launch Limit
             </Text>
         </View>
 
-        {/* Enable Toggle */}
-        <View className="bg-gray-800 rounded-2xl p-4 flex-row justify-between items-center mb-6">
+        {/* Enable Toggle - Surgical Style */}
+        <View className="border-2 border-white p-5 flex-row justify-between items-center mb-6">
             <View className="flex-row items-center">
-                <Ionicons name="checkmark-circle-outline" size={24} color="#999" style={{ marginRight: 10}} />
-                <Text className="text-white font-bold text-lg">Enable Limit</Text>
+                <Ionicons name="flash-outline" size={20} color="white" style={{ marginRight: 12}} />
+                <Text className="text-white font-headline font-black text-lg uppercase tracking-tight">ENABLE_PROTOCOL</Text>
             </View>
             <Switch 
                 value={isEnabled}
                 onValueChange={setIsEnabled}
-                trackColor={{ false: '#555', true: '#FF007F' }}
-                thumbColor={'#FFF'}
+                trackColor={{ false: '#333', true: '#FFF' }}
+                thumbColor={isEnabled ? '#000' : '#888'}
             />
         </View>
 
-        {/* Inputs */}
-        <View className="bg-gray-800 rounded-2xl mb-6 overflow-hidden">
-             <View className="flex-row items-center p-4 border-b border-gray-700">
-                <Text className="text-gray-400 text-lg w-8">Aa</Text>
-                <Text className="text-white text-lg font-medium flex-1">Name</Text>
+        {/* Inputs - Surgical Style */}
+        <View className="border-2 border-white mb-6">
+             <View className="flex-row items-center p-5 border-b border-white/20">
+                <Text className="text-white font-headline font-black text-lg uppercase tracking-tight flex-1">NAME</Text>
                 <View className="flex-row items-center">
-                    <Ionicons name="ban-outline" size={16} color="red" style={{ marginRight: 4 }} />
-                    <Text className="text-gray-400">App Launch Limit</Text>
-                    <Ionicons name="chevron-forward" size={20} color="#666" />
+                    <Text className="text-white/60 font-label text-xs uppercase tracking-widest mr-2">LAUNCH_THRESHOLD</Text>
+                    <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
                 </View>
              </View>
-             <TouchableOpacity className="flex-row items-center p-4">
-                <Ionicons name="apps-outline" size={20} color="#999" style={{ width: 32 }} />
-                <Text className="text-white text-lg font-medium flex-1">Apps Limited</Text>
+             <TouchableOpacity className="flex-row items-center p-5">
+                <Text className="text-white font-headline font-black text-lg uppercase tracking-tight flex-1">APPS_TRACKED</Text>
                 <View className="flex-row items-center">
-                    <Text className="text-gray-400 mr-2">0 apps, 0 categories</Text>
-                    <Ionicons name="chevron-forward" size={20} color="#666" />
+                    <Text className="text-white/60 font-label text-xs uppercase tracking-widest mr-2">0_SELECTED</Text>
+                    <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
                 </View>
              </TouchableOpacity>
         </View>
 
-        {/* Limit Period */}
-        <Text className="text-white font-bold text-lg mb-4">Limit Period</Text>
-        <View className="bg-gray-800 rounded-2xl p-4 mb-6 flex-row justify-between items-center">
-             <Text className="text-white text-base">Period Type</Text>
-             <View className="bg-gray-700 rounded-lg p-1 flex-row">
+        {/* Frequency Logic */}
+        <Text className="text-white font-headline font-black text-xs uppercase tracking-[0.3em] mb-4">THRESHOLD_SETTING</Text>
+        
+        <View className="border-2 border-white p-6 mb-12">
+             <Text className="text-white/60 font-label text-[10px] uppercase tracking-widest mb-6 text-center">MAXIMUM_DAILY_LAUNCHES</Text>
+             <View className="flex-row justify-center items-center py-4">
                  <TouchableOpacity 
-                    onPress={() => setPeriodType('Daily')}
-                    className={`px-4 py-1.5 rounded-md ${periodType === 'Daily' ? 'bg-gray-500' : 'bg-transparent'}`}
+                    className="w-12 h-12 border border-white/20 items-center justify-center no-corners"
+                    onPress={() => setLimit(Math.max(1, limit - 1))}
                  >
-                     <Text className="text-white text-xs font-bold">Daily</Text>
+                     <Ionicons name="remove" size={24} color="white" />
                  </TouchableOpacity>
+                 
+                 <View className="mx-12 items-center">
+                     <Text className="text-white text-5xl font-headline font-black">{limit}</Text>
+                     <Text className="text-white/40 font-label text-[10px] tracking-widest mt-2 uppercase">LAUNCHES</Text>
+                 </View>
+
                  <TouchableOpacity 
-                    onPress={() => setPeriodType('Hourly')}
-                    className={`px-4 py-1.5 rounded-md ${periodType === 'Hourly' ? 'bg-gray-500' : 'bg-transparent'}`}
+                    className="w-12 h-12 border border-white/20 items-center justify-center no-corners"
+                    onPress={() => setLimit(limit + 1)}
                  >
-                     <Text className="text-white text-xs font-bold">Hourly</Text>
+                     <Ionicons name="add" size={24} color="white" />
                  </TouchableOpacity>
              </View>
         </View>
 
-        {/* Daily Launch Limit */}
-        <Text className="text-white font-bold text-lg mb-4">Daily Launch Limit</Text>
-        <View className="bg-gray-800 rounded-2xl p-4 mb-4 flex-row justify-between items-center">
-             <View className="flex-1 pr-4">
-                <Text className="text-white text-base font-bold">Unlocks Without Challenges</Text>
-             </View>
-             <View className="flex-row items-center space-x-4 bg-gray-700 rounded-lg p-1">
-                 <TouchableOpacity 
-                    onPress={() => setLimitCount(Math.max(1, limitCount - 1))}
-                    className="w-8 h-8 items-center justify-center bg-gray-600 rounded"
-                 >
-                     <Ionicons name="remove" size={20} color="#FFF" />
-                 </TouchableOpacity>
-                 <Text className="text-white text-xl font-bold w-6 text-center">{limitCount}</Text>
-                 <TouchableOpacity 
-                    onPress={() => setLimitCount(limitCount + 1)}
-                    className="w-8 h-8 items-center justify-center bg-gray-600 rounded"
-                 >
-                     <Ionicons name="add" size={20} color="#FFF" />
-                 </TouchableOpacity>
-             </View>
-        </View>
+        <View className="h-24" />
+      </View>
 
-        <View className="h-20" />
-      </ScrollView>
-    </SafeAreaView>
+      {/* Action Button - Surgical Style */}
+      <TouchableOpacity 
+        className="bg-white h-16 items-center justify-center mb-6 no-corners"
+        activeOpacity={0.9}
+        onPress={onBack}
+      >
+        <Text className="text-black font-headline font-black text-lg uppercase tracking-[0.3em]">CONFIRM_PROTOCOL</Text>
+      </TouchableOpacity>
+    </View>
   );
 };
