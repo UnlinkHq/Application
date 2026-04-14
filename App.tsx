@@ -25,18 +25,19 @@ import { Inter_400Regular, Inter_700Bold, Inter_800ExtraBold, Inter_900Black } f
 import { SpaceGrotesk_300Light, SpaceGrotesk_400Regular, SpaceGrotesk_500Medium, SpaceGrotesk_700Bold } from '@expo-google-fonts/space-grotesk';
 import './core/sdk/provider'; // Initialize the SDK Global
 
-import { Ionicons } from '@expo/vector-icons';
 import { BlockingProvider } from './context/BlockingContext';
 import { BreakOverlay } from './components/blocking/BreakOverlay';
 import { HomeScreen } from './components/screens/HomeScreen';
 import { BlocksScreen } from './components/screens/BlocksScreen';
-import { ExtensionsScreen } from './components/screens/ExtensionsScreen';
 import { SocialsScreen } from './components/screens/SocialsScreen';
 import { SettingsScreen } from './components/screens/SettingsScreen';
 import { OnboardingScreen } from './components/screens/OnboardingScreen';
 import { FluidTabBar } from './components/navigation/FluidTabBar';
 import { SelectionProvider } from './context/SelectionContext';
 import { GlobalModals } from './components/ui/GlobalModals';
+import { FocusStorageService, BlockSession } from './services/FocusStorageService';
+import { FocusActiveScreen } from './components/blocks/FocusActiveScreen';
+import { AgreementScreen } from './components/screens/AgreementScreen';
 import './global.css';
 
 // Build 0.81.5 has fixed safeAreaView but dependencies might still use it
@@ -56,7 +57,6 @@ const TabNavigator = () => {
         tabBar={props => <FluidTabBar {...props} />}
         screenOptions={{
             headerShown: false,
-            // Hide default background since our custom bar handles it
             tabBarStyle: { position: 'absolute' }, 
             freezeOnBlur: true,
         }}
@@ -87,6 +87,7 @@ const NavigationTree = ({ isFirstLaunch }: { isFirstLaunch: boolean }) => {
             )}
             <Stack.Screen name="Main" component={TabNavigator} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="Agreement" component={AgreementScreen} />
         </Stack.Navigator>
       <BreakOverlay />
     </NavigationContainer>
@@ -95,6 +96,7 @@ const NavigationTree = ({ isFirstLaunch }: { isFirstLaunch: boolean }) => {
 
 export default function App() {
   const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
+  const [activeSession, setActiveSession] = useState<BlockSession | null>(null);
   const [fontsLoaded] = useFonts({
     Outfit_400Regular,
     Outfit_700Bold,
@@ -109,26 +111,32 @@ export default function App() {
   });
 
   useEffect(() => {
-    async function checkFirstLaunch() {
+    async function checkState() {
       try {
-        const value = await AsyncStorage.getItem('hasLaunched');
-        if (value === 'true') {
-          setIsFirstLaunch(false);
-        } else {
-          setIsFirstLaunch(true);
-        }
+        const launched = await AsyncStorage.getItem('hasLaunched');
+        setIsFirstLaunch(launched !== 'true');
+        
+        const session = await FocusStorageService.getActiveSession();
+        setActiveSession(session);
       } catch (error) {
-         console.error('Error checking first launch:', error);
-         setIsFirstLaunch(false); // Default to main if error
+         console.error('Error checking state:', error);
+         setIsFirstLaunch(false);
       }
     }
-    checkFirstLaunch();
+    checkState();
+
+    const interval = setInterval(async () => {
+        const session = await FocusStorageService.getActiveSession();
+        setActiveSession(session);
+    }, 15000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   if (!fontsLoaded || isFirstLaunch === null) {
       return (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-              <ActivityIndicator size="large" color="#ec4899" />
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
+              <ActivityIndicator size="large" color="#fff" />
           </View>
       );
   }
@@ -142,7 +150,7 @@ export default function App() {
               <NavigationTree isFirstLaunch={Boolean(isFirstLaunch)} />
               <GlobalModals />
             </SelectionProvider>
-            <StatusBar style="auto" /> 
+            <StatusBar style="light" /> 
           </BlockingProvider>
         </BottomSheetModalProvider>
       </GestureHandlerRootView>

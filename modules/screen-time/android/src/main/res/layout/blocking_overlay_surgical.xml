@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#99000000">
+
+    <!-- Bottom Banner Area -->
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardBackgroundColor="#131313"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="12dp"
+        app:strokeColor="#33FFFFFF"
+        app:strokeWidth="1dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        android:layout_margin="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="24dp">
+
+            <View
+                android:layout_width="40dp"
+                android:layout_height="4dp"
+                android:background="#33FFFFFF"
+                android:layout_gravity="center"
+                android:layout_marginBottom="24dp" />
+
+            <TextView
+                android:id="@+id/surgicalTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:fontFamily="sans-serif-black"
+                android:text="SECTION_RESTRICTED"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:letterSpacing="0.2"
+                android:textAllCaps="true" />
+
+            <TextView
+                android:id="@+id/surgicalMessage"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:fontFamily="sans-serif-thin"
+                android:text="You cannot access Reels or Shorts during this session. Stay focused on your primary intent."
+                android:textColor="#99FFFFFF"
+                android:textSize="12sp"
+                android:lineSpacingExtra="4dp" />
+
+            <Button
+                android:id="@+id/surgicalGoHome"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="24dp"
+                android:backgroundTint="#FFFFFF"
+                android:fontFamily="sans-serif-black"
+                android:text="GO_HOME"
+                android:textColor="#000000"
+                app:cornerRadius="4dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:textAlignment="center"
+                android:fontFamily="sans-serif-thin"
+                android:text="TAP_OUTSIDE_TO_RETURN_TO_MAIN_APP"
+                android:textColor="#44FFFFFF"
+                android:textSize="8sp"
+                android:letterSpacing="0.1" />
+
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

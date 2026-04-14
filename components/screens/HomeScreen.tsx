@@ -233,11 +233,9 @@ export const HomeScreen = () => {
                     ListHeaderComponent={
                         <>
                             {/* Permission Banner */}
-                            {!hasPermission && Platform.OS === 'android' && (
-                                <View className="px-6 mb-8 mt-4">
-                                    <PermissionBanner onPress={handleRequestPermission} />
-                                </View>
-                            )}
+                            <View className="px-6 mb-8 mt-4">
+                                <PermissionBanner />
+                            </View>
 
                             {/* Section 01: Date Picker */}
                             <DateStrip

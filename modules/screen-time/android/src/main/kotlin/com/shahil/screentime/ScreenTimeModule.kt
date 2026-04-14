@@ -5,17 +5,22 @@ import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.Context
 import android.content.Intent
+import android.content.ComponentName
 import android.content.pm.PackageManager
+import android.util.Log
 import android.os.Process
+import android.os.Build
+import android.os.PowerManager
 import android.provider.Settings
 import android.app.admin.DevicePolicyManager
-import android.content.ComponentName
+import android.widget.Toast
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
 import java.util.Calendar
 
 class ScreenTimeModule : Module() {
+  
   override fun definition() = ModuleDefinition {
     Name("ScreenTime")
 
@@ -28,6 +33,81 @@ class ScreenTimeModule : Module() {
       } catch (e: Exception) {
         return@Function false
       }
+    }
+
+    Function("setBlockedApps") { packageNames: List<String> ->
+      appContext.reactContext?.let { context ->
+        // AIRTIGHT SYNC: Write to disk
+        val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        prefs.edit().putStringSet("blocked_apps", packageNames.toSet()).commit()
+        
+        // NOISY SYNC: Tell us if we found the engine's pulse
+        UnlinkAccessibilityService.instance?.let { service ->
+            service.updateBlockedApps(packageNames.toSet())
+            Toast.makeText(context, "LOCKDOWN_ENGAGED: Engine Found in RAM", Toast.LENGTH_SHORT).show()
+        } ?: run {
+            // THE SMOKING GUN: If you see this toast, the engine is disconnected!
+            Toast.makeText(context, "LOCKDOWN_ENGAGED: Engine NOT found (Offline)", Toast.LENGTH_LONG).show()
+            
+            val intent = Intent("com.shahil.ACTION_REFRESH_BLOCKS")
+            intent.setPackage(context.packageName)
+            intent.putStringArrayListExtra("blocked_list", ArrayList(packageNames))
+            context.sendBroadcast(intent)
+        }
+      }
+      return@Function null
+    }
+
+    AsyncFunction("getEngineHealth") {
+        val context = appContext.reactContext ?: return@AsyncFunction mapOf("status" to "error")
+        
+        val hasOverlay = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Settings.canDrawOverlays(context) else true
+        
+        val expectedService = "${context.packageName}/com.shahil.screentime.UnlinkAccessibilityService"
+        val enabledServices = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+        val hasAccess = enabledServices?.contains(expectedService) == true
+        
+        val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+        val usageMode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
+        val hasUsage = usageMode == AppOpsManager.MODE_ALLOWED
+        
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        val isExempt = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) pm.isIgnoringBatteryOptimizations(context.packageName) else true
+        
+        val engineActive = UnlinkAccessibilityService.instance != null
+
+        return@AsyncFunction mapOf(
+            "overlay" to hasOverlay,
+            "accessibility" to hasAccess,
+            "usage" to hasUsage,
+            "batteryExempt" to isExempt,
+            "engineActive" to engineActive
+        )
+    }
+
+    Function("stopBlockingService") {
+        appContext.reactContext?.let { context ->
+            UnlinkAccessibilityService.instance?.updateBlockedApps(emptySet())
+        }
+    }
+
+    Function("isBatteryOptimizationExempted") {
+        val context = appContext.reactContext ?: return@Function true
+        val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return@Function pm.isIgnoringBatteryOptimizations(context.packageName)
+        }
+        return@Function true
+    }
+
+    Function("requestBatteryOptimizationExemption") {
+        val context = appContext.reactContext
+        if (context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+            intent.data = android.net.Uri.parse("package:${context.packageName}")
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        }
     }
 
     Function("requestAdmin") {
@@ -71,6 +151,24 @@ class ScreenTimeModule : Module() {
       return@Function mode == AppOpsManager.MODE_ALLOWED
     }
 
+    Function("hasOverlayPermission") {
+        val context = appContext.reactContext ?: return@Function false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return@Function Settings.canDrawOverlays(context)
+        }
+        return@Function true
+    }
+
+    Function("requestOverlayPermission") {
+        val context = appContext.reactContext
+        if (context != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val intent = Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION)
+            intent.data = android.net.Uri.parse("package:${context.packageName}")
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        }
+    }
+
     Function("requestPermission") {
       val context = appContext.reactContext
       if (context != null) {
@@ -78,6 +176,63 @@ class ScreenTimeModule : Module() {
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         context.startActivity(intent)
       }
+    }
+
+    Function("isAccessibilityServiceEnabled") {
+        val context = appContext.reactContext ?: return@Function false
+        val expectedService = "${context.packageName}/com.shahil.screentime.UnlinkAccessibilityService"
+        val enabledServices = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        )
+        return@Function enabledServices?.contains(expectedService) == true
+    }
+
+    Function("isUsageStatsPermissionGranted") {
+      val context = appContext.reactContext ?: return@Function false
+      val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
+      val mode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        appOps.unsafeCheckOpNoThrow(
+          AppOpsManager.OPSTR_GET_USAGE_STATS,
+          Process.myUid(),
+          context.packageName
+        )
+      } else {
+        appOps.checkOpNoThrow(
+          AppOpsManager.OPSTR_GET_USAGE_STATS,
+          Process.myUid(),
+          context.packageName
+        )
+      }
+      return@Function mode == AppOpsManager.MODE_ALLOWED
+    }
+
+    Function("requestUsageStatsPermission") {
+      val context = appContext.reactContext ?: return@Function null
+      val intent = Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+      }
+      context.startActivity(intent)
+      return@Function null
+    }
+
+    Function("openAppInfoSettings") {
+      val context = appContext.reactContext ?: return@Function null
+      val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+        data = android.net.Uri.fromParts("package", context.packageName, null)
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+      }
+      context.startActivity(intent)
+      return@Function null
+    }
+
+    Function("requestAccessibilityPermission") {
+        val context = appContext.reactContext
+        if (context != null) {
+            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        }
     }
 
     AsyncFunction("getUsageStats") { startTime: Double, endTime: Double ->
@@ -91,18 +246,11 @@ class ScreenTimeModule : Module() {
       val events = usageStatsManager.queryEvents(startTime.toLong(), endTime.toLong())
       val event = android.app.usage.UsageEvents.Event()
       
-      // Track the currently active package and when it started
       var currentPkg: String? = null
       var currentStart: Long = 0L
       
-      // Constants
       val MOVE_TO_FOREGROUND = android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND
       val MOVE_TO_BACKGROUND = android.app.usage.UsageEvents.Event.MOVE_TO_BACKGROUND
-      val SCREEN_INTERACTIVE = 15 // Screen On
-      val SCREEN_NON_INTERACTIVE = 16 // Screen Off
-      val KEYGUARD_SHOWN = 17 // Lock Screen
-      val KEYGUARD_HIDDEN = 18 // Unlock
-      val DEVICE_SHUTDOWN = 26
 
       while (events.hasNextEvent()) {
           events.getNextEvent(event)
@@ -111,26 +259,16 @@ class ScreenTimeModule : Module() {
           val type = event.eventType
 
           if (type == MOVE_TO_FOREGROUND) {
-              // specific app started
-              
-              // If there was another app "open" (currentPkg), it implies we switched directly 
-              // or the previous end event was missed. Close the previous session.
               if (currentPkg != null) {
                    val duration = time - currentStart
                    if (duration > 0) {
                       addToMaps(currentPkg!!, duration, currentStart, hourlyMap, dailyTotalMap)
                    }
               }
-
-              // Start new session
               currentPkg = pkg
               currentStart = time
-              
-              // Count pickup
               pickupMap[pkg] = (pickupMap[pkg] ?: 0) + 1
-
           } else if (type == MOVE_TO_BACKGROUND) {
-              // specific app ended
               if (currentPkg == pkg) {
                   val duration = time - currentStart
                   if (duration > 0) {
@@ -138,130 +276,51 @@ class ScreenTimeModule : Module() {
                   }
                   currentPkg = null
               }
-          } else if (type == SCREEN_NON_INTERACTIVE || type == KEYGUARD_SHOWN || type == DEVICE_SHUTDOWN) {
-              // Device locked, Screen Off, or Shutdown -> End current session
-              if (currentPkg != null) {
-                  val duration = time - currentStart
-                  if (duration > 0) {
-                      addToMaps(currentPkg!!, duration, currentStart, hourlyMap, dailyTotalMap)
-                  }
-                  currentPkg = null
-              }
-          } else if (type == KEYGUARD_HIDDEN) { // Unlock
-              pickupMap["total_pickups"] = (pickupMap["total_pickups"] ?: 0) + 1
           }
       }
-
-      // If loop ends and app is still "open" (e.g. valid session until 'now'), close it.
-      if (currentPkg != null) {
-           val now = System.currentTimeMillis()
-           // Use the smaller of 'endTime' (query limit) or 'now' (current time)
-           // This prevents adding future time if we query for "Today" (ends at 23:59)
-           val actualEnd = if (endTime.toLong() > now) now else endTime.toLong()
-           
-           val duration = actualEnd - currentStart
-           if (duration > 0 && duration < 24 * 60 * 60 * 1000) { // Sanity check: < 24h
-                addToMaps(currentPkg!!, duration, currentStart, hourlyMap, dailyTotalMap)
-           }
-      }
-      
-      return@AsyncFunction mapOf(
-          "hourly" to hourlyMap,
-          "daily" to dailyTotalMap,
-          "pickups" to pickupMap
-      )
+      return@AsyncFunction mapOf("hourly" to hourlyMap, "daily" to dailyTotalMap, "pickups" to pickupMap)
     }
 
     AsyncFunction("getInstalledApps") {
       val context = appContext.reactContext ?: return@AsyncFunction listOf<Map<String, Any>>()
       val packageManager = context.packageManager
-      
-      val mainIntent = Intent(Intent.ACTION_MAIN, null)
-      mainIntent.addCategory(Intent.CATEGORY_LAUNCHER)
-      
-      // Resolve launchable activities only to filter out background noise/extensions
+      val mainIntent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
       val resolvedActivities = packageManager.queryIntentActivities(mainIntent, 0)
       val appList = mutableListOf<Map<String, Any>>()
-      val seenPackages = mutableSetOf<String>()
-
       for (resolveInfo in resolvedActivities) {
         val packageName = resolveInfo.activityInfo.packageName
-        if (seenPackages.contains(packageName)) continue
-        seenPackages.add(packageName)
-
         try {
             val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
             val label = packageManager.getApplicationLabel(applicationInfo).toString()
-            
-            // Get Category (API 26+)
-            val category = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                applicationInfo.category
-            } else {
-                -1 // Undefined
-            }
-
-            // Get Icon as Base64
             val iconDrawable = packageManager.getApplicationIcon(applicationInfo)
             val iconBase64 = bitmapToBase64(iconDrawable)
-
-            if (label.isNotEmpty()) {
-                appList.add(mapOf(
-                    "packageName" to packageName,
-                    "label" to label,
-                    "icon" to (iconBase64 ?: ""),
-                    "category" to category
-                ))
-            }
-        } catch (e: Exception) {
-            // Ignore apps we can't query
-        }
+            appList.add(mapOf("packageName" to packageName, "label" to label, "icon" to (iconBase64 ?: "")))
+        } catch (e: Exception) {}
       }
       return@AsyncFunction appList
     }
   }
 
-  private fun addToMaps(
-      pkg: String, 
-      duration: Long, 
-      startTime: Long, 
-      hourlyMap: MutableMap<String, MutableMap<String, Long>>, 
-      dailyMap: MutableMap<String, Long>
-  ) {
-      // Add to Daily
+  private fun addToMaps(pkg: String, duration: Long, startTime: Long, hourlyMap: MutableMap<String, MutableMap<String, Long>>, dailyMap: MutableMap<String, Long>) {
       dailyMap[pkg] = (dailyMap[pkg] ?: 0L) + duration
-
-      // Add to Hourly
-      val calendar = Calendar.getInstance()
-      calendar.timeInMillis = startTime
+      val calendar = Calendar.getInstance().apply { timeInMillis = startTime }
       val hour = calendar.get(Calendar.HOUR_OF_DAY).toString()
-      
       val hourMap = hourlyMap.getOrPut(hour) { mutableMapOf() }
       hourMap[pkg] = (hourMap[pkg] ?: 0L) + duration
   }
 
   private fun bitmapToBase64(drawable: android.graphics.drawable.Drawable): String? {
     try {
-        val bitmap = if (drawable is android.graphics.drawable.BitmapDrawable) {
-            drawable.bitmap
-        } else {
-            val bitmap = android.graphics.Bitmap.createBitmap(
-                drawable.intrinsicWidth.takeIf { it > 0 } ?: 1,
-                drawable.intrinsicHeight.takeIf { it > 0 } ?: 1,
-                android.graphics.Bitmap.Config.ARGB_8888
-            )
-            val canvas = android.graphics.Canvas(bitmap)
+        val bitmap = if (drawable is android.graphics.drawable.BitmapDrawable) drawable.bitmap else {
+            val b = android.graphics.Bitmap.createBitmap(drawable.intrinsicWidth.takeIf { it > 0 } ?: 1, drawable.intrinsicHeight.takeIf { it > 0 } ?: 1, android.graphics.Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(b)
             drawable.setBounds(0, 0, canvas.width, canvas.height)
             drawable.draw(canvas)
-            bitmap
+            b
         }
-
         val outputStream = java.io.ByteArrayOutputStream()
-        // Compress to PNG, quality 100 (lossless) or lower for size
         bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 70, outputStream)
-        val byteArray = outputStream.toByteArray()
-        return android.util.Base64.encodeToString(byteArray, android.util.Base64.NO_WRAP)
-    } catch (e: Exception) {
-        return null
-    }
+        return android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.NO_WRAP)
+    } catch (e: Exception) { return null }
   }
 }

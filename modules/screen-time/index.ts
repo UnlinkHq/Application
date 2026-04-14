@@ -1,5 +1,4 @@
 import { requireNativeModule, requireNativeViewManager } from 'expo-modules-core';
-import { ViewProps } from 'react-native';
 
 // Define the native module interface
 interface ScreenTimeModuleInterface {
@@ -10,6 +9,34 @@ interface ScreenTimeModuleInterface {
     deactivateAdmin(): void;
     getUsageStats(startTime: number, endTime: number): Promise<any>;
     getInstalledApps(): Promise<{ packageName: string, label: string, icon: string, category?: number }[]>;
+    
+    // Permission Functions
+    hasOverlayPermission(): Promise<boolean>;
+    requestOverlayPermission(): void;
+    isAccessibilityServiceEnabled(): Promise<boolean>;
+    requestAccessibilityPermission(): Promise<void>;
+    isUsageStatsPermissionGranted(): Promise<boolean>;
+    requestUsageStatsPermission(): Promise<void>;
+    openAppInfoSettings(): Promise<void>;
+    
+    // Persistence Functions
+    isBatteryOptimizationExempted(): Promise<boolean>;
+    requestBatteryOptimizationExemption(): void;
+    getEngineHealth(): Promise<{
+        overlay: boolean;
+        accessibility: boolean;
+        usage: boolean;
+        batteryExempt: boolean;
+        isEnforcing: boolean;
+    }>;
+
+    // Blocking & Dashboard Functions
+    setBlockedApps(packageNames: string[]): Promise<void>;
+    setSurgicalFlags(youtubeShorts: boolean, instagramReels: boolean): void;
+    setSessionData(startTime: number, durationMins: number): void;
+    getAppIcon(packageName: string): Promise<string>;
+    stopBlockingService(): void;
+
     // iOS Shield functions
     activateShield(): void;
     deactivateShield(): void;
@@ -26,14 +53,33 @@ try {
     // Mock implementation for development/Expo Go
     ScreenTimeModule = {
         hasPermission: async () => false,
-        requestPermission: () => {
-            console.warn('[ScreenTime] requestPermission: Native module missing.');
-        },
+        requestPermission: () => {},
         isAdminActive: () => false,
         requestAdmin: () => {},
         deactivateAdmin: () => {},
         getUsageStats: async () => ({}),
         getInstalledApps: async () => [],
+        hasOverlayPermission: async () => false,
+        requestOverlayPermission: () => {},
+        isAccessibilityServiceEnabled: async () => false,
+        requestAccessibilityPermission: async () => {},
+        isUsageStatsPermissionGranted: async () => false,
+        requestUsageStatsPermission: async () => {},
+        openAppInfoSettings: async () => {},
+        isBatteryOptimizationExempted: async () => false,
+        requestBatteryOptimizationExemption: () => {},
+        getEngineHealth: async () => ({
+            overlay: false,
+            accessibility: false,
+            usage: false,
+            batteryExempt: false,
+            isEnforcing: false
+        }),
+        setBlockedApps: async () => {},
+        setSurgicalFlags: () => {},
+        setSessionData: () => {},
+        getAppIcon: async () => '',
+        stopBlockingService: () => {},
         activateShield: () => {},
         deactivateShield: () => {},
         getSelectionCount: () => 0
@@ -73,6 +119,34 @@ export async function getInstalledApps(): Promise<{ packageName: string, label: 
     return await ScreenTimeModule.getInstalledApps();
 }
 
+export async function hasOverlayPermission(): Promise<boolean> {
+    return await ScreenTimeModule.hasOverlayPermission();
+}
+
+export function requestOverlayPermission(): void {
+    ScreenTimeModule.requestOverlayPermission();
+}
+
+export function setBlockedApps(packageNames: string[]): void {
+    ScreenTimeModule.setBlockedApps(packageNames);
+}
+
+export function setSurgicalFlags(youtubeShorts: boolean, instagramReels: boolean): void {
+    ScreenTimeModule.setSurgicalFlags(youtubeShorts, instagramReels);
+}
+
+export function setSessionData(startTime: number, durationMins: number): void {
+    ScreenTimeModule.setSessionData(startTime, durationMins);
+}
+
+export async function getAppIcon(packageName: string): Promise<string> {
+    return await ScreenTimeModule.getAppIcon(packageName);
+}
+
+export function stopBlockingService(): void {
+    ScreenTimeModule.stopBlockingService();
+}
+
 export function activateShield(): void {
     ScreenTimeModule.activateShield();
 }
@@ -83,4 +157,24 @@ export function deactivateShield(): void {
 
 export function getSelectionCount(): number {
     return ScreenTimeModule.getSelectionCount();
+}
+
+export async function isAccessibilityServiceEnabled(): Promise<boolean> {
+    return await ScreenTimeModule.isAccessibilityServiceEnabled();
+}
+
+export function requestAccessibilityPermission(): void {
+    ScreenTimeModule.requestAccessibilityPermission();
+}
+
+export async function isBatteryOptimizationExempted(): Promise<boolean> {
+    return await ScreenTimeModule.isBatteryOptimizationExempted();
+}
+
+export function requestBatteryOptimizationExemption(): void {
+    ScreenTimeModule.requestBatteryOptimizationExemption();
+}
+
+export async function getEngineHealth() {
+    return await ScreenTimeModule.getEngineHealth();
 }

@@ -27,6 +27,7 @@ import {
     FamilyPickerView 
 } from '../../modules/screen-time';
 import { ModernToggle } from '../ui/ModernToggle';
+import { FocusStorageService } from '../../services/FocusStorageService';
 
 const { width } = Dimensions.get('window');
 const DIAL_SIZE = width * 0.5;
@@ -214,10 +215,35 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
         }
     };
 
-    const handleInitiate = () => {
+    const handleInitiate = async () => {
+        const hasApps = Platform.OS === 'ios' ? nativeIosCount > 0 : selectedApps.length > 0;
+        const hasSurgical = blockShorts.youtube || blockShorts.instagram;
+        
+        if (!hasApps && !hasSurgical) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            alert("REQUIRED_FIELD: PLEASE_SELECT_TARGETS_OR_SURGICAL_BLOCKS");
+            return;
+        }
+
+        const session = {
+            id: Math.random().toString(36).substring(7),
+            title: title || "NEW_SESSION",
+            durationMins: duration,
+            apps: selectedApps.map(a => a.id),
+            appIcons: selectedApps.map(a => a.icon),
+            surgicalFlags: blockShorts,
+            strictMode: strictMode,
+            startTime: Date.now()
+        };
+
         if (Platform.OS === 'ios') {
             activateShield();
+            await FocusStorageService.startSession(session);
+        } else {
+            // Android users save to library first, then 'Play' from Blocks tab
+            await FocusStorageService.saveBlock(session);
         }
+        
         onBack();
     };
 
