@@ -31,7 +31,7 @@ interface ScreenTimeModuleInterface {
     }>;
 
     // Blocking & Dashboard Functions
-    setBlockedApps(packageNames: string[]): Promise<void>;
+    setBlockedApps(packageNames: string[], message: string, timeLeft: string): Promise<void>;
     setSurgicalFlags(youtubeShorts: boolean, instagramReels: boolean): void;
     setSessionData(startTime: number, durationMins: number): void;
     getAppIcon(packageName: string): Promise<string>;
@@ -127,8 +127,8 @@ export function requestOverlayPermission(): void {
     ScreenTimeModule.requestOverlayPermission();
 }
 
-export function setBlockedApps(packageNames: string[]): void {
-    ScreenTimeModule.setBlockedApps(packageNames);
+export function setBlockedApps(packageNames: string[], message: string, timeLeft: string): void {
+    ScreenTimeModule.setBlockedApps(packageNames, message, timeLeft);
 }
 
 export function setSurgicalFlags(youtubeShorts: boolean, instagramReels: boolean): void {

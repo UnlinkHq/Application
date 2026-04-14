@@ -38,6 +38,11 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
             
             if (remaining <= 0) {
                 handleStop(true);
+            } else {
+                // ABSOLUTE ZERO: Live sync to the native black wall
+                const formatted = formatTime(remaining);
+                const msg = metrics ? MetricsEngine.getMessage(metrics) : 'FOCUS_PROTOCOL_ENGAGED';
+                ScreenTime.setBlockedApps(session.apps, msg, formatted);
             }
         }, 1000);
         return () => clearInterval(timer);

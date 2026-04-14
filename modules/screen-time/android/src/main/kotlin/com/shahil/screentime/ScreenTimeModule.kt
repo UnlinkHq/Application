@@ -35,25 +35,24 @@ class ScreenTimeModule : Module() {
       }
     }
 
-    Function("setBlockedApps") { packageNames: List<String> ->
+    Function("setBlockedApps") { packageNames: List<String>, message: String, timeLeft: String ->
       appContext.reactContext?.let { context ->
-        // AIRTIGHT SYNC: Write to disk
+        val set = packageNames.toSet()
         val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
-        prefs.edit().putStringSet("blocked_apps", packageNames.toSet()).commit()
-        
-        // NOISY SYNC: Tell us if we found the engine's pulse
-        UnlinkAccessibilityService.instance?.let { service ->
-            service.updateBlockedApps(packageNames.toSet())
-            Toast.makeText(context, "LOCKDOWN_ENGAGED: Engine Found in RAM", Toast.LENGTH_SHORT).show()
-        } ?: run {
-            // THE SMOKING GUN: If you see this toast, the engine is disconnected!
-            Toast.makeText(context, "LOCKDOWN_ENGAGED: Engine NOT found (Offline)", Toast.LENGTH_LONG).show()
-            
-            val intent = Intent("com.shahil.ACTION_REFRESH_BLOCKS")
-            intent.setPackage(context.packageName)
-            intent.putStringArrayListExtra("blocked_list", ArrayList(packageNames))
-            context.sendBroadcast(intent)
+        prefs.edit().apply {
+            putStringSet("blocked_apps", set)
+            putString("focus_message", message)
+            putString("time_remaining", timeLeft)
+            commit()
         }
+        
+        // 1. Memory Sync
+        UnlinkAccessibilityService.instance?.updateBlockedApps(set)
+        
+        // 2. Broadcast Sync
+        val intent = Intent("com.shahil.unlink.SYNC_LIST")
+        intent.setPackage(context.packageName)
+        context.sendBroadcast(intent)
       }
       return@Function null
     }

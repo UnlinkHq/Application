@@ -25,15 +25,14 @@ export class FocusStorageService {
         // 1. Save locally as active
         await AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(session));
         
-        // 2. Sync to Native Layer
-        ScreenTime.setBlockedApps(session.apps);
+        // 2. Sync to Native Layer (Absolute Zero Protocol)
+        ScreenTime.setBlockedApps(session.apps, "FOCUS_PROTOCOL_ENGAGED", `${session.durationMins}:00`);
         ScreenTime.setSurgicalFlags(session.surgicalFlags.youtube, session.surgicalFlags.instagram);
-        ScreenTime.setSessionData(session.startTime, session.durationMins);
     }
 
     static async stopSession(): Promise<void> {
         await AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
-        ScreenTime.setBlockedApps([]);
+        ScreenTime.setBlockedApps([], "", "");
         ScreenTime.setSurgicalFlags(false, false);
         ScreenTime.stopBlockingService();
     }
