@@ -9,7 +9,10 @@ import Animated, {
     runOnJS,
     useAnimatedProps,
     withRepeat,
-    withTiming
+    withTiming,
+    FadeIn,
+    FadeInDown,
+    Layout
 } from 'react-native-reanimated';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Svg, { Circle, Path, G } from 'react-native-svg';
@@ -44,18 +47,18 @@ interface BlockNowConfigProps {
 const getModeIcon = (mode: StrictModeLevel) => {
     switch (mode) {
         case 'normal': return 'pause-circle-outline';
-        case 'interruptions': return 'stop-circle-outline';
-        case 'limit': return 'time-outline';
-        case 'extreme': return 'close-circle-outline';
+        case 'qr_code': return 'qrcode-scan';
+        case 'mom_test': return 'account-lock-outline';
+        case 'money': return 'cash-lock';
     }
 };
 
 const getModeTitle = (mode: StrictModeLevel) => {
     switch (mode) {
         case 'normal': return 'NORMAL (EASY)';
-        case 'interruptions': return 'INTERRUPTIONS (MED)';
-        case 'limit': return 'UNBLOCK LIMIT (HARD)';
-        case 'extreme': return 'ALWAYS BLOCK (EXTREME)';
+        case 'qr_code': return 'QR CODE (MED)';
+        case 'mom_test': return 'MOM TEST (HARD)';
+        case 'money': return 'MONEY CHALLENGE (EXTREME)';
     }
 };
 
@@ -167,12 +170,19 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
     const [selectedApps, setSelectedApps] = useState<{ id: string, icon: string }[]>([]);
     const [duration, setDuration] = useState<number>(60);
     const [strictMode, setStrictMode] = useState<StrictModeLevel>('normal');
+    const [strictConfig, setStrictConfig] = useState<any>(null);
     const [title, setTitle] = useState('');
     const [blockShorts, setBlockShorts] = useState({ youtube: false, instagram: false });
     const [blockUninstall, setBlockUninstall] = useState(false);
+    const [allowTimedBreaks, setAllowTimedBreaks] = useState(false);
+    const [breakTimes, setBreakTimes] = useState(1); // 1, 2, 3
+    const [breakDuration, setBreakDuration] = useState(5); // 5, 10, 15
     const [isAppSelectionVisible, setIsAppSelectionVisible] = useState(false);
     const [isStrictModeVisible, setIsStrictModeVisible] = useState(false);
     const [isFamilyPickerVisible, setIsFamilyPickerVisible] = useState(false);
+    const [isQrModalVisible, setIsQrModalVisible] = useState(false);
+    const [generatedQrData, setGeneratedQrData] = useState<string | null>(null);
+    const [pendingSession, setPendingSession] = useState<any>(null);
     const [nativeIosCount, setNativeIosCount] = useState(0);
 
     const syncNativeStatus = useCallback(() => {
@@ -225,25 +235,46 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
             return;
         }
 
+        const qrData = strictMode === 'qr_code' ? `UNLINK_${Date.now()}_${Math.random().toString(36).substring(7)}` : undefined;
+
         const session = {
             id: Math.random().toString(36).substring(7),
-            title: title || "NEW_SESSION",
+            title: title || "ALLOW_FOCUS_SESSION",
             durationMins: duration,
             apps: selectedApps.map(a => a.id),
             appIcons: selectedApps.map(a => a.icon),
             surgicalFlags: blockShorts,
-            strictMode: strictMode,
+            strictnessConfig: {
+                mode: strictMode,
+                emailAddress: strictConfig?.emailAddress,
+                qrCodeData: qrData
+            },
+            timedBreaks: {
+                enabled: allowTimedBreaks,
+                allowedCount: breakTimes,
+                durationMins: breakDuration,
+                usedCount: 0
+            },
             startTime: Date.now()
         };
 
+        if (strictMode === 'qr_code') {
+            setGeneratedQrData(qrData!);
+            setPendingSession(session);
+            setIsQrModalVisible(true);
+            return;
+        }
+
+        await finalizeSession(session);
+    };
+
+    const finalizeSession = async (session: any) => {
         if (Platform.OS === 'ios') {
             activateShield();
             await FocusStorageService.startSession(session);
         } else {
-            // Android users save to library first, then 'Play' from Blocks tab
             await FocusStorageService.saveBlock(session);
         }
-        
         onBack();
     };
 
@@ -381,7 +412,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                 </View>
                                 <View className="flex-row items-center gap-3">
                                     <View className="w-10 h-10 rounded-full bg-white/5 items-center justify-center border border-white/10">
-                                        <Ionicons name={getModeIcon(strictMode)} size={20} color="white" />
+                                        <MaterialCommunityIcons name={getModeIcon(strictMode)} size={20} color="white" />
                                     </View>
                                     <View>
                                         <Text className="text-white font-headline font-black text-sm uppercase tracking-tight">
@@ -394,6 +425,53 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                 </View>
                             </TouchableOpacity>
                         </View>
+                        
+                        {/* Box 3: Timed Breaks */}
+                        <View className="mt-2">
+                            <View className="border border-white/10 p-5 bg-black/20">
+                                <View className="flex-row items-center justify-between mb-4">
+                                    <View>
+                                        <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">Allow Timed Breaks</Text>
+                                        <Text className="text-white/40 font-label text-[8px] uppercase mt-1">Temporary relief during sessions</Text>
+                                    </View>
+                                    <ModernToggle value={allowTimedBreaks} onValueChange={setAllowTimedBreaks} />
+                                </View>
+
+                                {allowTimedBreaks && (
+                                    <Animated.View layout={Layout.springify()} entering={FadeIn} className="flex-row gap-4 mt-2">
+                                        <View className="flex-1">
+                                            <Text className="text-white/20 font-headline font-black text-[9px] uppercase tracking-widest mb-3">Break Count</Text>
+                                            <View className="flex-row gap-2">
+                                                {[1, 2, 3].map(num => (
+                                                    <TouchableOpacity 
+                                                        key={num}
+                                                        onPress={() => setBreakTimes(num)}
+                                                        className={`flex-1 h-12 items-center justify-center border ${breakTimes === num ? 'bg-white border-white' : 'border-white/20 bg-transparent'}`}
+                                                    >
+                                                        <Text className={`font-headline font-black text-xs ${breakTimes === num ? 'text-black' : 'text-white/40'}`}>{num}</Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        </View>
+                                        <View className="flex-1">
+                                            <Text className="text-white/20 font-headline font-black text-[9px] uppercase tracking-widest mb-3">Minutes per break</Text>
+                                            <View className="flex-row gap-2">
+                                                {[5, 10, 15].map(min => (
+                                                    <TouchableOpacity 
+                                                        key={min}
+                                                        onPress={() => setBreakDuration(min)}
+                                                        className={`flex-1 h-12 items-center justify-center border ${breakDuration === min ? 'bg-white border-white' : 'border-white/20 bg-transparent'}`}
+                                                    >
+                                                        <Text className={`font-headline font-black text-xs ${breakDuration === min ? 'text-black' : 'text-white/40'}`}>{min}M</Text>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        </View>
+                                    </Animated.View>
+                                )}
+                            </View>
+                        </View>
+
 
                         <View className="mt-4 mb-2">
                             <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-3">BLOCK_SHORTS</Text>
@@ -526,8 +604,55 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                 visible={isStrictModeVisible}
                 onClose={() => setIsStrictModeVisible(false)}
                 currentMode={strictMode}
-                onConfirm={(mode) => setStrictMode(mode)}
+                onConfirm={(mode, config) => {
+                    setStrictMode(mode);
+                    setStrictConfig(config);
+                }}
             />
+
+            {/* QR Generation Modal */}
+            <Modal
+                visible={isQrModalVisible}
+                transparent={true}
+                animationType="fade"
+            >
+                <View className="flex-1 bg-black/90 items-center justify-center px-8">
+                    <View className="w-full bg-[#0e0e0e] border border-white/20 p-8 rounded-sm items-center">
+                        <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">QR_SIGNATURE_GENERATED</Text>
+                        <Text className="text-white/40 font-label text-[9px] uppercase tracking-widest mb-8 text-center italic">STORE_THIS_TO_ENABLE_FUTURE_UNBLOCKING</Text>
+                        
+                        <View className="w-64 h-64 bg-white p-4 mb-8">
+                            {generatedQrData && (
+                                <Image 
+                                    source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${generatedQrData}` }}
+                                    className="w-full h-full"
+                                />
+                            )}
+                        </View>
+
+                        <Text className="text-white/40 font-label text-[10px] text-center uppercase tracking-widest leading-4 mb-8">
+                             PLEASE TAKE A SCREENSHOT OR SAVE THIS QR CODE. YOU WILL BE REQUIRED TO SCAN IT TO TERMINATE THE FOCUS PROTOCOL.
+                        </Text>
+
+                        <TouchableOpacity 
+                            onPress={() => {
+                                setIsQrModalVisible(false);
+                                finalizeSession(pendingSession);
+                            }}
+                            className="w-full h-14 bg-white items-center justify-center mb-3"
+                        >
+                            <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">I_HAVE_SAVED_THE_QR</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                            onPress={() => setIsQrModalVisible(false)}
+                            className="w-full h-14 border border-white/20 items-center justify-center"
+                        >
+                            <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">ABORT_DEPLOYMENT</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 };

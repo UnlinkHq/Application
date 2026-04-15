@@ -9,6 +9,7 @@ import {
   requestUsageStatsPermission, 
   requestBatteryOptimizationExemption 
 } from '../../modules/screen-time';
+import { ModernToggle } from './ModernToggle';
 import { FocusStorageService } from '../../services/FocusStorageService';
 
 export const PermissionBanner = () => {
@@ -21,7 +22,7 @@ export const PermissionBanner = () => {
   });
   const [loading, setLoading] = useState(true);
   const [showTroubleshoot, setShowTroubleshoot] = useState(false);
-  const [isReaming, setIsReaming] = useState(false);
+  const [isRearming, setIsRearming] = useState(false);
   const slideAnim = React.useRef(new Animated.Value(-200)).current;
 
   const checkHealth = useCallback(async () => {
@@ -66,7 +67,7 @@ export const PermissionBanner = () => {
   };
 
   const handleRearm = async () => {
-    setIsReaming(true);
+    setIsRearming(true);
     try {
       const activeSession = await FocusStorageService.getActiveSession();
       if (activeSession) {
@@ -78,7 +79,7 @@ export const PermissionBanner = () => {
     } catch (e) {
       Alert.alert("Error", "Failed to re-arm engine.");
     } finally {
-      setIsReaming(false);
+      setIsRearming(false);
       checkHealth();
     }
   };
@@ -133,9 +134,9 @@ export const PermissionBanner = () => {
         <TouchableOpacity 
           style={styles.rearmBtn}
           onPress={handleRearm}
-          disabled={isReaming}
+          disabled={isRearming}
         >
-          {isReaming ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="refresh" color="#FFF" size={14} />}
+          {isRearming ? <ActivityIndicator size="small" color="#FFF" /> : <Ionicons name="refresh" color="#FFF" size={14} />}
           <Text style={styles.rearmText}>RE-ARM ENFORCEMENT ENGINE</Text>
         </TouchableOpacity>
 

@@ -60,6 +60,18 @@ export const BlocksScreen = () => {
         refreshData();
     };
 
+    const [showLockModal, setShowLockModal] = useState(false);
+
+    const handleEdit = (block: BlockSession) => {
+        if (activeSession) {
+            setShowLockModal(true);
+        } else {
+            // navigation.navigate('EditBlock', { blockId: block.id });
+            // For now, let's just toast or log
+            console.log('Editing:', block.id);
+        }
+    };
+
     return (
         <View style={styles.root}>
             <SafeAreaView className="flex-1 bg-black" edges={['top']}>
@@ -116,6 +128,7 @@ export const BlocksScreen = () => {
                                     index={idx} 
                                     onPlay={() => handlePlay(block)}
                                     onDelete={() => handleDelete(block.id)}
+                                    onEdit={() => handleEdit(block)}
                                     isActive={activeSession?.id === block.id}
                                 />
                             ))
@@ -127,6 +140,32 @@ export const BlocksScreen = () => {
                         )}
                     </View>
                 </ScrollView>
+
+                {/* Session Lock Warning Modal */}
+                {showLockModal && (
+                    <View className="absolute inset-0 bg-black/80 items-center justify-center px-8 z-50">
+                        <Animated.View 
+                            entering={FadeInDown.duration(400)}
+                            className="w-full bg-[#0e0e0e] border border-white/20 p-8 rounded-sm items-center"
+                        >
+                            <View className="w-16 h-16 rounded-full border border-red-500 items-center justify-center mb-6">
+                                <MaterialIcons name="lock" size={32} color="#ef4444" />
+                            </View>
+                            <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-4">
+                                PROTOCOL_ENFORCED
+                            </Text>
+                            <Text className="text-white/40 font-label text-[10px] text-center uppercase tracking-widest leading-4 mb-8">
+                                YOU CANNOT MODIFY FOCUS PARAMETERS WHILE A SESSION IS LIVE. TERMINATE THE ACTIVE DEPLOYMENT TO ENABLE EDITING.
+                            </Text>
+                            <TouchableOpacity 
+                                onPress={() => setShowLockModal(false)}
+                                className="w-full h-14 bg-white items-center justify-center"
+                            >
+                                <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">ACKNOWLEDGE</Text>
+                            </TouchableOpacity>
+                        </Animated.View>
+                    </View>
+                )}
             </SafeAreaView>
         </View>
     );
@@ -218,7 +257,7 @@ const ActiveBlockCard = ({ session, onStop }: { session: BlockSession, onStop: (
     );
 };
 
-const LibraryItem = ({ block, index, onPlay, onDelete, isActive }: { block: BlockSession, index: number, onPlay: () => void, onDelete: () => void, isActive: boolean }) => (
+const LibraryItem = ({ block, index, onPlay, onDelete, onEdit, isActive }: { block: BlockSession, index: number, onPlay: () => void, onDelete: () => void, onEdit?: (block: BlockSession) => void, isActive: boolean }) => (
     <Animated.View 
         entering={FadeInDown.delay(index * 100).duration(600)}
         className={`mb-4 p-5 rounded-sm border ${isActive ? 'border-white/40 bg-white/5' : 'border-white/10 bg-black'}`}
@@ -235,6 +274,9 @@ const LibraryItem = ({ block, index, onPlay, onDelete, isActive }: { block: Bloc
             </View>
             
             <View className="flex-row items-center gap-4">
+                <TouchableOpacity onPress={() => onEdit?.(block)} className="p-2">
+                    <MaterialIcons name="edit" size={18} color="rgba(255,255,255,0.4)" />
+                </TouchableOpacity>
                 <TouchableOpacity onPress={onDelete} className="p-2">
                     <MaterialIcons name="delete-outline" size={18} color="rgba(255,255,255,0.2)" />
                 </TouchableOpacity>
@@ -266,9 +308,11 @@ const styles = StyleSheet.create({
     },
     aura: {
         position: 'absolute',
-        inset: -15,
-        backgroundColor: 'white',
+        top: -15,
+        bottom: -15,
+        left: -15,
+        right: -15,
+        backgroundColor: 'rgba(255,255,255,0.05)',
         borderRadius: 40,
-        filter: 'blur(35px)',
     }
 });

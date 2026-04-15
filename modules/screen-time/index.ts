@@ -175,6 +175,14 @@ export function requestBatteryOptimizationExemption(): void {
     ScreenTimeModule.requestBatteryOptimizationExemption();
 }
 
+export async function openAppInfoSettings(): Promise<void> {
+    return await ScreenTimeModule.openAppInfoSettings();
+}
+
+export async function requestUsageStatsPermission(): Promise<void> {
+    return await ScreenTimeModule.requestUsageStatsPermission();
+}
+
 export async function getEngineHealth() {
     return await ScreenTimeModule.getEngineHealth();
 }

@@ -14,7 +14,18 @@ export interface BlockSession {
         youtube: boolean;
         instagram: boolean;
     };
-    strictMode: string;
+    strictnessConfig: {
+        mode: 'normal' | 'qr_code' | 'mom_test' | 'money';
+        emailAddress?: string;
+        isVerified?: boolean;
+        qrCodeData?: string;
+    };
+    timedBreaks: {
+        enabled: boolean;
+        allowedCount: number; // 1, 2, 3
+        durationMins: number; // 5, 10, 15
+        usedCount: number;
+    };
     startTime: number;
 }
 
