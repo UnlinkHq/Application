@@ -139,20 +139,20 @@ export const StrictModeModal = ({
                             key={mode.id}
                             onPress={() => setSelectedMode(mode.id)}
                             activeOpacity={0.7}
-                            className={`flex-row items-center p-5 rounded-2xl border-2 ${selectedMode === mode.id ? 'border-white bg-[#121212]' : 'border-white/5 bg-[#121212]'}`}
+                            className={`flex-row items-center p-5 border-2 ${selectedMode === mode.id ? 'border-white bg-[#121212]' : 'border-white/5 bg-[#121212]'}`}
                         >
-                            <View className="w-12 h-12 rounded-full bg-white/10 items-center justify-center mr-4">
+                            <View className="w-12 h-12 bg-white/10 items-center justify-center mr-4">
                                 <MaterialCommunityIcons name={mode.icon} size={24} color={mode.color} />
                             </View>
                             <View className="flex-1 mr-4">
-                                <Text className="text-white font-headline font-black text-sm tracking-tight">
+                                <Text className="text-white font-headline font-black text-sm uppercase tracking-widest">
                                     {mode.title}
                                 </Text>
                                 <Text className="text-white/40 font-label text-[10px] mt-1 leading-tight">
                                     {mode.description}
                                 </Text>
                             </View>
-                            <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${selectedMode === mode.id ? 'bg-white border-white' : 'bg-transparent border-white/20'}`}>
+                            <View className={`w-6 h-6 border-2 items-center justify-center ${selectedMode === mode.id ? 'bg-white border-white' : 'bg-transparent border-white/20'}`}>
                                 {selectedMode === mode.id && (
                                     <MaterialIcons name="check" size={14} color="black" />
                                 )}
@@ -166,13 +166,13 @@ export const StrictModeModal = ({
                     {selectedMode === 'qr_code' && (
                         <Animated.View entering={FadeInDown} className="mb-8">
                             <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-4">QR CODE CONFIGURATION</Text>
-                            <View className="bg-white/5 border border-white/10 p-5 rounded-sm">
+                            <View className="bg-white/5 border border-white/10 p-5">
                                 <Text className="text-white font-headline font-black text-xs uppercase mb-2">QR GENERATION</Text>
-                                <Text className="text-white/40 font-label text-[10px] uppercase leading-4 mb-6 italic">
+                                <Text className="text-white/40 font-label text-[10px] leading-4 mb-6 italic">
                                     A unique QR code will be generated for this session. It will be stored in your gallery. To stop the block, you must scan it.
                                 </Text>
                                 <View className="h-14 bg-white/10 border border-white/10 items-center justify-center">
-                                    <Text className="text-white/60 font-headline font-black text-[10px] uppercase tracking-widest">AUTO_GENERATE_ON_START</Text>
+                                    <Text className="text-white/60 font-headline font-black text-[10px] uppercase tracking-widest">Auto generate on start</Text>
                                 </View>
                             </View>
                         </Animated.View>
@@ -182,7 +182,7 @@ export const StrictModeModal = ({
                         <Animated.View entering={FadeInDown} className="mb-8 space-y-4">
                             <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-2">MOM TEST CONFIGURATION</Text>
 
-                            <View className="bg-white/5 border border-white/10 p-6 rounded-sm">
+                            <View className="bg-white/5 border border-white/10 p-6">
                                 <View className="flex-row items-center justify-between mb-4">
                                     <View className="flex-row items-center">
                                         <MaterialCommunityIcons name="email-outline" size={16} color="white" style={{ marginRight: 8 }} />
@@ -191,7 +191,7 @@ export const StrictModeModal = ({
                                     {isVerified && (
                                         <View className="flex-row items-center">
                                             <MaterialIcons name="verified" size={12} color="white" />
-                                            <Text className="text-white font-label text-[8px] uppercase ml-1">VERIFIED</Text>
+                                            <Text className="text-white font-label text-[10px] uppercase ml-1">VERIFIED</Text>
                                         </View>
                                     )}
                                 </View>
@@ -217,7 +217,7 @@ export const StrictModeModal = ({
                                     </View>
                                 ) : !isVerified ? (
                                     <View>
-                                        <Text className="text-white/40 font-label text-[9px] uppercase mb-3 italic">ENTER THE CODE EMAILED TO YOUR CONTACT</Text>
+                                        <Text className="text-white/40 font-label text-[10px] mb-3 italic">Enter the code emailed to your contact</Text>
                                         <View className="flex-row gap-2">
                                             <TextInput
                                                 value={enteredSetupCode}
@@ -228,7 +228,7 @@ export const StrictModeModal = ({
                                                 maxLength={4}
                                                 className="flex-1 h-14 bg-black border border-white/20 px-4 text-white font-headline font-black text-xl text-center"
                                             />
-                                            <TouchableOpacity 
+                                            <TouchableOpacity
                                                 onPress={handleVerifyCode}
                                                 className="w-20 bg-white items-center justify-center"
                                             >
@@ -236,7 +236,7 @@ export const StrictModeModal = ({
                                             </TouchableOpacity>
                                         </View>
                                         <TouchableOpacity onPress={() => setVerificationStep('input')} className="mt-4">
-                                            <Text className="text-white/20 font-label text-[8px] uppercase tracking-widest text-center underline">CHANGE_EMAIL</Text>
+                                            <Text className="text-white/20 font-label text-[10px] uppercase tracking-widest text-center underline">Change email</Text>
                                         </TouchableOpacity>
                                     </View>
                                 ) : (
@@ -247,17 +247,17 @@ export const StrictModeModal = ({
                             </View>
 
                             {/* WhatsApp Locked Premium Card */}
-                            <View className="bg-[#0a0a0a] border border-white/5 p-5 rounded-sm opacity-60">
+                            <View className="bg-[#0a0a0a] border border-white/5 p-5 opacity-60">
                                 <View className="flex-row items-center justify-between mb-2">
                                     <View className="flex-row items-center">
                                         <MaterialCommunityIcons name="whatsapp" size={16} color="#22c55e" style={{ marginRight: 8 }} />
                                         <Text className="text-white/60 font-headline font-black text-xs uppercase">WHATSAPP SYNC</Text>
                                     </View>
-                                    <View className="bg-white/10 px-2 py-1 rounded-sm border border-white/10">
-                                        <Text className="text-white border-white/0 font-label text-[8px] uppercase font-black tracking-widest">PREMIUM</Text>
+                                    <View className="bg-white/10 px-2 py-1 border border-white/10">
+                                        <Text className="text-white border-white/0 font-label text-[10px] uppercase font-black tracking-widest">PREMIUM</Text>
                                     </View>
                                 </View>
-                                <Text className="text-white/30 font-label text-[9px] uppercase leading-4 italic mt-1 pb-2">
+                                <Text className="text-white/30 font-label text-[10px] mt-1 pb-2 font-italic">
                                     Link directly to WhatsApp for automated messaging without server emails. Available in upcoming iterations.
                                 </Text>
                             </View>
@@ -277,8 +277,8 @@ export const StrictModeModal = ({
             </BottomSheetScrollView>
 
             <View className="px-6 py-6 bg-[#0a0a0a]">
-                <TouchableOpacity 
-                    className={`h-16 items-center justify-center rounded-2xl ${isConfirmDisabled ? 'bg-white/10' : 'bg-white'}`}
+                <TouchableOpacity
+                    className={`h-16 items-center justify-center ${isConfirmDisabled ? 'bg-white/10' : 'bg-white'}`}
                     activeOpacity={0.9}
                     onPress={handleConfirm}
                     disabled={isConfirmDisabled}

@@ -51,7 +51,6 @@ export const GlobalModals = React.memo(() => {
             <BottomSheetWrapper
                 visible={activeConfigId !== null}
                 onClose={closeConfig}
-                onBack={closeConfig}
                 snapPoints={['90%']}
                 title={
                     activeConfigId === 'usage' ? 'SET TIME LIMITS' :

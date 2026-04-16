@@ -97,25 +97,25 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
         {/* Header Section */}
         <View className="mb-10">
             <View className="flex-row items-baseline space-x-2 mb-1">
-                <Text className="text-[10px] font-label font-bold uppercase tracking-[0.3em] text-[#ffb4aa]">04</Text>
-                <View className="h-[1px] w-8 bg-[#474747] opacity-30 self-center" />
+                <Text className="text-[10px] font-label font-black uppercase tracking-widest text-[#ffb4aa]">04</Text>
+                <View className="h-[1px] w-8 bg-white/10 self-center" />
             </View>
-            <Text className="text-4xl font-headline  tracking-tighter uppercase mb-2 text-white">Your actual screen time</Text>
-            <Text className="text-[#c6c6c6] font-label text-xs uppercase tracking-widest">{headerSubLabel}</Text>
+            <Text className="text-4xl font-headline font-black tracking-widest uppercase mb-2 text-white">YOUR ACTUAL SCREEN TIME</Text>
+            <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest">{headerSubLabel}</Text>
         </View>
 
         {/* Main Display Data */}
         <View className="mb-8 flex-col items-start z-10">
             <View className="flex-row items-baseline">
-                <Text className="text-7xl md:text-8xl font-headline font-black tracking-tighter text-white">{headerValue}</Text>
+                <Text className="text-7xl md:text-8xl font-headline font-black tracking-widest text-white uppercase">{headerValue}</Text>
             </View>
             
             {/* Warning Badge */}
             {todaySeconds > recommendedLimit && (
               <View className="mt-4 flex-row space-x-4">
-                  <View className="flex-row items-center space-x-2 py-1.5 px-3 bg-[#2a2a2a] rounded">
+                  <View className="flex-row items-center space-x-2 py-1.5 px-3 bg-[#2a2a2a]">
                       <MaterialIcons name="warning" size={14} color="#ffb4aa" />
-                      <Text className="font-label text-[10px] uppercase tracking-wider text-[#e2e2e2] font-bold">Latency Detected</Text>
+                      <Text className="font-label text-[10px] uppercase tracking-widest text-white/40 font-black">LATENCY DETECTED</Text>
                   </View>
               </View>
             )}
@@ -123,18 +123,18 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
 
         {/* View Toggle */}
         <View className="mb-4 self-center w-full max-w-xs z-20">
-            <View className="flex-row border border-[#474747]/50 rounded p-1">
-                <TouchableOpacity 
+            <View className="flex-row border border-white/10 p-1">
+                <TouchableOpacity
                   onPress={() => setViewMode('Day')}
-                  className={`flex-1 py-3 items-center justify-center rounded ${viewMode === 'Day' ? 'bg-white' : ''}`}
+                  className={`flex-1 py-3 items-center justify-center ${viewMode === 'Day' ? 'bg-white' : ''}`}
                 >
-                  <Text className={`text-[10px] font-label font-bold uppercase tracking-widest ${viewMode === 'Day' ? 'text-black' : 'text-[#e2e2e2]/40'}`}>Day</Text>
+                  <Text className={`text-[10px] font-label font-black uppercase tracking-widest ${viewMode === 'Day' ? 'text-black' : 'text-white/40'}`}>DAY</Text>
                 </TouchableOpacity>
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => setViewMode('Week')}
-                  className={`flex-1 py-3 items-center justify-center rounded ${viewMode === 'Week' ? 'bg-white' : ''}`}
+                  className={`flex-1 py-3 items-center justify-center ${viewMode === 'Week' ? 'bg-white' : ''}`}
                 >
-                  <Text className={`text-[10px] font-label font-bold uppercase tracking-widest ${viewMode === 'Week' ? 'text-black' : 'text-[#e2e2e2]/40'}`}>Week</Text>
+                  <Text className={`text-[10px] font-label font-black uppercase tracking-widest ${viewMode === 'Week' ? 'text-black' : 'text-white/40'}`}>WEEK</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -146,10 +146,10 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
                 <View className="absolute inset-0 flex-col justify-between pointer-events-none pb-[20px]">
                     
                     <View className="border-t border-white/5 w-full absolute top-0" />
-                    <Text className="absolute top-0 right-0 text-[10px] font-label text-[#e2e2e2]/50 -translate-y-[12px] bg-black px-1">{Math.ceil(chartMaxSeconds/3600)}H</Text>
+                    <Text className="absolute top-0 right-0 text-[10px] font-label text-white/40 -translate-y-[12px] bg-black px-1 uppercase">{Math.ceil(chartMaxSeconds/3600)}H</Text>
 
                     <View className="border-t border-white/20 w-full absolute" style={{ top: `${(1 - (recommendedLimit / chartMaxSeconds)) * 100}%` }} />
-                    <Text className="absolute right-0 bg-black px-1 text-[10px] font-label text-[#e2e2e2]/80 tracking-tighter -translate-y-[12px]" style={{ top: `${(1 - (recommendedLimit / chartMaxSeconds)) * 100}%` }}>GOAL {screenTimeGoal}H</Text>
+                    <Text className="absolute right-0 bg-black px-1 text-[10px] font-label text-white/40 tracking-widest -translate-y-[12px] uppercase" style={{ top: `${(1 - (recommendedLimit / chartMaxSeconds)) * 100}%` }}>GOAL {screenTimeGoal}H</Text>
 
                     <View className="border-t border-white/5 w-full absolute bottom-[20px]" />
                     <Text className="absolute bottom-[20px] right-0 text-[10px] font-label text-[#e2e2e2]/50 translate-y-[2px] bg-black px-1">0H</Text>
@@ -179,9 +179,9 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
                                       {formatDuration(d.duration).replace(' ', '')}
                                   </Text>
                                 )}
-                                <View 
-                                  className={`w-2 rounded-t-sm transition-all ${barColor}`} 
-                                  style={{ height: `${heightPercent}%` }} 
+                                <View
+                                  className={`w-2 transition-all ${barColor}`}
+                                  style={{ height: `${heightPercent}%` }}
                                 />
                             </View>
                             <Text className={`mt-2 text-[10px] font-label ${textColor}`}>
@@ -202,8 +202,8 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
               activeOpacity={0.8}
               className="w-full  bg-white active:scale-[0.98] transition-transform flex-row items-center justify-center space-x-2 rounded-none"
           >
-              <Text className="text-black font-headline font-black tracking-[0.2em] uppercase text-sm">
-                  Continue
+              <Text className="text-black font-headline font-black tracking-widest uppercase text-sm">
+                  CONTINUE
               </Text>
               <MaterialIcons name="arrow-forward" size={16} color="black" />
           </TouchableOpacity>

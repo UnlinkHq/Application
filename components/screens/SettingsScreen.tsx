@@ -10,7 +10,7 @@ export const SettingsScreen = () => {
 
     const SectionHeader = ({ title }: { title: string }) => (
         <View className="flex-row items-center gap-2 mb-6">
-            <Text className="font-label text-[10px] uppercase tracking-[0.4em] text-zinc-500">{title}</Text>
+            <Text className="font-label text-[10px] uppercase tracking-widest text-zinc-500">{title}</Text>
             <View className="h-[1px] flex-1 bg-white/20" />
         </View>
     );
@@ -26,7 +26,7 @@ export const SettingsScreen = () => {
         >
             <View className="flex-row items-center gap-4">
                 <MaterialIcons name={icon as any} size={20} color="white" />
-                <Text className="font-label text-xs uppercase tracking-[0.2em] text-white">{label}</Text>
+                <Text className="font-label text-sm uppercase tracking-widest text-white">{label}</Text>
             </View>
             <View className="flex-row items-center gap-2">
                 {rightElement}
@@ -59,16 +59,16 @@ export const SettingsScreen = () => {
                 <View className="border border-white p-8 mb-12 relative overflow-hidden">
                     <View className="flex-row justify-between items-start mb-6">
                         <View>
-                            <Text className="font-label text-[10px] tracking-[0.3em] text-zinc-500 uppercase mb-2">System Status: Restricted</Text>
-                            <Text className="font-headline font-black text-4xl tracking-tighter uppercase text-white">Unlock Pro</Text>
+                            <Text className="font-label text-[10px] tracking-widest text-zinc-500 uppercase mb-2">SYSTEM STATUS: RESTRICTED</Text>
+                            <Text className="font-headline font-black text-4xl tracking-widest uppercase text-white">UNLOCK PRO</Text>
                         </View>
                         <MaterialIcons name="workspace-premium" size={24} color="rgba(255,255,255,0.2)" />
                     </View>
-                    <Text className="text-zinc-400 font-label text-xs uppercase tracking-wider mb-6">
+                    <Text className="text-zinc-500 font-label text-[10px] mb-6">
                         Deep-focus protocols // Biometric unlinking // Encrypted data export
                     </Text>
                     <TouchableOpacity className="bg-white py-4 items-center">
-                        <Text className="text-black font-label font-bold text-[10px] uppercase tracking-[0.2em]">Claim Membership</Text>
+                        <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">CLAIM MEMBERSHIP</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -111,7 +111,7 @@ export const SettingsScreen = () => {
                     >
                         <View className="flex-row items-center gap-4">
                             <MaterialIcons name="security" size={20} color="white" />
-                            <Text className="font-label text-xs uppercase tracking-[0.2em] text-white">Strict Mode</Text>
+                            <Text className="font-label text-sm uppercase tracking-widest text-white">Strict mode</Text>
                         </View>
                         <View className={`w-12 h-6 border border-white flex justify-center px-1 ${isStrict ? 'items-end' : 'items-start'}`}>
                             <View className="w-4 h-4 bg-white" />

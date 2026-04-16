@@ -27,17 +27,17 @@ export const JourneyBeginStep: React.FC<JourneyBeginStepProps> = ({ onFinish }) 
 
             {/* Typography Cluster */}
             <View className="flex-col items-center w-full mt-4">
-                <Text className="text-4xl md:text-5xl  text-white leading-tight tracking-tighter uppercase font-headline text-center">
+                <Text className="text-4xl md:text-5xl font-headline font-black text-white leading-tight tracking-widest uppercase text-center">
                     YOUR JOURNEY{'\n'}BEGINS NOW.
                 </Text>
                 
                 <View className="flex-row items-center justify-center space-x-6 mt-8 mb-8">
                     <View className="h-[1px] w-8 bg-white/20" />
-                    <Text className="text-[9px] font-bold uppercase tracking-[0.5em] text-white/40">PHASE 01</Text>
+                    <Text className="text-[10px] font-headline font-black uppercase tracking-widest text-white/40">PHASE 01</Text>
                     <View className="h-[1px] w-8 bg-white/20" />
                 </View>
 
-                <Text className="text-base font-body text-white/60 max-w-xs text-center leading-relaxed tracking-wide">
+                <Text className="text-[10px] font-body text-white/40 max-w-xs text-center leading-relaxed">
                     Initialize your first blocking sequence to reclaim focus.
                 </Text>
             </View>
@@ -50,7 +50,7 @@ export const JourneyBeginStep: React.FC<JourneyBeginStepProps> = ({ onFinish }) 
                 activeOpacity={0.8}
                 className="w-full bg-white flex items-center justify-center py-6 px-8 rounded-none active:scale-[0.98] transition-transform border border-white"
             >
-                <Text className="text-black font-headline text-xs tracking-[0.4em] uppercase">
+                <Text className="text-black font-headline font-black text-sm tracking-widest uppercase">
                     LET'S GO
                 </Text>
             </TouchableOpacity>

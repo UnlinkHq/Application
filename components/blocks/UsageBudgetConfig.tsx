@@ -18,11 +18,11 @@ export const UsageBudgetConfig = ({ onBack }: UsageBudgetConfigProps) => {
       <BottomSheetScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         
         <View className="items-center mb-8 px-6">
-            <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.2em] text-center mb-2">
+            <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.3em] text-center mb-2">
                 PROTOCOL_02: TEMPORAL_THRESHOLD
             </Text>
-            <Text className="text-white font-headline font-black text-2xl uppercase tracking-tighter text-center">
-                Configure Usage Budget
+            <Text className="text-white font-headline font-black text-2xl uppercase tracking-widest text-center">
+                CONFIGURE USAGE BUDGET
             </Text>
         </View>
 
@@ -30,7 +30,7 @@ export const UsageBudgetConfig = ({ onBack }: UsageBudgetConfigProps) => {
         <View className="border-2 border-white p-5 flex-row justify-between items-center mb-6">
             <View className="flex-row items-center">
                 <Ionicons name="flash-outline" size={20} color="white" style={{ marginRight: 12}} />
-                <Text className="text-white font-headline font-black text-lg uppercase tracking-tight">ENABLE_PROTOCOL</Text>
+                <Text className="text-white font-headline font-black text-lg uppercase tracking-widest">ENABLE PROTOCOL</Text>
             </View>
             <Switch 
                 value={isEnabled}
@@ -43,25 +43,25 @@ export const UsageBudgetConfig = ({ onBack }: UsageBudgetConfigProps) => {
         {/* Inputs - Surgical Style */}
         <View className="border-2 border-white mb-6">
              <View className="flex-row items-center p-5 border-b border-white/20">
-                <Text className="text-white font-headline font-black text-lg uppercase tracking-tight flex-1">NAME</Text>
+                <Text className="text-white font-headline font-black text-lg uppercase tracking-widest flex-1">NAME</Text>
                 <View className="flex-row items-center">
-                    <Text className="text-white/60 font-label text-xs uppercase tracking-widest mr-2">USAGE_BUDGET</Text>
+                    <Text className="text-white/40 font-label text-[10px] mr-2">Usage budget</Text>
                     <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
                 </View>
              </View>
              <TouchableOpacity className="flex-row items-center p-5">
-                <Text className="text-white font-headline font-black text-lg uppercase tracking-tight flex-1">APPS_BLOCKING</Text>
+                <Text className="text-white font-headline font-black text-lg uppercase tracking-widest flex-1">APPS BLOCKING</Text>
                 <View className="flex-row items-center">
-                    <Text className="text-white/60 font-label text-xs uppercase tracking-widest mr-2">0_SELECTED</Text>
+                    <Text className="text-white/40 font-label text-[10px] mr-2">0 selected</Text>
                     <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
                 </View>
              </TouchableOpacity>
         </View>
 
         {/* Usage Counting Logic */}
-        <Text className="text-white font-headline font-black text-xs uppercase tracking-[0.3em] mb-4">LOGIC_MODE</Text>
+        <Text className="text-white font-headline font-black text-xs uppercase tracking-widest mb-4">LOGIC MODE</Text>
         <View className="border-2 border-white p-5 mb-8 flex-row justify-between items-center">
-             <Text className="text-white/60 font-label text-[10px] uppercase tracking-widest">CALCULATION</Text>
+             <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest">CALCULATION</Text>
              <View className="flex-row border border-white/20 p-1">
                  <TouchableOpacity 
                     onPress={() => setMode('Separate')}
@@ -102,12 +102,12 @@ export const UsageBudgetConfig = ({ onBack }: UsageBudgetConfigProps) => {
       </BottomSheetScrollView>
 
       {/* Action Button - Surgical Style */}
-      <TouchableOpacity 
-        className="bg-white h-16 items-center justify-center mb-6 no-corners"
+      <TouchableOpacity
+        className="bg-white h-16 items-center justify-center mb-6"
         activeOpacity={0.9}
         onPress={onBack}
       >
-        <Text className="text-black font-headline font-black text-lg uppercase tracking-[0.3em]">CONFIRM_PROTOCOL</Text>
+        <Text className="text-black font-headline font-black text-lg uppercase tracking-widest">CONFIRM PROTOCOL</Text>
       </TouchableOpacity>
     </View>
   );

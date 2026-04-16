@@ -20,14 +20,14 @@ import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { AppSelectionModal } from './AppSelectionModal';
 import { StrictModeModal, StrictModeLevel } from './StrictModeModal';
-import { 
-    isAdminActive, 
-    requestAdmin, 
-    deactivateAdmin, 
-    getSelectionCount, 
-    activateShield, 
+import {
+    isAdminActive,
+    requestAdmin,
+    deactivateAdmin,
+    getSelectionCount,
+    activateShield,
     deactivateShield,
-    FamilyPickerView 
+    FamilyPickerView
 } from '../../modules/screen-time';
 import { ModernToggle } from '../ui/ModernToggle';
 import { FocusStorageService } from '../../services/FocusStorageService';
@@ -228,7 +228,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
     const handleInitiate = async () => {
         const hasApps = Platform.OS === 'ios' ? nativeIosCount > 0 : selectedApps.length > 0;
         const hasSurgical = blockShorts.youtube || blockShorts.instagram;
-        
+
         if (!hasApps && !hasSurgical) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             alert("REQUIRED_FIELD: PLEASE_SELECT_TARGETS_OR_SURGICAL_BLOCKS");
@@ -303,7 +303,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
             >
                 <View className="px-1">
                     <View className="mb-4">
-                        <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-1">SESSION NAME</Text>
+                        <Text className="text-white font-headline font-black text-[10px] capitalize tracking-[0.3em] mb-1">SESSION NAME </Text>
                         <TextInput
                             value={title}
                             onChangeText={setTitle}
@@ -344,11 +344,11 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                                         key={app.id}
                                                         source={{ uri: app.icon }}
                                                         style={{ marginLeft: index === 0 ? 0 : -14 }}
-                                                        className="w-9 h-9 rounded-full bg-black border-2 border-black"
+                                                        className="w-9 h-9 bg-black border-2 border-black"
                                                     />
                                                 ))}
                                                 {selectedApps.length > 4 && (
-                                                    <View className="ml-2 bg-white/10 px-2 py-1 rounded-full">
+                                                    <View className="ml-2 bg-white/10 px-2 py-1">
                                                         <Text className="text-white font-label text-[10px] uppercase">+{selectedApps.length - 4}</Text>
                                                     </View>
                                                 )}
@@ -378,21 +378,21 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
 
                         {/* Box 2: Strictness */}
                         <View className="py-[5px]">
-                            <Animated.View 
+                            <Animated.View
                                 style={[
-                                    { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, borderRadius: 8 },
+                                    { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
                                     glowStyle
                                 ]}
                             >
-                                <LinearGradient 
-                                    colors={['rgba(255,255,255,0.08)', 'transparent']} 
-                                    style={{ flex: 1, borderRadius: 8, marginHorizontal: 2 }} 
+                                <LinearGradient
+                                    colors={['rgba(255,255,255,0.08)', 'transparent']}
+                                    style={{ flex: 1, marginHorizontal: 2 }}
                                 />
                             </Animated.View>
                             <TouchableOpacity
                                 activeOpacity={0.7}
                                 onPress={() => setIsStrictModeVisible(true)}
-                                className="border border-white/40 p-5 bg-black rounded-lg"
+                                className="border border-white/40 p-5 bg-black"
                                 style={{
                                     shadowColor: '#fff',
                                     shadowOffset: { width: 0, height: 0 },
@@ -404,35 +404,34 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                 <View className="flex-row justify-between items-center mb-4">
                                     <View className="flex-row items-center gap-2">
                                         <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">STRICTNESS</Text>
-                                        <View className="bg-white/10 px-1.5 py-0.5 rounded border border-white/10">
-                                            <Text className="text-white/40 font-label text-[8px] font-bold">PREMIUM</Text>
+                                        <View className="bg-white/10 px-1.5 py-0.5 border border-white/10">
+                                            <Text className="text-white/40 font-label text-[10px] font-bold">PREMIUM</Text>
                                         </View>
                                     </View>
                                     <Ionicons name="shield-checkmark-outline" size={16} color="white" />
                                 </View>
                                 <View className="flex-row items-center gap-3">
-                                    <View className="w-10 h-10 rounded-full bg-white/5 items-center justify-center border border-white/10">
+                                    <View className="w-10 h-10 bg-white/5 items-center justify-center border border-white/10">
                                         <MaterialCommunityIcons name={getModeIcon(strictMode)} size={20} color="white" />
                                     </View>
                                     <View>
                                         <Text className="text-white font-headline font-black text-sm uppercase tracking-tight">
                                             {getModeTitle(strictMode)}
                                         </Text>
-                                        <Text className="text-white/40 font-label text-[8px] uppercase mt-0.5 tracking-widest">
-                                            TAP_TO_RECONFIGURE
-                                        </Text>
+
+                                        <Text className="text-white/40 font-label text-[10px] mt-1">Select the strictness level for this session</Text>
                                     </View>
                                 </View>
                             </TouchableOpacity>
                         </View>
-                        
+
                         {/* Box 3: Timed Breaks */}
                         <View className="mt-2">
                             <View className="border border-white/10 p-5 bg-black/20">
                                 <View className="flex-row items-center justify-between mb-4">
                                     <View>
                                         <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">Allow Timed Breaks</Text>
-                                        <Text className="text-white/40 font-label text-[8px] uppercase mt-1">Temporary relief during sessions</Text>
+                                        <Text className="text-white/40 font-label text-[10px] mt-1">Temporary relief during sessions</Text>
                                     </View>
                                     <ModernToggle value={allowTimedBreaks} onValueChange={setAllowTimedBreaks} />
                                 </View>
@@ -443,7 +442,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                             <Text className="text-white/20 font-headline font-black text-[9px] uppercase tracking-widest mb-3">Break Count</Text>
                                             <View className="flex-row gap-2">
                                                 {[1, 2, 3].map(num => (
-                                                    <TouchableOpacity 
+                                                    <TouchableOpacity
                                                         key={num}
                                                         onPress={() => setBreakTimes(num)}
                                                         className={`flex-1 h-12 items-center justify-center border ${breakTimes === num ? 'bg-white border-white' : 'border-white/20 bg-transparent'}`}
@@ -457,7 +456,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                             <Text className="text-white/20 font-headline font-black text-[9px] uppercase tracking-widest mb-3">Minutes per break</Text>
                                             <View className="flex-row gap-2">
                                                 {[5, 10, 15].map(min => (
-                                                    <TouchableOpacity 
+                                                    <TouchableOpacity
                                                         key={min}
                                                         onPress={() => setBreakDuration(min)}
                                                         className={`flex-1 h-12 items-center justify-center border ${breakDuration === min ? 'bg-white border-white' : 'border-white/20 bg-transparent'}`}
@@ -482,16 +481,16 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                         onPress={() => setBlockShorts(p => ({ ...p, youtube: !p.youtube }))}
                                         className="flex-row items-center p-4 border-b border-white/5"
                                     >
-                                        <View className="w-9 h-9 rounded-full bg-white/5 items-center justify-center mr-4 border border-white/10">
+                                        <View className="w-9 h-9 bg-white/5 items-center justify-center mr-4 border border-white/10">
                                             <MaterialCommunityIcons name="youtube" size={20} color="#FF0000" />
                                         </View>
                                         <View className="flex-1">
                                             <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">YOUTUBE_SHORTS</Text>
-                                            <Text className="text-white/40 font-label text-[8px] uppercase mt-1">ENABLES_SURGICAL_BLOCK</Text>
+                                            <Text className="text-white/40 font-label text-[10px] mt-1">Enables surgical block</Text>
                                         </View>
-                                        <ModernToggle 
-                                            value={blockShorts.youtube} 
-                                            onValueChange={(v) => setBlockShorts(p => ({ ...p, youtube: v }))} 
+                                        <ModernToggle
+                                            value={blockShorts.youtube}
+                                            onValueChange={(v) => setBlockShorts(p => ({ ...p, youtube: v }))}
                                         />
                                     </TouchableOpacity>
 
@@ -500,27 +499,27 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                         onPress={() => setBlockShorts(p => ({ ...p, instagram: !p.instagram }))}
                                         className="flex-row items-center p-4"
                                     >
-                                        <View className="w-9 h-9 rounded-full bg-white/5 items-center justify-center mr-4 border border-white/10">
+                                        <View className="w-9 h-9 bg-white/5 items-center justify-center mr-4 border border-white/10">
                                             <MaterialCommunityIcons name="instagram" size={20} color="#E1306C" />
                                         </View>
                                         <View className="flex-1">
                                             <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">INSTAGRAM_REELS</Text>
-                                            <Text className="text-white/40 font-label text-[8px] uppercase mt-1">RESTRICT_SHORT_FORM_VIDEO</Text>
+                                            <Text className="text-white/40 font-label text-[10px] mt-1">Restrict short-form video</Text>
                                         </View>
-                                        <ModernToggle 
-                                            value={blockShorts.instagram} 
-                                            onValueChange={(v) => setBlockShorts(p => ({ ...p, instagram: v }))} 
+                                        <ModernToggle
+                                            value={blockShorts.instagram}
+                                            onValueChange={(v) => setBlockShorts(p => ({ ...p, instagram: v }))}
                                         />
                                     </TouchableOpacity>
                                 </View>
                             ) : (
-                                <View className="border border-white/10 bg-black/40 p-5 rounded-lg">
+                                <View className="border border-white/10 bg-black/40 p-5">
                                     <View className="flex-row items-center gap-2 mb-2">
                                         <Ionicons name="information-circle-outline" size={14} color="rgba(255,255,255,0.4)" />
                                         <Text className="text-white/40 font-headline font-black text-[9px] uppercase tracking-widest">IOS_PLATFORM_NOTICE</Text>
                                     </View>
                                     <Text className="text-white/30 font-label text-[10px] leading-4 italic">
-                                        iOS does not permit surgical blocking of in-app features like Shorts. 
+                                        iOS does not permit surgical blocking of in-app features like Shorts.
                                         Please use the dedicated <Text className="text-white/60 font-bold">Socials</Text> tab for refined platform control.
                                     </Text>
                                 </View>
@@ -534,16 +533,16 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                 onPress={() => handleToggleUninstall(!blockUninstall)}
                                 className="border border-white/10 bg-black/40 p-4 flex-row items-center"
                             >
-                                <View className="w-9 h-9 rounded-full bg-white/5 items-center justify-center mr-4 border border-white/10">
+                                <View className="w-9 h-9 bg-white/5 items-center justify-center mr-4 border border-white/10">
                                     <Ionicons name="lock-closed-outline" size={18} color="white" />
                                 </View>
                                 <View className="flex-1">
                                     <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">PROTECT_UNINSTALL</Text>
-                                    <Text className="text-white/40 font-label text-[8px] uppercase mt-1">PREVENT_APP_REMOVAL_DURING_SESSION</Text>
+                                    <Text className="text-white/40 font-label text-[10px] mt-1">Prevent app removal during session</Text>
                                 </View>
-                                <ModernToggle 
-                                    value={blockUninstall} 
-                                    onValueChange={handleToggleUninstall} 
+                                <ModernToggle
+                                    value={blockUninstall}
+                                    onValueChange={handleToggleUninstall}
                                 />
                             </TouchableOpacity>
                         </View>
@@ -553,7 +552,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
 
             <View className="px-6 py-6 bg-[#0a0a0a]">
                 <TouchableOpacity
-                    className={`h-16 items-center justify-center rounded-2xl ${hasAppsSelected ? 'bg-white' : 'bg-white/10'}`}
+                    className={`h-16 items-center justify-center ${hasAppsSelected ? 'bg-white' : 'bg-white/10'}`}
                     activeOpacity={0.9}
                     onPress={hasAppsSelected ? handleInitiate : () => Platform.OS === 'ios' ? setIsFamilyPickerVisible(true) : setIsAppSelectionVisible(true)}
                 >
@@ -562,7 +561,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                             {hasAppsSelected ? 'Initiate Protocol' : 'Select Targets'}
                         </Text>
                         {hasAppsSelected && (
-                            <Text className="text-black/40 font-label text-[8px] uppercase tracking-widest mt-1">PREPARING AIRTIGHT LOCKDOWN</Text>
+                            <Text className="text-black/40 font-label text-[10px] mt-1">Preparing airtight lockdown</Text>
                         )}
                     </View>
                 </TouchableOpacity>
@@ -588,7 +587,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                     }}
                 >
                     <FamilyPickerView style={{ flex: 1 }} />
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={{ position: 'absolute', top: 20, right: 20, zIndex: 100 }}
                         onPress={() => {
                             setIsFamilyPickerVisible(false);
@@ -620,10 +619,10 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                     <View className="w-full bg-[#0a0a0a] border border-white/20 p-8 rounded-sm items-center">
                         <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">QR_SIGNATURE_GENERATED</Text>
                         <Text className="text-white/40 font-label text-[9px] uppercase tracking-widest mb-8 text-center italic">STORE_THIS_TO_ENABLE_FUTURE_UNBLOCKING</Text>
-                        
+
                         <View className="w-64 h-64 bg-white p-4 mb-8">
                             {generatedQrData && (
-                                <Image 
+                                <Image
                                     source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${generatedQrData}` }}
                                     className="w-full h-full"
                                 />
@@ -631,10 +630,10 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                         </View>
 
                         <Text className="text-white/40 font-label text-[10px] text-center uppercase tracking-widest leading-4 mb-8">
-                             PLEASE TAKE A SCREENSHOT OR SAVE THIS QR CODE. YOU WILL BE REQUIRED TO SCAN IT TO TERMINATE THE FOCUS PROTOCOL.
+                            PLEASE TAKE A SCREENSHOT OR SAVE THIS QR CODE. YOU WILL BE REQUIRED TO SCAN IT TO TERMINATE THE FOCUS PROTOCOL.
                         </Text>
 
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => {
                                 setIsQrModalVisible(false);
                                 finalizeSession(pendingSession);
@@ -643,8 +642,8 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                         >
                             <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">I_HAVE_SAVED_THE_QR</Text>
                         </TouchableOpacity>
-                        
-                        <TouchableOpacity 
+
+                        <TouchableOpacity
                             onPress={() => setIsQrModalVisible(false)}
                             className="w-full h-14 border border-white/20 items-center justify-center"
                         >

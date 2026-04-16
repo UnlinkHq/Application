@@ -12,7 +12,7 @@ import { ScreenTimeComparisonStep } from './onboarding/ScreenTimeComparisonStep'
 import { ReclaimTimeStep } from './onboarding/ReclaimTimeStep';
 import { HowItHelpsStep } from './onboarding/HowItHelpsStep';
 import { PaywallStep } from './onboarding/PaywallStep';
-import { NotificationPermissionStep } from './onboarding/NotificationPermissionStep';
+import { UnifiedPermissionStep } from './onboarding/UnifiedPermissionStep';
 import { JourneyBeginStep } from './onboarding/JourneyBeginStep';
 import { OnboardingHeader } from './onboarding/OnboardingHeader';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,7 +29,7 @@ export const OnboardingScreen = () => {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const prevStep = React.useRef(0);
 
-  const TOTAL_STEPS = 11; 
+  const TOTAL_STEPS = 10; 
 
   // Pre-fetch data earlier (Step 2) or auto-skip Step 3
   useEffect(() => {
@@ -101,7 +101,11 @@ export const OnboardingScreen = () => {
     }
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    if (currentStep === 2) {
+      await AsyncStorage.setItem('@unlink_goal', screenTimeGoal.toString());
+    }
+
     if (currentStep < TOTAL_STEPS - 1) {
       setCurrentStep(currentStep + 1);
     } else {
@@ -147,8 +151,7 @@ export const OnboardingScreen = () => {
           />
         )}
         {currentStep === 3 && (
-          <PermissionStep onPermissionGranted={async () => {
-             // Start pre-fetching immediately if not already done
+          <UnifiedPermissionStep onPermissionGranted={async () => {
              prefetchData();
              handleNext();
           }} />
@@ -190,9 +193,6 @@ export const OnboardingScreen = () => {
           <HowItHelpsStep onNext={handleNext} />
         )}
         {currentStep === 9 && (
-          <NotificationPermissionStep onNext={handleNext} />
-        )}
-        {currentStep === 10 && (
           <JourneyBeginStep onFinish={handleFinishOnboarding} />
         )}
       </View>

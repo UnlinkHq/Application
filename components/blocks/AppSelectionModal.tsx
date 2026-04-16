@@ -37,14 +37,14 @@ const AppItem = memo(({
     >
         <Image
             source={{ uri: app.icon }}
-            className={`w-10 h-10 rounded-xl mr-4 ${app.isMock ? 'grayscale' : ''}`}
+            className={`w-10 h-10 mr-4 ${app.isMock ? 'grayscale' : ''}`}
             resizeMode="contain"
         />
         <View className="flex-1">
             <Text className="text-white font-headline font-black text-sm uppercase tracking-tight">
                 {app.name}
             </Text>
-            <Text className="text-white/40 font-label text-[9px] uppercase tracking-widest mt-1">
+            <Text className="text-white/40 font-label text-[10px] mt-1">
                 {app.id.split('.').slice(-2).join('.')}
             </Text>
         </View>
@@ -131,8 +131,8 @@ export const AppSelectionModal = ({
                 <Text className="text-white font-headline font-black text-[12px] tracking-[0.2em] uppercase">
                     {section.title}
                 </Text>
-                <View className="bg-white/10 px-2 py-0.5 rounded-sm">
-                    <Text className="text-white/40 font-label text-[9px]">{section.data.length}</Text>
+                <View className="bg-white/10 px-2 py-0.5">
+                    <Text className="text-white/40 font-label text-[10px]">{section.data.length}</Text>
                 </View>
             </View>
         </View>
@@ -167,8 +167,8 @@ export const AppSelectionModal = ({
                 {isLoading ? (
                     <View className="flex-1 justify-center items-center py-10">
                         <ActivityIndicator size="large" color="#ffffff" />
-                        <Text className="text-white/50 font-label text-[10px] uppercase tracking-widest mt-4">
-                            PARSING_PACKAGE_MANIFESTS
+                        <Text className="text-white/40 font-label text-[10px] mt-4">
+                            Parsing package manifests
                         </Text>
                     </View>
                 ) : (

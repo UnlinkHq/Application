@@ -15,11 +15,11 @@ export const LaunchLimitConfig = ({ onBack }: LaunchLimitConfigProps) => {
       <View className="flex-1">
         
         <View className="items-center mb-8 px-6">
-            <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.2em] text-center mb-2">
+            <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.3em] text-center mb-2">
                 PROTOCOL_03: FREQUENCY_THRESHOLD
             </Text>
-            <Text className="text-white font-headline font-black text-2xl uppercase tracking-tighter text-center">
-                Configure Launch Limit
+            <Text className="text-white font-headline font-black text-2xl uppercase tracking-widest text-center">
+                CONFIGURE LAUNCH LIMIT
             </Text>
         </View>
 
@@ -27,9 +27,9 @@ export const LaunchLimitConfig = ({ onBack }: LaunchLimitConfigProps) => {
         <View className="border-2 border-white p-5 flex-row justify-between items-center mb-6">
             <View className="flex-row items-center">
                 <Ionicons name="flash-outline" size={20} color="white" style={{ marginRight: 12}} />
-                <Text className="text-white font-headline font-black text-lg uppercase tracking-tight">ENABLE_PROTOCOL</Text>
+                <Text className="text-white font-headline font-black text-lg uppercase tracking-widest">ENABLE PROTOCOL</Text>
             </View>
-            <Switch 
+            <Switch
                 value={isEnabled}
                 onValueChange={setIsEnabled}
                 trackColor={{ false: '#333', true: '#FFF' }}
@@ -40,41 +40,41 @@ export const LaunchLimitConfig = ({ onBack }: LaunchLimitConfigProps) => {
         {/* Inputs - Surgical Style */}
         <View className="border-2 border-white mb-6">
              <View className="flex-row items-center p-5 border-b border-white/20">
-                <Text className="text-white font-headline font-black text-lg uppercase tracking-tight flex-1">NAME</Text>
+                <Text className="text-white font-headline font-black text-lg uppercase tracking-widest flex-1">NAME</Text>
                 <View className="flex-row items-center">
-                    <Text className="text-white/60 font-label text-xs uppercase tracking-widest mr-2">LAUNCH_THRESHOLD</Text>
+                    <Text className="text-white/40 font-label text-[10px] mr-2">Launch threshold</Text>
                     <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
                 </View>
              </View>
              <TouchableOpacity className="flex-row items-center p-5">
-                <Text className="text-white font-headline font-black text-lg uppercase tracking-tight flex-1">APPS_TRACKED</Text>
+                <Text className="text-white font-headline font-black text-lg uppercase tracking-widest flex-1">APPS TRACKED</Text>
                 <View className="flex-row items-center">
-                    <Text className="text-white/60 font-label text-xs uppercase tracking-widest mr-2">0_SELECTED</Text>
+                    <Text className="text-white/40 font-label text-[10px] mr-2">0 selected</Text>
                     <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
                 </View>
              </TouchableOpacity>
         </View>
 
         {/* Frequency Logic */}
-        <Text className="text-white font-headline font-black text-xs uppercase tracking-[0.3em] mb-4">THRESHOLD_SETTING</Text>
-        
+        <Text className="text-white font-headline font-black text-xs uppercase tracking-widest mb-4">THRESHOLD SETTING</Text>
+
         <View className="border-2 border-white p-6 mb-12">
-             <Text className="text-white/60 font-label text-[10px] uppercase tracking-widest mb-6 text-center">MAXIMUM_DAILY_LAUNCHES</Text>
+             <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-6 text-center">MAXIMUM DAILY LAUNCHES</Text>
              <View className="flex-row justify-center items-center py-4">
-                 <TouchableOpacity 
-                    className="w-12 h-12 border border-white/20 items-center justify-center no-corners"
+                 <TouchableOpacity
+                    className="w-12 h-12 border border-white/20 items-center justify-center"
                     onPress={() => setLimit(Math.max(1, limit - 1))}
                  >
                      <Ionicons name="remove" size={24} color="white" />
                  </TouchableOpacity>
-                 
+
                  <View className="mx-12 items-center">
                      <Text className="text-white text-5xl font-headline font-black">{limit}</Text>
-                     <Text className="text-white/40 font-label text-[10px] tracking-widest mt-2 uppercase">LAUNCHES</Text>
+                     <Text className="text-white/40 font-label text-[10px] tracking-widest mt-2 uppercase">Launches</Text>
                  </View>
 
-                 <TouchableOpacity 
-                    className="w-12 h-12 border border-white/20 items-center justify-center no-corners"
+                 <TouchableOpacity
+                    className="w-12 h-12 border border-white/20 items-center justify-center"
                     onPress={() => setLimit(limit + 1)}
                  >
                      <Ionicons name="add" size={24} color="white" />
@@ -86,12 +86,12 @@ export const LaunchLimitConfig = ({ onBack }: LaunchLimitConfigProps) => {
       </View>
 
       {/* Action Button - Surgical Style */}
-      <TouchableOpacity 
-        className="bg-white h-16 items-center justify-center mb-6 no-corners"
+      <TouchableOpacity
+        className="bg-white h-16 items-center justify-center mb-6"
         activeOpacity={0.9}
         onPress={onBack}
       >
-        <Text className="text-black font-headline font-black text-lg uppercase tracking-[0.3em]">CONFIRM_PROTOCOL</Text>
+        <Text className="text-black font-headline font-black text-lg uppercase tracking-widest">CONFIRM PROTOCOL</Text>
       </TouchableOpacity>
     </View>
   );

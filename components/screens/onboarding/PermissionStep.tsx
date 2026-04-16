@@ -61,12 +61,12 @@ export const PermissionStep: React.FC<PermissionStepProps> = ({ onPermissionGran
         </View>
 
         {/* Headline */}
-        <Text className="font-headline text-4xl text-center leading-[1.1] tracking-tighter text-white mb-8">
+        <Text className="font-headline font-black text-4xl text-center leading-[1.1] tracking-widest text-white mb-8 uppercase">
           Ready to see your{"\n"}real screen time?
         </Text>
 
         {/* Body Text */}
-        <Text className="font-body text-zinc-400 text-center text-lg leading-relaxed max-w-md font-light">
+        <Text className="font-body text-white/40 text-center text-[10px] leading-relaxed max-w-md">
           Enable ScreenBreak to access Screen Time to generate your personal report. Your data stays private and never leaves your device.
         </Text>
       </View>
@@ -80,7 +80,7 @@ export const PermissionStep: React.FC<PermissionStepProps> = ({ onPermissionGran
             activeOpacity={0.9}
             className="w-full bg-white h-20 flex-row items-center justify-center gap-3 px-4"
           >
-            <Text className="font-headline font-black text-sm tracking-[0.15em] uppercase text-black">
+            <Text className="font-headline font-black text-sm tracking-widest uppercase text-black">
               GIVE PERMISSION
             </Text>
             <MaterialIcons name="arrow-forward" size={18} color="black" />
@@ -89,7 +89,7 @@ export const PermissionStep: React.FC<PermissionStepProps> = ({ onPermissionGran
           {/* Security Note */}
           <View className="mt-6 flex-row items-center justify-center gap-2">
             <MaterialIcons name="verified-user" size={14} color="#72fe88" />
-            <Text className="font-label text-[9px] uppercase tracking-widest text-[#72fe88]">
+            <Text className="font-label text-[10px] uppercase tracking-widest text-[#72fe88]">
               Encrypted Local Processing Only
             </Text>
           </View>

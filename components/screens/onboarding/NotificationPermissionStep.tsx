@@ -20,17 +20,17 @@ export const NotificationPermissionStep: React.FC<NotificationPermissionStepProp
         {/* Section Header */}
         <View >
             <View className="flex-row items-center mb-2">
-                <View className="h-[1px] w-8 bg-white mr-2" />
-                <Text className="font-label text-xs tracking-[0.2em] text-[#666666] uppercase">
-                    Critical Permission
+                <View className="h-[1px] w-8 bg-white/10 mr-2" />
+                <Text className="font-label text-[10px] tracking-widest text-white/40 uppercase">
+                    CRITICAL PERMISSION
                 </Text>
             </View>
-            
-            <Text className="text-4xl md:text-5xl  font-headline tracking-tighter leading-none mb-6 text-white text-left">
+
+            <Text className="text-4xl md:text-5xl font-headline font-black tracking-widest leading-none mb-6 text-white text-left uppercase">
                 SYSTEM AUTHORIZATION
             </Text>
             
-            <Text className="font-body text-[#999999] text-base leading-relaxed max-w-md">
+            <Text className="font-body text-white/40 text-[10px] leading-relaxed max-w-md">
                 Unlink requires system-level notifications to interrupt the dopamine loop. Without this, the intervention cannot be executed.
             </Text>
         </View>
@@ -51,11 +51,11 @@ export const NotificationPermissionStep: React.FC<NotificationPermissionStepProp
                     
                     {/* Content Box */}
                     <View className="flex-col justify-center h-10">
-                        <Text className="font-headline font-bold text-sm text-white leading-tight">
-                            Notification Required
+                        <Text className="font-headline font-black text-xs text-white leading-tight uppercase tracking-widest">
+                            NOTIFICATION REQUIRED
                         </Text>
-                        <Text className="font-label text-[10px] uppercase tracking-widest text-[#666666] mt-1">
-                            System Override
+                        <Text className="font-label text-[10px] uppercase tracking-widest text-white/40 mt-1">
+                            SYSTEM OVERRIDE
                         </Text>
                     </View>
 
@@ -72,12 +72,12 @@ export const NotificationPermissionStep: React.FC<NotificationPermissionStepProp
 
       {/* Fixed Action Block */}
       <View className="absolute bottom-0 left-0 right-0 p-6 md:p-8 border-t border-white/10" style={{ backgroundColor: 'rgba(0,0,0,0.95)' }}>
-          <TouchableOpacity 
+          <TouchableOpacity
               onPress={requestNotificationPermission}
               activeOpacity={0.8}
-              className="w-full py-6 bg-white flex-row items-center justify-center rounded-none active:scale-[0.99] transition-transform"
+              className="w-full py-6 bg-white flex-row items-center justify-center rounded-none active:scale-[0.99]"
           >
-              <Text className="text-black font-headline font-black text-lg tracking-tighter uppercase mr-3">
+              <Text className="text-black font-headline font-black text-lg tracking-widest uppercase mr-3">
                   GIVE PERMISSION
               </Text>
               <MaterialIcons name="arrow-forward" size={24} color="black" />
@@ -85,8 +85,8 @@ export const NotificationPermissionStep: React.FC<NotificationPermissionStepProp
           
           <View className="mt-4 flex-row justify-center">
               <TouchableOpacity onPress={onNext} className="active:opacity-50 transition-opacity">
-                  <Text className="font-label text-[10px] text-[#666666] uppercase tracking-[0.3em] font-bold py-2">
-                      Remind me later
+                  <Text className="font-label text-[10px] text-white/40 uppercase tracking-widest font-black py-2">
+                      REMIND ME LATER
                   </Text>
               </TouchableOpacity>
           </View>

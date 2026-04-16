@@ -81,10 +81,10 @@ export const ReclaimTimeStep: React.FC<ReclaimTimeStepProps> = ({
 
       {/* Header Section */}
       <View className="mb-10">
-        <Text className="font-label text-[10px] tracking-[0.3em] uppercase text-[#919191] mb-2">
-            Phase 04: Projection
+        <Text className="font-label text-[10px] tracking-widest uppercase text-white/40 mb-2">
+            PHASE 04: PROJECTION
         </Text>
-        <Text className="text-5xl md:text-5xl font-headline tracking-tighter leading-none text-[#e2e2e2]">
+        <Text className="text-5xl md:text-5xl font-headline font-black tracking-widest leading-none text-white uppercase">
             RECLAIM{'\n'}YOUR TIME
         </Text>
         <View className="w-12 h-[2px] bg-white mt-4" />
@@ -98,8 +98,8 @@ export const ReclaimTimeStep: React.FC<ReclaimTimeStepProps> = ({
             {/* Before Column */}
             <View className="flex-1 flex-col justify-end h-full">
                 <View className="flex-col mb-4">
-                    <Text className="font-label text-[10px] text-[#ffb4aa] uppercase tracking-widest mb-1">Status: Current</Text>
-                    <Text className="text-3xl font-headline font-bold text-[#e2e2e2] leading-none">{formatHours(beforeHours)}</Text>
+                    <Text className="font-label text-[10px] text-[#ffb4aa] uppercase tracking-widest mb-1">STATUS: CURRENT</Text>
+                    <Text className="text-3xl font-headline font-black text-white leading-none uppercase">{formatHours(beforeHours)}</Text>
                 </View>
                 
                 <View className="h-64 bg-[#1b1b1b] relative overflow-hidden flex-col justify-end">
@@ -122,8 +122,8 @@ export const ReclaimTimeStep: React.FC<ReclaimTimeStepProps> = ({
             {/* After Column */}
             <View className="flex-1 flex-col justify-end h-full">
                 <View className="flex-col mb-4">
-                    <Text className="font-label text-[10px] text-[#72fe88] uppercase tracking-widest mb-1">Target: Optimized</Text>
-                    <Text className="text-3xl font-headline font-bold text-[#e2e2e2] leading-none">{formatHours(afterHours)}</Text>
+                    <Text className="font-label text-[10px] text-[#72fe88] uppercase tracking-widest mb-1">TARGET: OPTIMIZED</Text>
+                    <Text className="text-3xl font-headline font-black text-white leading-none uppercase">{formatHours(afterHours)}</Text>
                 </View>
                 
                 <View className="h-64 bg-[#1b1b1b] relative overflow-hidden flex-col justify-end">
@@ -147,10 +147,10 @@ export const ReclaimTimeStep: React.FC<ReclaimTimeStepProps> = ({
         {/* Precision Metric */}
         <View className="bg-[#0e0e0e] p-6 border-l-2 border-[#72fe88] mt-4">
             <View className="flex-row justify-between items-baseline mb-2">
-                <Text className="font-label text-xs text-[#919191] uppercase tracking-tighter">Projected Recapture</Text>
-                <Text className="font-label text-2xl font-bold text-[#72fe88]">+{formatHours(reclaimedHours)}</Text>
+                <Text className="font-label text-[10px] text-white/40 uppercase tracking-widest">PROJECTED RECAPTURE</Text>
+                <Text className="font-headline font-black text-2xl text-[#72fe88]">+{formatHours(reclaimedHours)}</Text>
             </View>
-            <Text className="font-label text-[11px] text-[#c6c6c6] leading-relaxed uppercase opacity-80">
+            <Text className="font-label text-[10px] text-white/40 leading-relaxed">
                 System analysis indicates a {reductionPercentage}% recovery of cognitive bandwidth within first cycle.
             </Text>
         </View>
@@ -163,7 +163,7 @@ export const ReclaimTimeStep: React.FC<ReclaimTimeStepProps> = ({
               activeOpacity={0.8}
               className="w-full py-6 bg-white flex-row items-center justify-center rounded-none active:scale-[0.98] transition-transform"
           >
-              <Text className="text-black font-black text-xl tracking-[0.2em] uppercase mr-3">
+              <Text className="text-black font-headline font-black text-xl tracking-widest uppercase mr-3">
                   CONTINUE
               </Text>
               <MaterialIcons name="arrow-forward" size={24} color="black" />

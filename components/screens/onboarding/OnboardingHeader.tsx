@@ -32,12 +32,12 @@ export const OnboardingHeader: React.FC<OnboardingHeaderProps> = ({
 
         {/* Center Text */}
         <View className="flex-[2] items-center">
-          <Text className="text-xl font-black tracking-[3px] text-white font-headline uppercase">UNLINK</Text>
+          <Text className="text-xl font-black tracking-widest text-white font-headline uppercase">UNLINK</Text>
         </View>
 
         {/* Right Label */}
         <View className="w-10 items-end justify-center">
-          <Text className="font-label text-[10px] tracking-[2px] text-white/40 uppercase hidden sm:flex">V.01</Text>
+          <Text className="font-label text-[10px] tracking-widest text-white/40 uppercase hidden sm:flex">V.01</Text>
         </View>
       </View>
 

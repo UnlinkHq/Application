@@ -40,15 +40,15 @@ export const PaywallStep: React.FC<PaywallStepProps> = ({ onNext }) => {
     <View className="flex-1 bg-black px-6">
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
         <View className="py-4">
-          <View className="flex-row justify-between items-center mb-6">
-            <Text className="text-gray-400 text-lg font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>Restore</Text>
-            <TouchableOpacity className="bg-gray-800 rounded-full p-2">
+          <View className="flex-row justify-between items-center mb-10">
+            <Text className="text-white/40 text-[10px] font-headline font-black uppercase tracking-widest">RESTORE</Text>
+            <TouchableOpacity className="border border-white/10 p-2">
               <Ionicons name="close" size={24} color="white" />
             </TouchableOpacity>
           </View>
 
-          <Text className="text-3xl font-bold text-center text-white mb-10 leading-10" style={{ fontFamily: 'Outfit_700Bold' }}>
-            Start Your Free Trial and Take Back 2+ Hours of Your Day
+          <Text className="text-4xl font-headline font-black text-white mb-12 tracking-widest uppercase">
+            START YOUR FREE TRIAL AND RECLAIM YOUR REALITY
           </Text>
 
           {/* Timeline */}
@@ -66,18 +66,18 @@ export const PaywallStep: React.FC<PaywallStepProps> = ({ onNext }) => {
                   />
                 )}
                 
-                <View 
-                  className={`w-8 h-8 rounded-full items-center justify-center z-10 ${item.isCompleted ? 'bg-transparent' : 'bg-gray-800'}`}
+                <View
+                  className={`w-8 h-8 items-center justify-center z-10 border ${item.isCompleted ? 'bg-white border-white' : 'bg-black border-white/20'}`}
                 >
-                  {item.icon}
+                  {item.isCompleted ? <Ionicons name="checkmark" size={20} color="black" /> : React.cloneElement(item.icon as any, { color: 'rgba(255,255,255,0.4)', size: 16 })}
                 </View>
 
                 <View className="ml-4 flex-1">
-                  <Text className="text-white text-lg font-bold mb-1" style={{ fontFamily: 'Outfit_700Bold' }}>
+                  <Text className="text-white font-headline font-black text-xs tracking-widest mb-1 uppercase">
                     {item.title}
                   </Text>
                   {item.description && (
-                    <Text className="text-gray-500 text-sm" style={{ fontFamily: 'Outfit_400Regular' }}>
+                    <Text className="text-white/40 font-label text-[10px]">
                       {item.description}
                     </Text>
                   )}
@@ -89,33 +89,33 @@ export const PaywallStep: React.FC<PaywallStepProps> = ({ onNext }) => {
           {/* Plan Options */}
           <View className="space-y-4 mb-6">
             {/* Yearly Plan */}
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setSelectedPlan('yearly')}
-              className={`p-6 rounded-3xl border-2 relative ${selectedPlan === 'yearly' ? 'border-white bg-[#1c1c1e]' : 'border-transparent bg-gray-900'}`}
+              className={`p-6 border-2 relative ${selectedPlan === 'yearly' ? 'border-white bg-[#1c1c1e]' : 'border-white/10 bg-black'}`}
             >
-              <View className="absolute -top-4 -right-2 bg-white px-3 py-1 rounded-full shadow-sm">
-                <Text className="text-black text-xs font-bold">₹ 124.92/month</Text>
+              <View className="absolute -top-4 -right-2 bg-white px-3 py-1">
+                <Text className="text-black text-[10px] font-headline font-black uppercase tracking-widest">₹ 124.92/MONTH</Text>
               </View>
               <View className="flex-row justify-between items-center">
                 <View>
-                  <Text className="text-white text-xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>12 Months</Text>
-                  <Text className="text-gray-400 text-sm mt-1" style={{ fontFamily: 'Outfit_400Regular' }}>7-day free trial</Text>
+                  <Text className="text-white font-headline font-black text-xl tracking-widest uppercase">12 MONTHS</Text>
+                  <Text className="text-white/40 font-label text-[10px] mt-1">7-day free trial</Text>
                 </View>
-                <Text className="text-white text-xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>₹ 1,499/year</Text>
+                <Text className="text-white font-headline font-black text-xl tracking-widest uppercase">₹ 1,499/YR</Text>
               </View>
             </TouchableOpacity>
 
             {/* Monthly Plan */}
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setSelectedPlan('monthly')}
-              className={`p-6 rounded-3xl border-2 ${selectedPlan === 'monthly' ? 'border-white bg-[#1c1c1e]' : 'border-transparent bg-gray-900'}`}
+              className={`p-6 border-2 ${selectedPlan === 'monthly' ? 'border-white bg-[#1c1c1e]' : 'border-white/10 bg-black'}`}
             >
               <View className="flex-row justify-between items-center">
                 <View>
-                  <Text className="text-white text-xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>Monthly</Text>
-                  <Text className="text-gray-400 text-sm mt-1" style={{ fontFamily: 'Outfit_400Regular' }}>Renews monthly</Text>
+                  <Text className="text-white font-headline font-black text-xl tracking-widest uppercase">MONTHLY</Text>
+                  <Text className="text-white/40 font-label text-[10px] mt-1">Renews monthly</Text>
                 </View>
-                <Text className="text-white text-xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>₹ 299/month</Text>
+                <Text className="text-white font-headline font-black text-xl tracking-widest uppercase">₹ 299/MO</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -126,14 +126,15 @@ export const PaywallStep: React.FC<PaywallStepProps> = ({ onNext }) => {
       <View className="pb-8 pt-4">
         <TouchableOpacity
           onPress={onNext}
-          className="w-full rounded-full bg-[#ff006e] py-5 items-center shadow-lg shadow-pink-500/30 active:scale-95 transition-transform"
+          activeOpacity={0.8}
+          className="w-full bg-white py-6 items-center active:scale-95"
         >
-          <Text className="text-white text-2xl font-bold" style={{ fontFamily: 'Outfit_700Bold' }}>
-            Continue
+          <Text className="text-black font-headline font-black text-2xl tracking-widest uppercase">
+            CONTINUE
           </Text>
         </TouchableOpacity>
-        <Text className="text-gray-500 text-[10px] text-center mt-4 px-4 line-clamp-2" style={{ fontFamily: 'Outfit_400Regular' }}>
-          7-day free trial, then ₹ 1,499/year. Auto-renews until canceled.
+        <Text className="text-white/20 font-label text-[10px] text-center mt-4 px-4 line-clamp-2 uppercase tracking-widest">
+            7-DAY FREE TRIAL, THEN ₹ 1,499/YEAR. AUTO-RENEWS UNTIL CANCELED.
         </Text>
       </View>
     </View>

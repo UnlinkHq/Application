@@ -214,7 +214,7 @@ export const HomeScreen = () => {
                         <TouchableOpacity onPress={() => checkPermissionAndLoadData(true)}>
                             <MaterialIcons name="refresh" size={24} color="#5d5f5f" />
                         </TouchableOpacity>
-                        <View className="w-8 h-8 rounded-full border border-white/20 overflow-hidden">
+                        <View className="w-8 h-8 border border-white/20 overflow-hidden">
                             <Image
                                 source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUeGsbHEB8rtvHLaZZi0isp6NjjJYjjkG9WZgStcPLCpV4x7f6VkiU0LvcS7mkFKDkmJCC_dPdOdSpXat487hhko57AJqN0OW9PA9W8kHSLmj_AQ0WMApqSJ1kofXMfaBKFs_hzCf0YmqYXwaVzSMzAfvSINvlRYfXm3-f-ubC0i_tVkcyrhuD0HiBYF7pBeXl1uQ2uBsaE4ggCfi2pb8YhFnJyQBE7r9GZTh6alGDQLTaEwp5pP1pzP_nie35iYk-EQ3HTlA7gD8' }}
                                 className="w-full h-full"
@@ -267,8 +267,8 @@ export const HomeScreen = () => {
 
                             {/* Section 04: Consumption Label */}
                             <View className="px-6 mt-8">
-                                <Text className="font-label text-xs uppercase tracking-[0.2em] text-[#919191] mb-8">
-                                    {selectedHour !== null ? 'Hourly Intensity' : 'Most Used Apps'}
+                                <Text className="font-label text-[10px] uppercase tracking-widest text-[#919191] mb-8">
+                                    {selectedHour !== null ? 'HOURLY_INTENSITY' : 'HOME_USAGE_STATS'}
                                 </Text>
                             </View>
                         </>

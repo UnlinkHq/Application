@@ -61,7 +61,7 @@ const TabNavigator = () => {
             freezeOnBlur: true,
         }}
     >
-      <Tab.Screen name="Today" component={HomeScreen} />
+      <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Blocks" component={BlocksScreen} />
       {Platform.OS === 'ios' && (
         <Tab.Screen name="Socials" component={SocialsScreen} />
@@ -113,8 +113,9 @@ export default function App() {
   useEffect(() => {
     async function checkState() {
       try {
-        const launched = await AsyncStorage.getItem('hasLaunched');
-        setIsFirstLaunch(launched !== 'true');
+        // RESET FOR TESTING: Force onboarding to restart from scratch
+        await AsyncStorage.removeItem('hasLaunched');
+        setIsFirstLaunch(true);
         
         const session = await FocusStorageService.getActiveSession();
         setActiveSession(session);

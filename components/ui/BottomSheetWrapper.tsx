@@ -21,8 +21,8 @@ interface BottomSheetWrapperProps {
 }
 
 const AttachedBackground = ({ style }: BottomSheetBackgroundProps) => {
-  const dynamicShadow = Platform.OS === 'android' ? 
-    { elevation: 8 } : 
+  const dynamicShadow = Platform.OS === 'android' ?
+    { elevation: 8 } :
     {
       shadowColor: '#FFF',
       shadowOffset: { width: 0, height: -10 },
@@ -40,8 +40,8 @@ const AttachedBackground = ({ style }: BottomSheetBackgroundProps) => {
           borderWidth: 1,
           borderColor: 'rgba(255,255,255,0.08)',
           borderBottomWidth: 0,
-          borderTopLeftRadius: 24,
-          borderTopRightRadius: 24,
+          borderTopLeftRadius: 0,
+          borderTopRightRadius: 0,
           ...dynamicShadow
         }
       ]}
@@ -115,12 +115,12 @@ export const BottomSheetWrapper = ({
                     <Ionicons name="chevron-back" size={24} color="white" />
                   </TouchableOpacity>
                 )}
-                <Text className="text-white font-headline font-black text-2xl uppercase tracking-tighter">
+                <Text className="text-white font-headline font-black text-2xl tracking-widest uppercase">
                   {title}
                 </Text>
               </View>
-              <TouchableOpacity onPress={onClose} className="p-1 border border-white/20">
-                <Ionicons name="close" size={24} color="white" />
+              <TouchableOpacity onPress={onClose} className="border border-white/20 items-center justify-center" style={{ width: 32, height: 32 }}>
+                <Ionicons name="close" size={20} color="white" />
               </TouchableOpacity>
             </View>
           )}
@@ -137,12 +137,12 @@ export const BottomSheetWrapper = ({
                     <Ionicons name="chevron-back" size={24} color="white" />
                   </TouchableOpacity>
                 )}
-                <Text className="text-white font-headline font-black text-2xl uppercase tracking-tighter">
+                <Text className="text-white font-headline font-black text-2xl uppercase tracking-widest">
                   {title}
                 </Text>
               </View>
-              <TouchableOpacity onPress={onClose} className="p-1 border border-white/20">
-                <Ionicons name="close" size={24} color="white" />
+              <TouchableOpacity onPress={onClose} className="border border-white/20 items-center justify-center" style={{ width: 32, height: 32 }}>
+                <Ionicons name="close" size={20} color="white" />
               </TouchableOpacity>
             </View>
           )}

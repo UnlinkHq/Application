@@ -138,13 +138,13 @@ export const InstagramSandbox = ({
 
         <View style={{ flex: 1, alignItems: 'center' }}>
           <Text style={sandboxStyles.headerText}>
-            {isLoggingIn ? "Login Required" : `Viewing: ${vipList[currentIndex]}`}
+            {isLoggingIn ? "LOGIN REQUIRED" : `VIEWING: ${vipList[currentIndex]}`}
           </Text>
         </View>
 
         {!isLoggingIn ? (
           <TouchableOpacity style={sandboxStyles.nextButton} onPress={handleNextVip}>
-            <Text style={sandboxStyles.nextButtonText}>Next</Text>
+            <Text style={sandboxStyles.nextButtonText}>NEXT</Text>
             <Ionicons name="chevron-forward" size={16} color="#000" style={{ marginLeft: 2 }} />
           </TouchableOpacity>
         ) : (
@@ -208,11 +208,10 @@ const sandboxStyles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.5
   },
-  nextButton: { 
-    backgroundColor: '#fff', 
-    paddingHorizontal: 12, 
-    paddingVertical: 7, 
-    borderRadius: 8, // Square-ish rounded for command center feel
+  nextButton: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -282,13 +281,13 @@ export const SocialsScreen = () => {
                     {/* Header Section */}
                     <View className="mb-12">
                         <View className="flex-row items-end justify-between mb-4">
-                            <Text className="font-headline  text-4xl tracking-tighter leading-[1] text-white uppercase">
+                            <Text className="font-headline text-4xl tracking-widest leading-[1] text-white uppercase">
                                 DISTRACTION{"\n"}GATEWAYS
                             </Text>
                             <View className="w-6 h-[1px] bg-white/40 mb-2" style={{ transform: [{ rotate: '-45deg' }] }} />
                         </View>
-                        <Text className="font-label text-[10px] uppercase tracking-[0.2em] text-[#919191]">
-                       Be a part of something bigger
+                        <Text className="font-label text-[10px] text-white/40">
+                            Be a part of something bigger
                         </Text>
                     </View>
 

@@ -26,11 +26,11 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
       <BottomSheetScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         
         <View className="items-center mb-8 px-6">
-             <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.2em] text-center mb-2">
+             <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.3em] text-center mb-2">
                 PROTOCOL_01: FOCUS_WINDOW
             </Text>
-            <Text className="text-white font-headline font-black text-2xl uppercase tracking-tighter text-center">
-                Configure Schedule
+            <Text className="text-white font-headline font-black text-2xl uppercase tracking-widest text-center">
+                CONFIGURE SCHEDULE
             </Text>
         </View>
 
@@ -38,9 +38,9 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
         <View className="border-2 border-white p-5 flex-row justify-between items-center mb-6">
             <View className="flex-row items-center">
                 <Ionicons name="flash-outline" size={20} color="white" style={{ marginRight: 12}} />
-                <Text className="text-white font-headline font-black text-lg uppercase tracking-tight">ENABLE_PROTOCOL</Text>
+                <Text className="text-white font-headline font-black text-lg uppercase tracking-widest">ENABLE PROTOCOL</Text>
             </View>
-            <Switch 
+            <Switch
                 value={isEnabled}
                 onValueChange={setIsEnabled}
                 trackColor={{ false: '#333', true: '#FFF' }}
@@ -51,29 +51,29 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
         {/* Inputs - Surgical Style */}
         <View className="border-2 border-white mb-6">
              <View className="flex-row items-center p-5 border-b border-white/20">
-                <Text className="text-white font-headline font-black text-lg uppercase tracking-tight flex-1">NAME</Text>
+                <Text className="text-white font-headline font-black text-lg uppercase tracking-widest flex-1">NAME</Text>
                 <View className="flex-row items-center">
-                    <Text className="text-white/60 font-label text-xs uppercase tracking-widest mr-2">SCHEDULE_BLOCK</Text>
+                    <Text className="text-white/40 font-label text-[10px] mr-2">Schedule block</Text>
                     <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
                 </View>
              </View>
              <TouchableOpacity className="flex-row items-center p-5">
-                <Text className="text-white font-headline font-black text-lg uppercase tracking-tight flex-1">APPS_RESTRICTED</Text>
+                <Text className="text-white font-headline font-black text-lg uppercase tracking-widest flex-1">APPS RESTRICTED</Text>
                 <View className="flex-row items-center">
-                    <Text className="text-white/60 font-label text-xs uppercase tracking-widest mr-2">0_SELECTED</Text>
+                    <Text className="text-white/40 font-label text-[10px] mr-2">0 selected</Text>
                     <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.3)" />
                 </View>
              </TouchableOpacity>
         </View>
 
         {/* Block Activation Timing */}
-        <Text className="text-white font-headline font-black text-xs uppercase tracking-[0.3em] mb-4">ACTIVE_WINDOW</Text>
+        <Text className="text-white font-headline font-black text-xs uppercase tracking-widest mb-4">ACTIVE WINDOW</Text>
 
         <View className="border-2 border-white p-5 mb-6">
-            <Text className="text-white/60 font-label text-[10px] uppercase tracking-widest mb-4">RECURRENCE_PATTERN</Text>
+            <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-4">RECURRENCE PATTERN</Text>
             <View className="flex-row justify-between">
                 {allDays.map(day => (
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         key={day}
                         onPress={() => toggleDay(day)}
                         className={`w-10 h-10 border no-corners items-center justify-center ${days.includes(day) ? 'bg-white border-white' : 'bg-black border-white/20'}`}
@@ -85,15 +85,15 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
         </View>
 
         <View className="border-2 border-white p-6 mb-12">
-             <Text className="text-white/60 font-label text-[10px] uppercase tracking-widest mb-6">TIME_BOUNDARIES</Text>
+             <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-6">TIME BOUNDARIES</Text>
              <View className="flex-row justify-between items-center py-4 border-b border-white/10">
-                 <Text className="text-white font-headline font-black text-sm uppercase">START_PHASE</Text>
+                 <Text className="text-white font-headline font-black text-sm uppercase tracking-widest">START PHASE</Text>
                  <View className="border border-white/20 px-4 py-2 no-corners">
                      <Text className="text-white font-headline font-black text-xs">12:00 AM</Text>
                  </View>
              </View>
              <View className="flex-row justify-between items-center py-4 pt-6">
-                 <Text className="text-white font-headline font-black text-sm uppercase">END_PHASE</Text>
+                 <Text className="text-white font-headline font-black text-sm uppercase tracking-widest">END PHASE</Text>
                  <View className="border border-white/20 px-4 py-2 no-corners">
                      <Text className="text-white font-headline font-black text-xs">11:59 PM</Text>
                  </View>
@@ -104,12 +104,12 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
       </BottomSheetScrollView>
 
       {/* Action Button - Surgical Style */}
-      <TouchableOpacity 
-        className="bg-white h-16 items-center justify-center mb-6 no-corners"
+      <TouchableOpacity
+        className="bg-white h-16 items-center justify-center mb-6"
         activeOpacity={0.9}
         onPress={onBack}
       >
-        <Text className="text-black font-headline font-black text-lg uppercase tracking-[0.3em]">CONFIRM_PROTOCOL</Text>
+        <Text className="text-black font-headline font-black text-lg uppercase tracking-widest">CONFIRM PROTOCOL</Text>
       </TouchableOpacity>
     </View>
   );

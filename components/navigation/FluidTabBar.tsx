@@ -56,7 +56,7 @@ export const FluidTabBar: React.FC<BottomTabBarProps> = memo(({ state, descripto
                     };
 
                     let iconName: keyof typeof MaterialIcons.glyphMap = 'help-outline';
-                    if (route.name === 'Today') iconName = 'query-stats';
+                    if (route.name === 'Home') iconName = 'home';
                     else if (route.name === 'Blocks') iconName = 'security';
                     else if (route.name === 'Socials') iconName = 'people';
 
@@ -90,7 +90,7 @@ export const FluidTabBar: React.FC<BottomTabBarProps> = memo(({ state, descripto
             </View>
         </View>
 
-        {/* Floating Action Button (FAB) - Surgical Style */}
+        {/* Floating Action Button (FAB) - Boxy Brutalist Style */}
         <TouchableOpacity
             onPress={openSelection}
             activeOpacity={0.9}
@@ -99,9 +99,9 @@ export const FluidTabBar: React.FC<BottomTabBarProps> = memo(({ state, descripto
                 height: fabSize,
                 elevation: Platform.OS === 'android' ? 6 : 0
             }}
-            className="items-center justify-center bg-[#131313] border border-white/20 rounded-full shadow-2xl"
+            className="items-center justify-center bg-[#131313] border border-white/20 rounded-none shadow-2xl"
         >
-            <View className="w-8 h-8 rounded-full bg-white items-center justify-center">
+            <View className="w-8 h-8 rounded-none bg-white items-center justify-center">
                 <MaterialIcons name="add" size={24} color="black" />
             </View>
         </TouchableOpacity>

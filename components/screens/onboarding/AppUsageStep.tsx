@@ -108,8 +108,8 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
       <ScrollView showsVerticalScrollIndicator={false} className="flex-1 pt-8 pb-12 px-8 flex-col max-w-2xl mx-auto w-full">
         {/* Headline Section */}
         <View className="mb-12">
-            <Text className="font-label text-xs tracking-widest text-[#474747] mb-2 uppercase">Analysis Complete</Text>
-            <Text className="text-5xl font-black leading-none tracking-tighter text-[#e2e2e2] mb-6 font-headline">
+            <Text className="font-label text-[10px] tracking-widest text-white/40 mb-2 uppercase">ANALYSIS COMPLETE</Text>
+            <Text className="text-5xl font-black leading-none tracking-widest text-white mb-6 font-headline uppercase">
                 WHERE YOUR{'\n'}TIME GOES
             </Text>
             <View className="h-[1px] w-full bg-[#474747] opacity-40 relative">
@@ -129,42 +129,42 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
             let categoryText = "Utility";
 
             if (index === 0) {
-              severityText = "Extreme Usage";
+              severityText = "EXTREME_USAGE";
               severityColor = "text-[#ffb4aa]";
               barColor = "bg-[#ffb4aa]";
-              categoryText = "Primary Drain";
+              categoryText = "PRIMARY_DRAIN";
             } else if (index === 1) {
-              severityText = "High Usage";
-              severityColor = "text-[#919191]";
+              severityText = "HIGH_USAGE";
+              severityColor = "text-white";
               barColor = "bg-white";
-              categoryText = "Secondary Drain";
+              categoryText = "SECONDARY_DRAIN";
             } else {
-              categoryText = "Application";
+              categoryText = "APPLICATION";
             }
 
             return (
               <View key={app.packageName} className="w-full flex-col group mb-8">
                 <View className="flex-row justify-between items-end mb-3">
                   <View className="flex-col">
-                      <Text className="font-label text-sm text-[#474747] uppercase tracking-widest leading-tight mb-1">{categoryText}</Text>
-                      <Text className="text-xl font-bold tracking-tight text-[#e2e2e2] font-headline">{app.label}</Text>
+                      <Text className="font-label text-[10px] text-white/40 uppercase tracking-widest mb-1">{categoryText}</Text>
+                      <Text className="text-xl font-headline font-black tracking-widest text-white uppercase">{app.label}</Text>
                   </View>
                   
                   <View className="items-end">
                       <Text className="text-3xl font-black font-headline text-white" style={{ fontVariant: ['tabular-nums'] }}>
                           {formatDuration(app.duration)}
                       </Text>
-                      <Text className={`font-label text-[10px] uppercase tracking-tighter ${severityColor}`}>
+                      <Text className={`font-label text-[10px] uppercase tracking-widest ${severityColor}`}>
                           {severityText}
                       </Text>
                   </View>
                 </View>
 
                 {/* Progress Bar: Liquid Level Aesthetic */}
-                <View className="h-4 w-full bg-[#0e0e0e] border border-[#474747]/20 relative overflow-hidden">
-                    <View 
-                       className={`absolute top-0 left-0 h-full rounded-t-sm ${barColor}`}
-                       style={{ 
+                <View className="h-4 w-full bg-[#0e0e0e] border border-white/10 relative overflow-hidden">
+                    <View
+                       className={`absolute top-0 left-0 h-full ${barColor}`}
+                       style={{
                          width: `${progress * 100}%`,
                          shadowColor: index === 0 ? '#ffb4aa' : 'transparent',
                          shadowOffset: { width: 0, height: 0 },
@@ -179,14 +179,14 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
         </View>
 
         {/* Summary Tonal Layer */}
-        <View className="mb-[150px] bg-[#0e0e0e] border border-[#474747]/10 p-6 flex-row items-center space-x-6">
+        <View className="mb-[150px] bg-[#0e0e0e] border border-white/10 p-6 flex-row items-center space-x-6">
             <View className="w-16 mr-3 h-16 border border-white flex justify-center items-center">
                 <MaterialIcons name="broken-image" size={32} color="white" />
             </View>
             <View className="flex-1">
-                <Text className="text-[#c6c6c6] font-body text-sm leading-relaxed">
-                    You are currently spending <Text className="font-bold text-white tracking-widest">{totalHours} hours</Text> daily behind the glass. 
-                    Unlink will reclaim <Text className="font-bold text-[#72fe88] tracking-widest">{reclaimedHours} hours</Text> for your physical reality.
+                <Text className="text-white/40 font-body text-[10px] leading-relaxed">
+                    You are currently spending <Text className="font-headline font-black text-white">{totalHours} hours</Text> daily behind the glass.
+                    Unlink will reclaim <Text className="font-headline font-black text-[#72fe88]">{reclaimedHours} hours</Text> for your physical reality.
                 </Text>
             </View>
         </View>
@@ -199,7 +199,7 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
               activeOpacity={0.8}
               className="w-full bg-white flex-row items-center justify-center py-6 border border-white active:scale-[0.98] transition-transform shadow-2xl rounded-none relative"
           >
-              <Text className="text-black font-black text-2xl font-headline tracking-[0.2em] relative mr-2">
+              <Text className="text-black font-headline font-black text-2xl tracking-widest relative mr-2">
                   CONTINUE
               </Text>
               <MaterialIcons name="arrow-forward" size={24} color="black" />

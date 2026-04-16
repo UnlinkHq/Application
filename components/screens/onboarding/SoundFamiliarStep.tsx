@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface SoundFamiliarStepProps {
   onNext: () => void;
@@ -16,14 +17,21 @@ export const SoundFamiliarStep: React.FC<SoundFamiliarStepProps> = ({ onNext }) 
     { letter: 'D', text: 'One article led to a whole afternoon of reading' }
   ];
 
+  const handleNext = async () => {
+    if (selectedIndex !== null) {
+      await AsyncStorage.setItem('@unlink_pain_point', options[selectedIndex].text);
+    }
+    onNext();
+  };
+
   return (
     <View className="flex-1 bg-black flex-col">
 
       <ScrollView className="flex-1 px-6 pt-10" showsVerticalScrollIndicator={false}>
         {/* Heading Section */}
         <View className="mb-12">
-          <Text className="text-4xl font-bold tracking-tighter mb-2 text-white ">Sound familiar?</Text>
-          <Text className="font-label text-xs uppercase tracking-[2px] text-[#c6c6c6]">Tap what resonates with you</Text>
+          <Text className="text-4xl font-headline font-black tracking-widest mb-2 text-white uppercase">Sound familiar?</Text>
+          <Text className="font-label text-white/40 text-[10px] uppercase tracking-widest">TAP WHAT RESONATES WITH YOU</Text>
         </View>
 
         {/* Options Grid */}
@@ -35,7 +43,7 @@ export const SoundFamiliarStep: React.FC<SoundFamiliarStepProps> = ({ onNext }) 
                 key={index} 
                 activeOpacity={0.8}
                 onPress={() => setSelectedIndex(index)}
-                className={`flex-row items-center p-5 rounded-lg active:scale-[0.98] ${
+                className={`flex-row items-center p-5 rounded-none active:scale-[0.98] ${
                   isSelected 
                     ? 'bg-[#2a2a2a] border-2 border-white' 
                     : 'bg-[#1b1b1b] border border-white/10'
@@ -75,16 +83,16 @@ export const SoundFamiliarStep: React.FC<SoundFamiliarStepProps> = ({ onNext }) 
 
       {/* Fixed Action Bar */}
       <View className="absolute bottom-0 left-0 right-0 p-6 pt-8 bg-black z-40 border-t border-white/10">
-        <TouchableOpacity 
-          onPress={onNext}
-          activeOpacity={0.8}
-          className="w-full py-6 bg-white flex-row items-center justify-center space-x-4 rounded-none active:scale-[0.98] transition-transform"
-        >
-          <Text className="text-black font-headline font-bold text-lg tracking-[2px] uppercase text-center mt-1">
-            It's me
-          </Text>
-          <Ionicons name="arrow-forward" size={20} color="black" />
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={onNext}
+            activeOpacity={0.8}
+            className="w-full py-6 bg-white flex-row items-center justify-center space-x-4 active:scale-[0.98]"
+          >
+            <Text className="text-black font-headline font-black text-lg tracking-widest uppercase text-center mt-1">
+              IT'S ME
+            </Text>
+            <Ionicons name="arrow-forward" size={20} color="black" />
+          </TouchableOpacity>
         
       
       </View>

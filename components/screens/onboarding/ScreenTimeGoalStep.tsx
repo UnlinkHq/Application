@@ -66,22 +66,22 @@ export const ScreenTimeGoalStep: React.FC<ScreenTimeGoalStepProps> = ({ onNext, 
                 
                 {/* Title Section */}
                 <View className="w-full mt-4">
-                    <Text className="font-headline  text-5xl text-white tracking-tighter uppercase" style={{ lineHeight: 45 }}>
-                        Set your{"\n"}daily limit.
+                    <Text className="font-headline font-black text-5xl text-white tracking-widest uppercase" style={{ lineHeight: 54 }}>
+                        SET YOUR{"\n"}DAILY LIMIT.
                     </Text>
                 </View>
 
                 {/* Main Display */}
                 <View className="mt-16 flex-col items-center">
-                    <Text className="font-label text-xs uppercase tracking-[2px] text-white/40 mb-2">
-                        Target Hours
+                    <Text className="font-label text-[10px] uppercase tracking-widest text-white/40 mb-2">
+                        TARGET HOURS
                     </Text>
                     <View className="flex-row items-baseline space-x-2">
-                        <Text className="font-headline font-black text-8xl text-white tracking-tighter" style={{ fontSize: 130, lineHeight: 140 }}>
+                        <Text className="font-headline font-black text-8xl text-white tracking-widest uppercase" style={{ fontSize: 130, lineHeight: 140 }}>
                             {screenTimeGoal.toString().padStart(2, '0')}
                         </Text>
-                        <Text className="font-label text-2xl uppercase font-light text-white/40 italic">
-                            hrs
+                        <Text className="font-headline font-black text-2xl uppercase text-white/40 tracking-widest">
+                            HRS
                         </Text>
                     </View>
                 </View>
@@ -110,9 +110,9 @@ export const ScreenTimeGoalStep: React.FC<ScreenTimeGoalStepProps> = ({ onNext, 
                     </GestureHandlerRootView>
                     
                     <View className="flex-row justify-between mt-6">
-                        <Text className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-white">00:00</Text>
-                        <Text className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-white/40">06:00</Text>
-                        <Text className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-white">12:00</Text>
+                        <Text className="font-label text-[10px] uppercase tracking-widest font-black text-white">00:00</Text>
+                        <Text className="font-label text-[10px] uppercase tracking-widest font-black text-white/40">06:00</Text>
+                        <Text className="font-label text-[10px] uppercase tracking-widest font-black text-white">12:00</Text>
                     </View>
                 </View>
 
@@ -127,8 +127,8 @@ export const ScreenTimeGoalStep: React.FC<ScreenTimeGoalStepProps> = ({ onNext, 
                         activeOpacity={0.8}
                         className="w-full py-6 bg-white flex-row items-center justify-center space-x-4 rounded-none active:scale-[0.98] transition-transform"
                     >
-                        <Text className="text-black font-headline font-bold text-lg tracking-[2px] uppercase text-center ">
-                            Confirm Goal
+                        <Text className="text-black font-headline font-black text-lg tracking-widest uppercase text-center">
+                            CONFIRM GOAL
                         </Text>
                         <Ionicons name="arrow-forward" size={20} color="black" />
                     </TouchableOpacity>

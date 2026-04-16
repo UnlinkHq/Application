@@ -94,7 +94,7 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-black">
-        <Text className="text-white text-lg font-label uppercase tracking-widest">Calculating Data...</Text>
+        <Text className="text-white/40 text-[10px] font-label uppercase tracking-widest">CALCULATING_DATA_STREAM...</Text>
       </View>
     );
   }
@@ -109,21 +109,21 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
       {/* Asymmetric Visual Element (Surgical precision detail) */}
       <View className="absolute left-6 top-1/2 -translate-y-1/2 opacity-20 hidden md:block z-0 pointer-events-none">
           <View className="h-64 w-[1px] bg-white ml-2" />
-          <Text className="font-label text-[10px] text-white tracking-widest mt-6 -ml-[40px] w-32" style={{ transform: [{ rotate: '90deg' }] }}>
-              AXIS_TIME_METRIC
+          <Text className="font-label text-[10px] text-white/40 tracking-widest mt-6 -ml-[40px] w-32 uppercase" style={{ transform: [{ rotate: '90deg' }] }}>
+              AXIS TIME METRIC
           </Text>
       </View>
 
       <View className="items-center w-full z-10 pt-16">
-        <Text className="font-label text-xs tracking-[0.4em] text-[#919191] uppercase text-center mb-8">
+        <Text className="font-label text-[10px] tracking-widest text-white/40 uppercase text-center mb-8">
           {projectionTitle}
         </Text>
         
         <View className="flex-row items-baseline justify-center max-w-lg mb-4">
-            <Text className="text-[120px] font-headline font-extrabold leading-none tracking-tighter text-white">
+            <Text className="text-[120px] font-headline font-black leading-none tracking-widest text-white uppercase">
               {totalHours}
             </Text>
-            <Text className="text-2xl font-label tracking-normal font-light text-white ml-2 uppercase">
+            <Text className="text-2xl font-headline font-black tracking-widest text-white ml-2 uppercase">
               HOURS
             </Text>
         </View>
@@ -147,7 +147,7 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
                 {item.title} // <Text className="text-[#ffb4aa]">{item.value} {item.unit}</Text>
               </Text>
               
-              <Text className="text-[#c6c6c6] font-body text-sm md:text-base leading-relaxed text-center opacity-80 max-w-sm px-4">
+              <Text className="text-white/40 font-body text-[10px] leading-relaxed text-center max-w-sm px-4">
                 {item.description}
               </Text>
             </View>
@@ -160,7 +160,7 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
         {comparisons.map((_, index) => (
           <View
             key={index}
-            className={`h-[2px] rounded-full transition-all duration-300 ${activeIndex === index ? 'bg-white w-8' : 'bg-[#474747] w-4'}`}
+            className={`h-[1px] transition-all duration-300 ${activeIndex === index ? 'bg-white w-8' : 'bg-white/10 w-4'}`}
           />
         ))}
       </View>
@@ -189,7 +189,7 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
               activeOpacity={0.8}
               className="w-full max-w-lg bg-white flex-row items-center justify-center gap-2 px-10 py-6 rounded-none active:scale-[0.98] transition-transform"
           >
-              <Text className="text-black font-headline font-extrabold uppercase tracking-[0.2em] text-lg">
+              <Text className="text-black font-headline font-black uppercase tracking-widest text-lg">
                   CONTINUE
               </Text>
               <MaterialIcons name="arrow-forward" size={24} color="black" />
