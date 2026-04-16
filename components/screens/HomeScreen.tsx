@@ -9,11 +9,56 @@ import { ScreenTimeService } from '../../services/ScreenTimeService';
 import { DailyUsage, MOCK_DATA } from '../../utils/screenTimeData';
 import { DatePickerModal } from '../ui/DatePickerModal';
 import { PermissionBanner } from '../ui/PermissionBanner';
+import { FocusStorageService, BlockSession } from '../../services/FocusStorageService';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { QRUnlockModal } from '../blocks/QRUnlockModal';
 
 // Optimized Sub-components
 import { DateStrip } from '../home/DateStrip';
 import { DailyOverview } from '../home/DailyOverview';
 import { AppUsageList } from '../home/AppUsageList';
+
+const ActiveSessionCard = ({ session, onStop }: { session: BlockSession, onStop: () => void }) => {
+    const elapsed = (Date.now() - session.startTime) / (1000 * 60);
+    const remaining = Math.max(0, session.durationMins - elapsed);
+    const progress = Math.min(1, elapsed / session.durationMins);
+
+    return (
+        <View className="mb-6 border-2 border-white bg-white/5 p-5">
+            <View className="flex-row items-center justify-between mb-4">
+                <View className="flex-row items-center gap-2">
+                    <MaterialCommunityIcons name="shield-lock" size={20} color="white" />
+                    <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">PROTOCOL_ACTIVE</Text>
+                </View>
+                <View className="bg-white/10 px-2 py-0.5 border border-white/10">
+                    <Text className="text-white/40 font-label text-[10px] font-bold uppercase">{session.strictnessConfig.mode}</Text>
+                </View>
+            </View>
+
+            <Text className="text-white font-headline font-black text-lg uppercase mb-1">{session.title}</Text>
+            <View className="flex-row items-center justify-between mb-4">
+                <Text className="text-white/40 font-label text-[10px] uppercase">Remaining Time</Text>
+                <Text className="text-white font-headline font-black text-sm">{Math.ceil(remaining)}M</Text>
+            </View>
+
+            {/* Progress Bar */}
+            <View className="h-2 bg-white/10 mb-6">
+                <View 
+                    className="h-full bg-white transition-all duration-1000" 
+                    style={{ width: `${progress * 100}%` }} 
+                />
+            </View>
+
+            <TouchableOpacity 
+                onPress={onStop}
+                className="h-14 bg-white items-center justify-center"
+                activeOpacity={0.9}
+            >
+                <Text className="text-black font-headline font-black text-xs uppercase tracking-[0.2em]">STOP_SESSION</Text>
+            </TouchableOpacity>
+        </View>
+    );
+};
 
 export const HomeScreen = () => {
     const navigation = useNavigation<any>();
@@ -25,6 +70,7 @@ export const HomeScreen = () => {
     const [selectedDate, setSelectedDate] = useState(new Date().getDate());
     const [selectedHour, setSelectedHour] = useState<number | null>(null);
     const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
+    const [activeSession, setActiveSession] = useState<BlockSession | null>(null);
 
     const [dailyData, setDailyData] = useState<DailyUsage | null>(null);
     const [hasPermission, setHasPermission] = useState(false);
@@ -37,16 +83,24 @@ export const HomeScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
 
     useEffect(() => {
+        const checkActiveSession = async () => {
+            const session = await FocusStorageService.getActiveSession();
+            setActiveSession(session);
+        };
+
         // Priority 1: Instant load from Interactions/Cache
         InteractionManager.runAfterInteractions(() => {
             checkPermissionAndLoadData(false);
+            checkActiveSession();
         });
 
         let intervalId: NodeJS.Timeout;
         if (isFocused) {
+            checkActiveSession();
             intervalId = setInterval(() => {
                 if (AppState.currentState === 'active') {
                     checkPermissionAndLoadData(true);
+                    checkActiveSession();
                 }
             }, 30 * 1000); // Check every 30s
         }
@@ -55,6 +109,7 @@ export const HomeScreen = () => {
             if (nextAppState === 'active' && isFocused) {
                 refreshCount.current += 1;
                 checkPermissionAndLoadData(true);
+                checkActiveSession();
             }
         });
 
@@ -177,6 +232,14 @@ export const HomeScreen = () => {
         setShowDatePicker(false);
     }, []);
 
+    const [isQrUnlockVisible, setIsQrUnlockVisible] = useState(false);
+
+    const handleStopActiveSession = async () => {
+        await FocusStorageService.stopSession();
+        setActiveSession(null);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    };
+
     const selectedAppDuration = useMemo(() => {
         if (!selectedAppId || !dailyData) return 0;
         return dailyData.hourly.reduce((acc, h) => {
@@ -232,6 +295,22 @@ export const HomeScreen = () => {
                     }
                     ListHeaderComponent={
                         <>
+                            {/* Active Session Display */}
+                            {activeSession && (
+                                <View className="px-6 mt-4">
+                                    <ActiveSessionCard 
+                                        session={activeSession} 
+                                        onStop={() => {
+                                            if (activeSession.strictnessConfig.mode === 'qr_code') {
+                                                setIsQrUnlockVisible(true);
+                                            } else {
+                                                handleStopActiveSession();
+                                            }
+                                        }} 
+                                    />
+                                </View>
+                            )}
+
                             {/* Permission Banner */}
                             <View className="px-6 mb-8 mt-4">
                                 <PermissionBanner />
@@ -311,6 +390,18 @@ export const HomeScreen = () => {
                     selectedMonth={currentMonth}
                     onSelect={handleDatePickerSelect}
                 />
+
+                {activeSession && (
+                    <QRUnlockModal 
+                        visible={isQrUnlockVisible}
+                        onClose={() => setIsQrUnlockVisible(false)}
+                        expectedData={activeSession.strictnessConfig.qrCodeData || ''}
+                        onSuccess={() => {
+                            setIsQrUnlockVisible(false);
+                            handleStopActiveSession();
+                        }}
+                    />
+                )}
 
             </View>
         </SafeAreaView>

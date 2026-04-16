@@ -18,7 +18,7 @@ import { OnboardingHeader } from './onboarding/OnboardingHeader';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ScreenTimeModule from '../../modules/screen-time';
 
-export const OnboardingScreen = () => {
+export const OnboardingScreen = ({ onFinish }: { onFinish: () => void }) => {
   const navigation = useNavigation<any>();
   const [currentStep, setCurrentStep] = useState(0);
   const [screenTimeGoal, setScreenTimeGoal] = useState(4);
@@ -125,7 +125,7 @@ export const OnboardingScreen = () => {
   };
 
   const handleFinishOnboarding = async () => {
-    await AsyncStorage.setItem('hasLaunched', 'true');
+    onFinish();
     navigation.replace('Main', { screen: 'Blocks' });
   };
 

@@ -70,7 +70,7 @@ const TabNavigator = () => {
   );
 };
 
-const NavigationTree = ({ isFirstLaunch }: { isFirstLaunch: boolean }) => {
+const NavigationTree = ({ isFirstLaunch, onCompleteOnboarding }: { isFirstLaunch: boolean, onCompleteOnboarding: () => void }) => {
   return (
     <NavigationContainer
         theme={{
@@ -83,7 +83,9 @@ const NavigationTree = ({ isFirstLaunch }: { isFirstLaunch: boolean }) => {
     >
         <Stack.Navigator screenOptions={{ headerShown: false }}>
             {isFirstLaunch && (
-                <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+                <Stack.Screen name="Onboarding">
+                  {props => <OnboardingScreen {...props} onFinish={onCompleteOnboarding} />}
+                </Stack.Screen>
             )}
             <Stack.Screen name="Main" component={TabNavigator} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
@@ -113,9 +115,9 @@ export default function App() {
   useEffect(() => {
     async function checkState() {
       try {
-        // RESET FOR TESTING: Force onboarding to restart from scratch
-        await AsyncStorage.removeItem('hasLaunched');
-        setIsFirstLaunch(true);
+        // PRODUCTION LOGIC: Check if user has already onboarded
+        const hasLaunched = await AsyncStorage.getItem('hasLaunched');
+        setIsFirstLaunch(hasLaunched !== 'true');
         
         const session = await FocusStorageService.getActiveSession();
         setActiveSession(session);
@@ -142,13 +144,21 @@ export default function App() {
       );
   }
 
+  const completeOnboarding = async () => {
+    await AsyncStorage.setItem('hasLaunched', 'true');
+    setIsFirstLaunch(false);
+  };
+
   return (
     <SafeAreaProvider>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <BottomSheetModalProvider>
           <BlockingProvider>
             <SelectionProvider>
-              <NavigationTree isFirstLaunch={Boolean(isFirstLaunch)} />
+              <NavigationTree 
+                isFirstLaunch={Boolean(isFirstLaunch)} 
+                onCompleteOnboarding={completeOnboarding}
+              />
               <GlobalModals />
             </SelectionProvider>
             <StatusBar style="light" /> 

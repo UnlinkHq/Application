@@ -5,28 +5,29 @@ const ACTIVE_SESSION_KEY = '@unlink_active_session';
 const LIBRARY_BLOCKS_KEY = '@unlink_library_blocks';
 
 export interface BlockSession {
-    id: string;
+    id: string; // Unique ID for each session or template
     title: string;
+    startTime: number;
     durationMins: number;
     apps: string[];
-    appIcons?: string[]; // Base64 or URIs
-    surgicalFlags: {
-        youtube: boolean;
-        instagram: boolean;
+    appIcons?: string[];
+    surgicalBlocks: {
+        youtubeShorts: boolean;
+        instagramReels: boolean;
     };
     strictnessConfig: {
         mode: 'normal' | 'qr_code' | 'mom_test' | 'money';
+        qrCodeData?: string; // The generated signature
+        isUninstallProtected: boolean;
         emailAddress?: string;
         isVerified?: boolean;
-        qrCodeData?: string;
     };
     timedBreaks: {
         enabled: boolean;
-        allowedCount: number; // 1, 2, 3
-        durationMins: number; // 5, 10, 15
+        allowedCount: number;
+        durationMins: number;
         usedCount: number;
     };
-    startTime: number;
 }
 
 export class FocusStorageService {
@@ -38,7 +39,7 @@ export class FocusStorageService {
         
         // 2. Sync to Native Layer (Absolute Zero Protocol)
         ScreenTime.setBlockedApps(session.apps, "FOCUS_PROTOCOL_ENGAGED", `${session.durationMins}:00`);
-        ScreenTime.setSurgicalFlags(session.surgicalFlags.youtube, session.surgicalFlags.instagram);
+        ScreenTime.setSurgicalFlags(session.surgicalBlocks.youtubeShorts, session.surgicalBlocks.instagramReels);
     }
 
     static async stopSession(): Promise<void> {

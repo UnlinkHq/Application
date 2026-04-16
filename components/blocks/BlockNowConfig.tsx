@@ -186,15 +186,19 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
     const [nativeIosCount, setNativeIosCount] = useState(0);
 
     const syncNativeStatus = useCallback(() => {
-        if (Platform.OS === 'android') {
-            setBlockUninstall(isAdminActive());
-        } else if (Platform.OS === 'ios') {
+        // iOS: Always sync selection count
+        if (Platform.OS === 'ios') {
             setNativeIosCount(getSelectionCount());
         }
     }, []);
 
     useEffect(() => {
+        // Initial sync only on mount for Android
+        if (Platform.OS === 'android') {
+            setBlockUninstall(isAdminActive());
+        }
         syncNativeStatus();
+        
         const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
             if (nextAppState === 'active') {
                 syncNativeStatus();
@@ -215,14 +219,10 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
     }, []);
 
     const handleToggleUninstall = (value: boolean) => {
-        if (Platform.OS !== 'android') return;
-        if (value) {
-            requestAdmin();
-            setBlockUninstall(true);
-        } else {
-            deactivateAdmin();
-            setBlockUninstall(false);
-        }
+        // UI ONLY: We only request native permission during handleInitiate
+        // This prevents the flickering and "going back" weirdness during configuration
+        setBlockUninstall(value);
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     };
 
     const handleInitiate = async () => {
@@ -235,6 +235,14 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
             return;
         }
 
+        // 1. Check for Android Admin if Protect Uninstall is requested
+        if (Platform.OS === 'android' && blockUninstall && !isAdminActive()) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            alert("PERMISSION_REQUIRED: DEVICE_ADMINISTRATOR_IS_REQUIRED_FOR_UNINSTALL_PROTECTION.");
+            requestAdmin();
+            return; // Exit and let user come back after granting
+        }
+
         const qrData = strictMode === 'qr_code' ? `UNLINK_${Date.now()}_${Math.random().toString(36).substring(7)}` : undefined;
 
         const session = {
@@ -243,11 +251,15 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
             durationMins: duration,
             apps: selectedApps.map(a => a.id),
             appIcons: selectedApps.map(a => a.icon),
-            surgicalFlags: blockShorts,
+            surgicalBlocks: {
+                youtubeShorts: blockShorts.youtube,
+                instagramReels: blockShorts.instagram
+            },
             strictnessConfig: {
                 mode: strictMode,
                 emailAddress: strictConfig?.emailAddress,
-                qrCodeData: qrData
+                qrCodeData: qrData,
+                isUninstallProtected: blockUninstall
             },
             timedBreaks: {
                 enabled: allowTimedBreaks,
@@ -473,7 +485,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
 
 
                         <View className="mt-4 mb-2">
-                            <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-3">BLOCK_SHORTS</Text>
+                            <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-3">BLOCK SHORTS</Text>
                             {Platform.OS === 'android' ? (
                                 <View className="border border-white/10 bg-black/40 p-1">
                                     <TouchableOpacity
@@ -485,13 +497,15 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                             <MaterialCommunityIcons name="youtube" size={20} color="#FF0000" />
                                         </View>
                                         <View className="flex-1">
-                                            <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">YOUTUBE_SHORTS</Text>
+                                            <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">BLOCK ONLY YOUTUBE SHORTS</Text>
                                             <Text className="text-white/40 font-label text-[10px] mt-1">Enables surgical block</Text>
                                         </View>
-                                        <ModernToggle
-                                            value={blockShorts.youtube}
-                                            onValueChange={(v) => setBlockShorts(p => ({ ...p, youtube: v }))}
-                                        />
+                                        <View pointerEvents="none">
+                                            <ModernToggle
+                                                value={blockShorts.youtube}
+                                                onValueChange={(v) => {}}
+                                            />
+                                        </View>
                                     </TouchableOpacity>
 
                                     <TouchableOpacity
@@ -503,20 +517,22 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                             <MaterialCommunityIcons name="instagram" size={20} color="#E1306C" />
                                         </View>
                                         <View className="flex-1">
-                                            <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">INSTAGRAM_REELS</Text>
+                                            <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">BLOCK ONLY INSTAGRAM REELS</Text>
                                             <Text className="text-white/40 font-label text-[10px] mt-1">Restrict short-form video</Text>
                                         </View>
-                                        <ModernToggle
-                                            value={blockShorts.instagram}
-                                            onValueChange={(v) => setBlockShorts(p => ({ ...p, instagram: v }))}
-                                        />
+                                        <View pointerEvents="none">
+                                            <ModernToggle
+                                                value={blockShorts.instagram}
+                                                onValueChange={(v) => {}}
+                                            />
+                                        </View>
                                     </TouchableOpacity>
                                 </View>
                             ) : (
                                 <View className="border border-white/10 bg-black/40 p-5">
                                     <View className="flex-row items-center gap-2 mb-2">
                                         <Ionicons name="information-circle-outline" size={14} color="rgba(255,255,255,0.4)" />
-                                        <Text className="text-white/40 font-headline font-black text-[9px] uppercase tracking-widest">IOS_PLATFORM_NOTICE</Text>
+                                        <Text className="text-white/40 font-headline font-black text-[9px] uppercase tracking-widest">IOS PLATFORM NOTICE</Text>
                                     </View>
                                     <Text className="text-white/30 font-label text-[10px] leading-4 italic">
                                         iOS does not permit surgical blocking of in-app features like Shorts.
@@ -527,7 +543,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                         </View>
 
                         <View className="mt-4">
-                            <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-3">GENERAL_PROTECTION</Text>
+                            <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-3">GENERAL PROTECTION</Text>
                             <TouchableOpacity
                                 activeOpacity={0.8}
                                 onPress={() => handleToggleUninstall(!blockUninstall)}
@@ -537,13 +553,15 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                     <Ionicons name="lock-closed-outline" size={18} color="white" />
                                 </View>
                                 <View className="flex-1">
-                                    <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">PROTECT_UNINSTALL</Text>
+                                    <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">PROTECT UNINSTALL</Text>
                                     <Text className="text-white/40 font-label text-[10px] mt-1">Prevent app removal during session</Text>
                                 </View>
-                                <ModernToggle
-                                    value={blockUninstall}
-                                    onValueChange={handleToggleUninstall}
-                                />
+                                <View pointerEvents="none">
+                                    <ModernToggle
+                                        value={blockUninstall}
+                                        onValueChange={() => {}}
+                                    />
+                                </View>
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -627,6 +645,14 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                     className="w-full h-full"
                                 />
                             )}
+                        </View>
+
+                        <View className="bg-white/5 border border-white/10 p-4 mb-6 flex-row items-center">
+                            <Ionicons name="warning-outline" size={18} color="#FFD700" style={{ marginRight: 12 }} />
+                            <Text className="flex-1 text-white/80 font-label text-[10px] uppercase tracking-wider leading-4">
+                                IF THE QR IS LOST, YOU CAN'T STOP THE SESSION.{"\n"}
+                                <Text className="text-white font-bold italic">REMEMBER THAT.</Text>
+                            </Text>
                         </View>
 
                         <Text className="text-white/40 font-label text-[10px] text-center uppercase tracking-widest leading-4 mb-8">
