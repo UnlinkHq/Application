@@ -6,14 +6,6 @@ import { getInstalledApps } from '../../modules/screen-time';
 import { BottomSheetSectionList } from '@gorhom/bottom-sheet';
 import { classifyApp, AppCategory, CATEGORY_LABELS } from '../../core/utils/classification';
 
-const MOCK_APPS = [
-    { id: 'com.instagram.android', name: 'Instagram', icon: 'https://cdn-icons-png.flaticon.com/512/174/174855.png', isMock: true },
-    { id: 'com.zhiliaoapp.musically', name: 'TikTok', icon: 'https://cdn-icons-png.flaticon.com/512/3046/3046121.png', isMock: true },
-    { id: 'com.google.android.youtube', name: 'YouTube', icon: 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png', isMock: true },
-    { id: 'com.facebook.katana', name: 'Facebook', icon: 'https://cdn-icons-png.flaticon.com/512/124/124010.png', isMock: true },
-    { id: 'com.twitter.android', name: 'Twitter', icon: 'https://cdn-icons-png.flaticon.com/512/1216/1216895.png', isMock: true },
-];
-
 interface App {
     id: string;
     name: string;
@@ -29,13 +21,13 @@ interface AppSelectionModalProps {
     onToggleApp: (appId: string, appIcon: string) => void;
 }
 
-const AppItem = memo(({ 
-    app, 
-    isSelected, 
-    onToggle 
-}: { 
-    app: App; 
-    isSelected: boolean; 
+const AppItem = memo(({
+    app,
+    isSelected,
+    onToggle
+}: {
+    app: App;
+    isSelected: boolean;
     onToggle: (id: string, icon: string) => void;
 }) => (
     <TouchableOpacity
@@ -43,9 +35,9 @@ const AppItem = memo(({
         activeOpacity={0.7}
         className={`flex-row items-center border p-4 mb-2 ${isSelected ? 'border-white bg-white/10' : 'border-white/10 bg-[#0a0a0a]'}`}
     >
-        <Image 
-            source={{ uri: app.icon }} 
-            className={`w-10 h-10 rounded-xl mr-4 ${app.isMock ? 'grayscale' : ''}`} 
+        <Image
+            source={{ uri: app.icon }}
+            className={`w-10 h-10 rounded-xl mr-4 ${app.isMock ? 'grayscale' : ''}`}
             resizeMode="contain"
         />
         <View className="flex-1">
@@ -83,14 +75,9 @@ export const AppSelectionModal = ({
                     setAllApps(installedApps.map(a => ({
                         id: a.packageName,
                         name: a.label,
-                        icon: a.icon && a.icon.length > 0 ? `data:image/png;base64,${a.icon}` : MOCK_APPS[0].icon,
+                        icon: `data:image/png;base64,${a.icon}`,
                         category: classifyApp(a.packageName, a.category),
                         isMock: false,
-                    })));
-                } else {
-                    setAllApps(MOCK_APPS.map(a => ({
-                        ...a,
-                        category: classifyApp(a.id)
                     })));
                 }
             } catch (err) {
@@ -107,15 +94,15 @@ export const AppSelectionModal = ({
 
     const filteredApps = useMemo(() => {
         if (!searchQuery) return allApps;
-        return allApps.filter(app => 
-            app.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        return allApps.filter(app =>
+            app.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
             app.id.toLowerCase().includes(searchQuery.toLowerCase())
         );
     }, [allApps, searchQuery]);
 
     const sections = useMemo(() => {
         const groups: Record<AppCategory, App[]> = {} as any;
-        
+
         filteredApps.forEach(app => {
             if (!groups[app.category]) groups[app.category] = [];
             groups[app.category].push(app);
@@ -131,10 +118,10 @@ export const AppSelectionModal = ({
     }, [filteredApps]);
 
     const renderItem = useCallback(({ item }: { item: App }) => (
-        <AppItem 
-            app={item} 
-            isSelected={selectedApps.includes(item.id)} 
-            onToggle={onToggleApp} 
+        <AppItem
+            app={item}
+            isSelected={selectedApps.includes(item.id)}
+            onToggle={onToggleApp}
         />
     ), [selectedApps, onToggleApp]);
 
@@ -190,7 +177,7 @@ export const AppSelectionModal = ({
                             sections={sections}
                             renderItem={renderItem}
                             renderSectionHeader={renderSectionHeader}
-                            keyExtractor={(item) => item.id}
+                            keyExtractor={(item: any) => item.id}
                             showsVerticalScrollIndicator={false}
                             stickySectionHeadersEnabled={true}
                             initialNumToRender={20}
@@ -199,15 +186,15 @@ export const AppSelectionModal = ({
                             removeClippedSubviews={true}
                             contentContainerStyle={{ paddingBottom: 120 }}
                         />
-                        
+
                         <View className="absolute bottom-4 left-0 right-0">
-                           <TouchableOpacity
+                            <TouchableOpacity
                                 onPress={onClose}
                                 className="bg-white h-16 items-center justify-center no-corners"
-                                style={{ 
-                                    shadowColor: '#fff', 
-                                    shadowOffset: {width: 0, height: 0}, 
-                                    shadowOpacity: 0.2, 
+                                style={{
+                                    shadowColor: '#fff',
+                                    shadowOffset: { width: 0, height: 0 },
+                                    shadowOpacity: 0.2,
                                     shadowRadius: 10,
                                     elevation: 5
                                 }}

@@ -62,7 +62,6 @@ export const RuleCreationModal = ({
             onClose={onClose}
             title="MANAGE"
             snapPoints={['55%']}
-            detached={true}
             enableDynamicSizing={true}
         >
             <View className="space-y-3 mt-2">
