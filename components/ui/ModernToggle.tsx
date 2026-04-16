@@ -17,29 +17,34 @@ export const ModernToggle = ({
   value, 
   onValueChange
 }: ModernToggleProps) => {
-  const translateX = useSharedValue(value ? 20 : 2);
+  const translateX = useSharedValue(value ? 20 : 0);
 
   useEffect(() => {
-    translateX.value = withSpring(value ? 20 : 2, {
+    translateX.value = withSpring(value ? 20 : 0, {
       damping: 18,
       stiffness: 180,
     });
   }, [value]);
 
-  const thumbStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
+  const thumbStyle = useAnimatedStyle(() => {
+    return {
+      transform: [{ translateX: translateX.value }],
+      backgroundColor: interpolateColor(
+        translateX.value,
+        [0, 20],
+        ['#8E8E93', '#FFFFFF']
+      )
+    };
+  });
 
   const containerStyle = useAnimatedStyle(() => {
-    const backgroundColor = interpolateColor(
-      translateX.value,
-      [2, 20],
-      ['#000000', '#FFFFFF'],
-      'RGB'
-    );
     return { 
-      backgroundColor,
-      borderColor: 'rgba(255,255,255,0.1)'
+      backgroundColor: '#2A2A2D',
+      borderColor: interpolateColor(
+        translateX.value,
+        [0, 20],
+        ['#4A4A4D', '#FFFFFF']
+      )
     };
   });
 
@@ -58,8 +63,7 @@ export const ModernToggle = ({
         <Animated.View 
           style={[
             styles.thumb, 
-            thumbStyle,
-            { backgroundColor: value ? '#000000' : '#FFFFFF' }
+            thumbStyle
           ]} 
         />
       </Animated.View>
@@ -74,16 +78,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 2,
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: 2,
   },
   thumb: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-    elevation: 2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
   },
 });

@@ -303,13 +303,13 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
             >
                 <View className="px-1">
                     <View className="mb-4">
-                        <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-1">IDENTIFICATION</Text>
+                        <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-1">SESSION NAME</Text>
                         <TextInput
                             value={title}
                             onChangeText={setTitle}
-                            placeholder="NEW_SESSION_PROTOCOL"
+                            placeholder="Deep Focus Session"
                             placeholderTextColor="rgba(255,255,255,0.1)"
-                            className="text-white font-headline font-black text-xl uppercase"
+                            className="text-white font-headline font-black text-xl uppercase border-b border-white/20 pb-2 mt-1"
                             selectionColor="white"
                         />
                     </View>
@@ -483,7 +483,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                         className="flex-row items-center p-4 border-b border-white/5"
                                     >
                                         <View className="w-9 h-9 rounded-full bg-white/5 items-center justify-center mr-4 border border-white/10">
-                                            <MaterialIcons name="bolt" size={20} color="white" />
+                                            <MaterialCommunityIcons name="youtube" size={20} color="#FF0000" />
                                         </View>
                                         <View className="flex-1">
                                             <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">YOUTUBE_SHORTS</Text>
@@ -501,7 +501,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                         className="flex-row items-center p-4"
                                     >
                                         <View className="w-9 h-9 rounded-full bg-white/5 items-center justify-center mr-4 border border-white/10">
-                                            <MaterialCommunityIcons name="movie-filter" size={20} color="white" />
+                                            <MaterialCommunityIcons name="instagram" size={20} color="#E1306C" />
                                         </View>
                                         <View className="flex-1">
                                             <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">INSTAGRAM_REELS</Text>
@@ -551,18 +551,18 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                 </View>
             </BottomSheetScrollView>
 
-            <View className="px-1 pt-2">
+            <View className="px-6 py-6 bg-[#0a0a0a]">
                 <TouchableOpacity
-                    className={`h-22 items-center justify-center no-corners ${hasAppsSelected ? 'bg-white' : 'bg-white/10 border border-white/10'}`}
+                    className={`h-16 items-center justify-center rounded-2xl ${hasAppsSelected ? 'bg-white' : 'bg-white/10'}`}
                     activeOpacity={0.9}
                     onPress={hasAppsSelected ? handleInitiate : () => Platform.OS === 'ios' ? setIsFamilyPickerVisible(true) : setIsAppSelectionVisible(true)}
                 >
                     <View className="items-center">
-                        <Text className={`font-headline font-black text-xl uppercase tracking-[0.5em] ${hasAppsSelected ? 'text-black' : 'text-white/20'}`}>
-                            {hasAppsSelected ? 'INITIATE' : 'SELECT_TARGETS'}
+                        <Text className={`font-headline font-black text-lg uppercase tracking-[0.2em] ${hasAppsSelected ? 'text-black' : 'text-white'}`}>
+                            {hasAppsSelected ? 'Initiate Protocol' : 'Select Targets'}
                         </Text>
                         {hasAppsSelected && (
-                            <Text className="text-black/40 font-label text-[8px] uppercase tracking-widest mt-1">PREPARING_AIRTIGHT_LOCKDOWN</Text>
+                            <Text className="text-black/40 font-label text-[8px] uppercase tracking-widest mt-1">PREPARING AIRTIGHT LOCKDOWN</Text>
                         )}
                     </View>
                 </TouchableOpacity>
@@ -617,7 +617,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                 animationType="fade"
             >
                 <View className="flex-1 bg-black/90 items-center justify-center px-8">
-                    <View className="w-full bg-[#0e0e0e] border border-white/20 p-8 rounded-sm items-center">
+                    <View className="w-full bg-[#0a0a0a] border border-white/20 p-8 rounded-sm items-center">
                         <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">QR_SIGNATURE_GENERATED</Text>
                         <Text className="text-white/40 font-label text-[9px] uppercase tracking-widest mb-8 text-center italic">STORE_THIS_TO_ENABLE_FUTURE_UNBLOCKING</Text>
                         

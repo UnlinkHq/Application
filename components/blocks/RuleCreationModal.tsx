@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { BottomSheetWrapper } from '../ui/BottomSheetWrapper';
 import { SharedValue } from 'react-native-reanimated';
 
@@ -14,20 +14,20 @@ interface Rule {
 const RULES: Rule[] = [
     {
         id: 'block_now',
-        title: 'BLOCK NOW',
-        description: 'INSTANT FOCUS ACTIVATION',
+        title: 'Block Now',
+        description: 'Instant focus activation with custom targets.',
         icon: 'flash-outline',
     },
     {
         id: 'schedule',
-        title: 'SCHEDULE BLOCKING',
-        description: 'AUTOMATED FOCUS WINDOWS',
+        title: 'Schedule Blocking',
+        description: 'Automated focus windows aligned with your routine.',
         icon: 'calendar-outline',
     },
     {
         id: 'usage',
-        title: 'SET TIME LIMITS',
-        description: 'DAILY USAGE CONSTRAINTS',
+        title: 'Set Time Limits',
+        description: 'Daily usage constraints for specific applications.',
         icon: 'time-outline',
     },
 ];
@@ -44,35 +44,51 @@ export const RuleCreationModal = ({
     onClose,
     onSelectRule
 }: RuleCreationModalProps) => {
+    const [selectedRule, setSelectedRule] = useState<string | null>(null);
+
+    const handlePress = (id: string) => {
+        setSelectedRule(id);
+        // Add a slight delay to show the "Tick" selection animation before closing/navigating
+        setTimeout(() => {
+            onSelectRule(id);
+            // Reset state after navigation completes so it's fresh next time
+            setTimeout(() => setSelectedRule(null), 500);
+        }, 300);
+    };
+
     return (
         <BottomSheetWrapper
             visible={visible}
             onClose={onClose}
             title="MANAGE"
-            snapPoints={['45%']}
+            snapPoints={['55%']}
             detached={true}
             enableDynamicSizing={true}
         >
-            <View className="space-y-4">
+            <View className="space-y-3 mt-2">
                 {RULES.map((rule) => (
                     <TouchableOpacity
                         key={rule.id}
-                        onPress={() => onSelectRule(rule.id)}
+                        onPress={() => handlePress(rule.id)}
                         activeOpacity={0.7}
-                        className="flex-row items-center border-2 border-white bg-black p-4 mb-3"
+                        className={`flex-row items-center p-5 rounded-2xl border-2 mb-3 ${selectedRule === rule.id ? 'border-white bg-white/5' : 'border-white/5 bg-[#121212]'}`}
                     >
-                        <View className="mr-4">
-                            <Ionicons name={rule.icon} size={22} color="white" />
+                        <View className="w-12 h-12 rounded-full bg-white/10 items-center justify-center mr-4">
+                            <Ionicons name={rule.icon} size={24} color="white" />
                         </View>
-                        <View className="flex-1">
-                            <Text className="text-white font-headline font-black text-md tracking-tight uppercase">
+                        <View className="flex-1 mr-4">
+                            <Text className="text-white font-headline font-black text-sm tracking-tight">
                                 {rule.title}
                             </Text>
-                            <Text className="text-white/40 font-label text-[9px] uppercase tracking-[0.15em] mt-1">
+                            <Text className="text-white/40 font-label text-[10px] mt-1 leading-tight">
                                 {rule.description}
                             </Text>
                         </View>
-                        <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.3)" />
+                        <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${selectedRule === rule.id ? 'bg-white border-white' : 'bg-transparent border-white/20'}`}>
+                            {selectedRule === rule.id && (
+                                <MaterialIcons name="check" size={14} color="black" />
+                            )}
+                        </View>
                     </TouchableOpacity>
                 ))}
             </View>

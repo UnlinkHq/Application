@@ -36,9 +36,10 @@ const AttachedBackground = ({ style }: BottomSheetBackgroundProps) => {
       style={[
         style,
         {
-          backgroundColor: '#000',
-          borderTopWidth: 2,
-          borderColor: '#FFF',
+          backgroundColor: '#0a0a0a',
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.08)',
+          borderBottomWidth: 0,
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
           ...dynamicShadow

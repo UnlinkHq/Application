@@ -139,7 +139,7 @@ export const StrictModeModal = ({
                             key={mode.id}
                             onPress={() => setSelectedMode(mode.id)}
                             activeOpacity={0.7}
-                            className={`flex-row items-center p-5 rounded-2xl border-2 ${selectedMode === mode.id ? 'border-blue-500 bg-white/5' : 'border-white/5 bg-[#121212]'}`}
+                            className={`flex-row items-center p-5 rounded-2xl border-2 ${selectedMode === mode.id ? 'border-white bg-[#121212]' : 'border-white/5 bg-[#121212]'}`}
                         >
                             <View className="w-12 h-12 rounded-full bg-white/10 items-center justify-center mr-4">
                                 <MaterialCommunityIcons name={mode.icon} size={24} color={mode.color} />
@@ -152,9 +152,9 @@ export const StrictModeModal = ({
                                     {mode.description}
                                 </Text>
                             </View>
-                            <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${selectedMode === mode.id ? 'bg-blue-500 border-blue-500' : 'bg-transparent border-white/20'}`}>
+                            <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${selectedMode === mode.id ? 'bg-white border-white' : 'bg-transparent border-white/20'}`}>
                                 {selectedMode === mode.id && (
-                                    <MaterialIcons name="check" size={14} color="white" />
+                                    <MaterialIcons name="check" size={14} color="black" />
                                 )}
                             </View>
                         </TouchableOpacity>
@@ -190,8 +190,8 @@ export const StrictModeModal = ({
                                     </View>
                                     {isVerified && (
                                         <View className="flex-row items-center">
-                                            <MaterialIcons name="verified" size={12} color="#3b82f6" />
-                                            <Text className="text-blue-500 font-label text-[8px] uppercase ml-1">VERIFIED</Text>
+                                            <MaterialIcons name="verified" size={12} color="white" />
+                                            <Text className="text-white font-label text-[8px] uppercase ml-1">VERIFIED</Text>
                                         </View>
                                     )}
                                 </View>
@@ -228,11 +228,11 @@ export const StrictModeModal = ({
                                                 maxLength={4}
                                                 className="flex-1 h-14 bg-black border border-white/20 px-4 text-white font-headline font-black text-xl text-center"
                                             />
-                                            <TouchableOpacity
+                                            <TouchableOpacity 
                                                 onPress={handleVerifyCode}
-                                                className="w-20 bg-blue-500 items-center justify-center"
+                                                className="w-20 bg-white items-center justify-center"
                                             >
-                                                <MaterialIcons name="check" size={24} color="white" />
+                                                <MaterialIcons name="check" size={24} color="black" />
                                             </TouchableOpacity>
                                         </View>
                                         <TouchableOpacity onPress={() => setVerificationStep('input')} className="mt-4">
@@ -240,21 +240,21 @@ export const StrictModeModal = ({
                                         </TouchableOpacity>
                                     </View>
                                 ) : (
-                                    <View className="h-14 bg-blue-500/10 border border-blue-500/20 items-center justify-center px-4">
-                                        <Text className="text-blue-500 font-headline font-black text-xs uppercase tracking-widest" numberOfLines={1}>{emailAddress}</Text>
+                                    <View className="h-14 bg-white/5 border border-white/20 items-center justify-center px-4">
+                                        <Text className="text-white font-headline font-black text-xs uppercase tracking-widest" numberOfLines={1}>{emailAddress}</Text>
                                     </View>
                                 )}
                             </View>
 
                             {/* WhatsApp Locked Premium Card */}
-                            <View className="bg-[#121212] border border-white/5 p-5 rounded-sm opacity-60">
+                            <View className="bg-[#0a0a0a] border border-white/5 p-5 rounded-sm opacity-60">
                                 <View className="flex-row items-center justify-between mb-2">
                                     <View className="flex-row items-center">
                                         <MaterialCommunityIcons name="whatsapp" size={16} color="#22c55e" style={{ marginRight: 8 }} />
                                         <Text className="text-white/60 font-headline font-black text-xs uppercase">WHATSAPP SYNC</Text>
                                     </View>
-                                    <View className="bg-blue-500/20 px-2 py-1 rounded-sm">
-                                        <Text className="text-blue-500 font-label text-[8px] uppercase font-black tracking-widest">PREMIUM</Text>
+                                    <View className="bg-white/10 px-2 py-1 rounded-sm border border-white/10">
+                                        <Text className="text-white border-white/0 font-label text-[8px] uppercase font-black tracking-widest">PREMIUM</Text>
                                     </View>
                                 </View>
                                 <Text className="text-white/30 font-label text-[9px] uppercase leading-4 italic mt-1 pb-2">
@@ -276,14 +276,14 @@ export const StrictModeModal = ({
                 </Animated.View>
             </BottomSheetScrollView>
 
-            <View className="px-6 py-6 bg-[#000]">
-                <TouchableOpacity
-                    className={`h-16 items-center justify-center rounded-2xl ${isConfirmDisabled ? 'bg-white/10' : 'bg-blue-500'}`}
+            <View className="px-6 py-6 bg-[#0a0a0a]">
+                <TouchableOpacity 
+                    className={`h-16 items-center justify-center rounded-2xl ${isConfirmDisabled ? 'bg-white/10' : 'bg-white'}`}
                     activeOpacity={0.9}
                     onPress={handleConfirm}
                     disabled={isConfirmDisabled}
                 >
-                    <Text className={`font-headline font-black text-lg uppercase tracking-[0.2em] ${isConfirmDisabled ? 'text-white/20' : 'text-white'}`}>
+                    <Text className={`font-headline font-black text-lg uppercase tracking-[0.2em] ${isConfirmDisabled ? 'text-white/20' : 'text-black'}`}>
                         {selectedMode === 'mom_test' && !isVerified ? 'VERIFICATION_REQUIRED' : 'Select Protocol'}
                     </Text>
                 </TouchableOpacity>

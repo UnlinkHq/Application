@@ -160,7 +160,7 @@ export const AppSelectionModal = ({
         >
             <View className="flex-1">
                 {/* Search Bar */}
-                <View className="flex-row items-center bg-[#111] border-2 border-white/10 px-4 h-14 mb-4">
+                <View className="flex-row items-center bg-[#0a0a0a] border-2 border-white/10 px-4 h-14 mb-4">
                     <Ionicons name="search" size={20} color="rgba(255,255,255,0.4)" />
                     <TextInput
                         className="flex-1 ml-3 text-white font-headline font-black text-sm uppercase"
