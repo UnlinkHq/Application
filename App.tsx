@@ -115,19 +115,20 @@ export default function App() {
   useEffect(() => {
     async function checkState() {
       try {
-        // PRODUCTION LOGIC: Check if user has already onboarded
         const hasLaunched = await AsyncStorage.getItem('hasLaunched');
-        setIsFirstLaunch(hasLaunched !== 'true');
+        const onboarded = hasLaunched === 'true';
+        setIsFirstLaunch(!onboarded);
         
         const session = await FocusStorageService.getActiveSession();
         setActiveSession(session);
       } catch (error) {
-         console.error('Error checking state:', error);
-         setIsFirstLaunch(false);
+         console.error('[App] Error checking persistence state:', error);
+         setIsFirstLaunch(false); // Default to home on error for better UX
       }
     }
     checkState();
-
+    
+    // Interval check for session changes
     const interval = setInterval(async () => {
         const session = await FocusStorageService.getActiveSession();
         setActiveSession(session);
@@ -145,8 +146,13 @@ export default function App() {
   }
 
   const completeOnboarding = async () => {
-    await AsyncStorage.setItem('hasLaunched', 'true');
-    setIsFirstLaunch(false);
+    try {
+      await AsyncStorage.setItem('hasLaunched', 'true');
+      setIsFirstLaunch(false);
+    } catch (e) {
+      console.error('Failed to save onboarding state:', e);
+      setIsFirstLaunch(false); // Proceed anyway
+    }
   };
 
   return (

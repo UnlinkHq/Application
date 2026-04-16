@@ -17,7 +17,13 @@ class UnlinkDeviceAdminReceiver : DeviceAdminReceiver() {
     }
 
     override fun onDisableRequested(context: Context, intent: Intent): CharSequence? {
-        // You can return a message here to show to the user when they try to deactivate admin
-        return "Disabling this will allow Unlink to be uninstalled."
+        val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        val isProtected = prefs.getBoolean("is_uninstall_protected", false)
+        
+        return if (isProtected) {
+            "CRITICAL: PROTOCOL_ACTIVE. UNINSTALL_PROTECTION_IS_ENFORCED. DISABLE_NOT_ALLOWED."
+        } else {
+            "Disabling this will allow Unlink to be uninstalled."
+        }
     }
 }

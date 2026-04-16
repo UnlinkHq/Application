@@ -51,6 +51,9 @@ export const BlocksScreen = () => {
 
     const handlePlay = async (block: BlockSession) => {
         const session = { ...block, startTime: Date.now() };
+        console.log('--- [DEBUG] INITIATING_FOCUS_SESSION ---');
+        console.log(JSON.stringify(session, null, 2));
+        console.log('-----------------------------------------');
         await FocusStorageService.startSession(session);
         refreshData();
     };
@@ -95,19 +98,7 @@ export const BlocksScreen = () => {
                         <PermissionBanner />
                     </View>
 
-                    {/* Section: ACTIVE_DEPLOYMENT */}
-                    <View className="px-6 mb-12">
-                        <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.3em] mb-6">
-                            ACTIVE_DEPLOYMENT
-                        </Text>
-                        {activeSession ? (
-                            <ActiveBlockCard session={activeSession} onStop={handleStop} />
-                        ) : (
-                            <View className="h-32 border border-white/5 bg-white/[0.02] items-center justify-center border-dashed">
-                                <Text className="text-white/20 font-label text-[10px] uppercase tracking-widest">No active protocol engaged</Text>
-                            </View>
-                        )}
-                    </View>
+
 
                     {/* Section: FOCUS_LIBRARY */}
                     <View className="px-6">
@@ -257,49 +248,92 @@ const ActiveBlockCard = ({ session, onStop }: { session: BlockSession, onStop: (
     );
 };
 
-const LibraryItem = ({ block, index, onPlay, onDelete, onEdit, isActive }: { block: BlockSession, index: number, onPlay: () => void, onDelete: () => void, onEdit?: (block: BlockSession) => void, isActive: boolean }) => (
-    <Animated.View
-        entering={FadeInDown.delay(index * 100).duration(600)}
-        className={`mb-4 p-5 border ${isActive ? 'border-white/40 bg-white/5' : 'border-white/10 bg-black'}`}
-    >
-        <View className="flex-row items-center justify-between mb-4">
-            <View className="flex-row items-center gap-3">
-                <View className="w-10 h-10 bg-white/5 items-center justify-center">
-                    <MaterialCommunityIcons name="shield" size={20} color="white" />
-                </View>
-                <View>
-                    <Text className="text-white font-headline font-black text-sm uppercase tracking-widest">{block.title}</Text>
-                    <Text className="text-white/30 font-label text-[10px] mt-1">{block.apps.length} Targets • {block.durationMins} Mins</Text>
-                </View>
-            </View>
+const LibraryItem = ({ block, index, onPlay, onDelete, onEdit, isActive }: { block: BlockSession, index: number, onPlay: () => void, onDelete: () => void, onEdit?: (block: BlockSession) => void, isActive: boolean }) => {
+    const pulse = useSharedValue(0.4);
 
-            <View className="flex-row items-center gap-4">
-                <TouchableOpacity onPress={() => onEdit?.(block)} className="p-2">
-                    <MaterialIcons name="edit" size={18} color="rgba(255,255,255,0.4)" />
-                </TouchableOpacity>
-                <TouchableOpacity onPress={onDelete} className="p-2">
-                    <MaterialIcons name="delete-outline" size={18} color="rgba(255,255,255,0.2)" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                    onPress={onPlay}
-                    disabled={isActive}
-                    className={`w-10 h-10 items-center justify-center ${isActive ? 'bg-white/10' : 'bg-white'}`}
-                >
-                    <MaterialIcons name={isActive ? "check" : "play-arrow"} size={24} color={isActive ? "white" : "black"} />
-                </TouchableOpacity>
-            </View>
-        </View>
+    useEffect(() => {
+        if (isActive) {
+            pulse.value = withRepeat(
+                withSequence(
+                    withTiming(0.9, { duration: 2000 }),
+                    withTiming(0.4, { duration: 2000 })
+                ),
+                -1,
+                true
+            );
+        } else {
+            pulse.value = 0;
+        }
+    }, [isActive]);
 
-        {/* Small Icon Row */}
-        <View className="flex-row items-center">
-            {block.appIcons?.slice(0, 6).map((icon, idx) => (
-                <Image key={idx} source={{ uri: icon }} className="w-4 h-4 mr-2 opacity-40" />
-            ))}
-            {block.surgicalFlags.youtube && <MaterialCommunityIcons name="youtube-subscription" size={12} color="rgba(255,0,0,0.5)" style={{ marginRight: 8 }} />}
-            {block.surgicalFlags.instagram && <MaterialCommunityIcons name="instagram" size={12} color="rgba(255,255,255,0.3)" />}
+    const auraStyle = useAnimatedStyle(() => ({
+        opacity: pulse.value,
+        transform: [{ scale: interpolate(pulse.value, [0.4, 0.8], [1, 1.05]) }]
+    }));
+
+    const borderStyle = useAnimatedStyle(() => ({
+        borderColor: isActive 
+            ? interpolate(pulse.value, [0.4, 0.9], [0.4, 1.0]) // Higher contrast white pulse
+            : 'rgba(255,255,255,0.1)',
+        borderWidth: isActive ? 2 : 1,
+        shadowColor: '#fff',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: isActive ? interpolate(pulse.value, [0.4, 0.9], [0, 0.5]) : 0,
+        shadowRadius: 10,
+    }), [isActive]);
+
+    return (
+        <View className="mb-4">
+            {isActive && <Animated.View style={[auraStyle, styles.aura, { top: -8, bottom: -8, left: -8, right: -8, backgroundColor: 'rgba(255,255,255,0.15)' }]} />}
+            <Animated.View
+                entering={FadeInDown.delay(index * 100).duration(600)}
+                style={borderStyle}
+                className={`p-5 ${isActive ? 'bg-white/5' : 'bg-black'}`}
+            >
+                <View className="flex-row items-center justify-between mb-4">
+                    <View className="flex-row items-center gap-3">
+                        <View className="w-10 h-10 bg-white/5 items-center justify-center">
+                            <MaterialCommunityIcons name="shield" size={20} color={isActive ? "#72fe88" : "white"} />
+                        </View>
+                        <View>
+                            <Text className={`font-headline font-black text-sm uppercase tracking-widest ${isActive ? 'text-[#72fe88]' : 'text-white'}`}>{block.title}</Text>
+                            <Text className="text-white/30 font-label text-[10px] mt-1">{block.apps.length} Targets • {block.durationMins} Mins</Text>
+                        </View>
+                    </View>
+
+                    <View className="flex-row items-center gap-4">
+                        {!isActive && (
+                            <>
+                                <TouchableOpacity onPress={() => onEdit?.(block)} className="p-2">
+                                    <MaterialIcons name="edit" size={18} color="rgba(255,255,255,0.4)" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={onDelete} className="p-2">
+                                    <MaterialIcons name="delete-outline" size={18} color="rgba(255,255,255,0.2)" />
+                                </TouchableOpacity>
+                            </>
+                        )}
+                        <TouchableOpacity
+                            onPress={onPlay}
+                            disabled={isActive}
+                            className={`w-10 h-10 items-center justify-center ${isActive ? 'bg-[#72fe88]/20 border border-[#72fe88]' : 'bg-white'}`}
+                        >
+                            <MaterialIcons name={isActive ? "check" : "play-arrow"} size={24} color={isActive ? "#72fe88" : "black"} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                {/* Small Icon Row */}
+                <View className="flex-row items-center">
+                    {block.appIcons?.slice(0, 6).map((icon, idx) => (
+                        <Image key={idx} source={{ uri: icon }} className="w-4 h-4 mr-2 opacity-40" />
+                    ))}
+                    {block.surgicalFlags?.youtube && <MaterialCommunityIcons name="youtube-subscription" size={12} color="rgba(255,0,0,0.5)" style={{ marginRight: 8 }} />}
+                    {block.surgicalFlags?.instagram && <MaterialCommunityIcons name="instagram" size={12} color="rgba(255,255,255,0.3)" />}
+                </View>
+            </Animated.View>
         </View>
-    </Animated.View>
-);
+    );
+};
 
 const styles = StyleSheet.create({
     root: {

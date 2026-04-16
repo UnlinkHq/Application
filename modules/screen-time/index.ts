@@ -32,7 +32,10 @@ interface ScreenTimeModuleInterface {
 
     // Blocking & Dashboard Functions
     setBlockedApps(packageNames: string[], message: string, timeLeft: string): Promise<void>;
-    setSurgicalFlags(youtubeShorts: boolean, instagramReels: boolean): void;
+    setSurgicalFlags(youtubeShorts: boolean, instagramReels: boolean, studyMode?: boolean): void;
+    setUninstallProtection(enabled: boolean): void;
+    setSessionDuration(minutes: Int): void;
+    setBlockingSuspended(suspended: boolean): void;
     setSessionData(startTime: number, durationMins: number): void;
     getAppIcon(packageName: string): Promise<string>;
     stopBlockingService(): void;
@@ -77,6 +80,9 @@ try {
         }),
         setBlockedApps: async () => {},
         setSurgicalFlags: () => {},
+        setUninstallProtection: () => {},
+        setSessionDuration: () => {},
+        setBlockingSuspended: () => {},
         setSessionData: () => {},
         getAppIcon: async () => '',
         stopBlockingService: () => {},
@@ -131,8 +137,20 @@ export function setBlockedApps(packageNames: string[], message: string, timeLeft
     ScreenTimeModule.setBlockedApps(packageNames, message, timeLeft);
 }
 
-export function setSurgicalFlags(youtubeShorts: boolean, instagramReels: boolean): void {
-    ScreenTimeModule.setSurgicalFlags(youtubeShorts, instagramReels);
+export function setSurgicalFlags(youtubeShorts: boolean, instagramReels: boolean, studyMode: boolean = false): void {
+    ScreenTimeModule.setSurgicalFlags(youtubeShorts, instagramReels, studyMode);
+}
+
+export function setUninstallProtection(enabled: boolean): void {
+    ScreenTimeModule.setUninstallProtection(enabled);
+}
+
+export function setSessionDuration(minutes: number): void {
+    ScreenTimeModule.setSessionDuration(Math.floor(minutes));
+}
+
+export function setBlockingSuspended(suspended: boolean): void {
+    ScreenTimeModule.setBlockingSuspended(suspended);
 }
 
 export function setSessionData(startTime: number, durationMins: number): void {

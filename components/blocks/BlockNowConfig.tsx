@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Image, Dimensions, StyleSheet, Platform, AppState, AppStateStatus, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Image, Dimensions, StyleSheet, Platform, AppState, AppStateStatus, Modal, ScrollView, Switch } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
+import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system/legacy';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -183,12 +185,19 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
     const [isQrModalVisible, setIsQrModalVisible] = useState(false);
     const [generatedQrData, setGeneratedQrData] = useState<string | null>(null);
     const [pendingSession, setPendingSession] = useState<any>(null);
+    const [isAdminModalVisible, setIsAdminModalVisible] = useState(false);
+    const [isQrSaving, setIsQrSaving] = useState(false);
+    const [isQrSaved, setIsQrSaved] = useState(false);
     const [nativeIosCount, setNativeIosCount] = useState(0);
 
     const syncNativeStatus = useCallback(() => {
         // iOS: Always sync selection count
         if (Platform.OS === 'ios') {
             setNativeIosCount(getSelectionCount());
+        }
+        // Android: Sync Admin status
+        if (Platform.OS === 'android') {
+            setBlockUninstall(isAdminActive());
         }
     }, []);
 
@@ -198,7 +207,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
             setBlockUninstall(isAdminActive());
         }
         syncNativeStatus();
-        
+
         const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
             if (nextAppState === 'active') {
                 syncNativeStatus();
@@ -219,8 +228,11 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
     }, []);
 
     const handleToggleUninstall = (value: boolean) => {
-        // UI ONLY: We only request native permission during handleInitiate
-        // This prevents the flickering and "going back" weirdness during configuration
+        if (value && !isAdminActive()) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            setIsAdminModalVisible(true);
+            return;
+        }
         setBlockUninstall(value);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     };
@@ -238,9 +250,8 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
         // 1. Check for Android Admin if Protect Uninstall is requested
         if (Platform.OS === 'android' && blockUninstall && !isAdminActive()) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            alert("PERMISSION_REQUIRED: DEVICE_ADMINISTRATOR_IS_REQUIRED_FOR_UNINSTALL_PROTECTION.");
-            requestAdmin();
-            return; // Exit and let user come back after granting
+            setIsAdminModalVisible(true);
+            return;
         }
 
         const qrData = strictMode === 'qr_code' ? `UNLINK_${Date.now()}_${Math.random().toString(36).substring(7)}` : undefined;
@@ -251,9 +262,9 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
             durationMins: duration,
             apps: selectedApps.map(a => a.id),
             appIcons: selectedApps.map(a => a.icon),
-            surgicalBlocks: {
-                youtubeShorts: blockShorts.youtube,
-                instagramReels: blockShorts.instagram
+            surgicalFlags: {
+                youtube: blockShorts.youtube,
+                instagram: blockShorts.instagram
             },
             strictnessConfig: {
                 mode: strictMode,
@@ -281,13 +292,37 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
     };
 
     const finalizeSession = async (session: any) => {
-        if (Platform.OS === 'ios') {
-            activateShield();
-            await FocusStorageService.startSession(session);
-        } else {
-            await FocusStorageService.saveBlock(session);
-        }
+        // Change: Save to library instead of starting immediately
+        await FocusStorageService.saveBlock(session);
         onBack();
+    };
+
+    const handleSaveQR = async () => {
+        if (!generatedQrData) return;
+        
+        setIsQrSaving(true);
+        try {
+            const { status } = await MediaLibrary.requestPermissionsAsync();
+            if (status !== 'granted') {
+                alert("PERMISSION_REQUIRED: GALLERY_ACCESS_IS_NEEDED_TO_SAVE_YOUR_QR_SIGNATURE");
+                setIsQrSaving(false);
+                return;
+            }
+
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${generatedQrData}`;
+            const fileUri = `${FileSystem.cacheDirectory}unlink_qr_${Date.now()}.png`;
+            
+            const downloadRes = await FileSystem.downloadAsync(qrUrl, fileUri);
+            await MediaLibrary.saveToLibraryAsync(downloadRes.uri);
+            
+            setIsQrSaved(true);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch (error) {
+            console.error('Failed to save QR:', error);
+            alert("UPLOAD_ERROR: FAILED_TO_CONSERVE_QR_SIGNATURE");
+        } finally {
+            setIsQrSaving(false);
+        }
     };
 
     const hasAppsSelected = Platform.OS === 'ios' ? nativeIosCount > 0 : selectedApps.length > 0;
@@ -503,7 +538,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                         <View pointerEvents="none">
                                             <ModernToggle
                                                 value={blockShorts.youtube}
-                                                onValueChange={(v) => {}}
+                                                onValueChange={(v) => { }}
                                             />
                                         </View>
                                     </TouchableOpacity>
@@ -523,7 +558,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                         <View pointerEvents="none">
                                             <ModernToggle
                                                 value={blockShorts.instagram}
-                                                onValueChange={(v) => {}}
+                                                onValueChange={(v) => { }}
                                             />
                                         </View>
                                     </TouchableOpacity>
@@ -559,7 +594,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                 <View pointerEvents="none">
                                     <ModernToggle
                                         value={blockUninstall}
-                                        onValueChange={() => {}}
+                                        onValueChange={() => { }}
                                     />
                                 </View>
                             </TouchableOpacity>
@@ -627,18 +662,20 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                 }}
             />
 
-            {/* QR Generation Modal */}
-            <Modal
-                visible={isQrModalVisible}
-                transparent={true}
-                animationType="fade"
-            >
-                <View className="flex-1 bg-black/90 items-center justify-center px-8">
+            {/* QR Generation Overlay */}
+            {isQrModalVisible && (
+                <Animated.View
+                    entering={FadeIn}
+                    style={StyleSheet.absoluteFill}
+                    className="bg-black/95 items-center justify-center px-8 z-50"
+                >
                     <View className="w-full bg-[#0a0a0a] border border-white/20 p-8 rounded-sm items-center">
                         <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">QR_SIGNATURE_GENERATED</Text>
-                        <Text className="text-white/40 font-label text-[9px] uppercase tracking-widest mb-8 text-center italic">STORE_THIS_TO_ENABLE_FUTURE_UNBLOCKING</Text>
+                        <Text className="text-[#72fe88] font-label text-[10px] uppercase tracking-widest mb-8 text-center font-bold px-4">
+                            THIS_SIGNATURE_WILL_BE_STORED_IN_YOUR_PHOTO_GALLERY_AUTOMATICALLY
+                        </Text>
 
-                        <View className="w-64 h-64 bg-white p-4 mb-8">
+                        <View className="w-64 h-64 bg-white p-4 mb-4">
                             {generatedQrData && (
                                 <Image
                                     source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${generatedQrData}` }}
@@ -646,6 +683,24 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                 />
                             )}
                         </View>
+
+                        {isQrSaved ? (
+                            <View className="flex-row items-center gap-2 mb-8 bg-[#72fe88]/10 px-3 py-2 border border-[#72fe88]/20">
+                                <MaterialIcons name="check-circle" size={14} color="#72fe88" />
+                                <Text className="text-[#72fe88] font-label text-[10px] uppercase tracking-widest font-bold">SIGNATURE_SAVED_TO_GALLERY</Text>
+                            </View>
+                        ) : (
+                            <TouchableOpacity 
+                                onPress={handleSaveQR}
+                                disabled={isQrSaving}
+                                className="mb-8 flex-row items-center gap-2"
+                            >
+                                <MaterialIcons name="file-download" size={16} color="white" />
+                                <Text className="text-white font-label text-[10px] uppercase tracking-widest border-b border-white/20 pb-0.5">
+                                    {isQrSaving ? 'SAVING_SIGNATURE...' : 'SAVE_TO_GALLERY'}
+                                </Text>
+                            </TouchableOpacity>
+                        )}
 
                         <View className="bg-white/5 border border-white/10 p-4 mb-6 flex-row items-center">
                             <Ionicons name="warning-outline" size={18} color="#FFD700" style={{ marginRight: 12 }} />
@@ -655,18 +710,21 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                             </Text>
                         </View>
 
-                        <Text className="text-white/40 font-label text-[10px] text-center uppercase tracking-widest leading-4 mb-8">
-                            PLEASE TAKE A SCREENSHOT OR SAVE THIS QR CODE. YOU WILL BE REQUIRED TO SCAN IT TO TERMINATE THE FOCUS PROTOCOL.
-                        </Text>
-
                         <TouchableOpacity
-                            onPress={() => {
+                            onPress={async () => {
+                                // Ensure it's saved to gallery before continuing
+                                if (!isQrSaved) {
+                                    await handleSaveQR();
+                                }
                                 setIsQrModalVisible(false);
-                                finalizeSession(pendingSession);
+                                // Small delay to ensure interaction finishes and storage persists
+                                setTimeout(() => {
+                                    finalizeSession(pendingSession);
+                                }, 100);
                             }}
                             className="w-full h-14 bg-white items-center justify-center mb-3"
                         >
-                            <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">I_HAVE_SAVED_THE_QR</Text>
+                            <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">I_HAVE_SAVED_THE_SIGNATURE</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -676,8 +734,63 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                             <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">ABORT_DEPLOYMENT</Text>
                         </TouchableOpacity>
                     </View>
-                </View>
-            </Modal>
+                </Animated.View>
+            )}
+
+            {/* Security Permission Overlay */}
+            {isAdminModalVisible && (
+                <Animated.View
+                    entering={FadeIn}
+                    style={StyleSheet.absoluteFill}
+                    className="bg-black/95 items-center justify-center px-8 z-[60]"
+                >
+                    <View className="w-full bg-[#0a0a0a] border border-white/20 p-8 rounded-sm items-center">
+                        <View className="w-16 h-16 bg-white/5 items-center justify-center mb-6 border border-white/10">
+                            <MaterialCommunityIcons name="shield-lock-outline" size={32} color="white" />
+                        </View>
+
+                        <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">UNINSTALL_PROTECTION</Text>
+                        <Text className="text-white/40 font-label text-[9px] uppercase tracking-widest mb-8 text-center italic">LEVEL_02_SECURITY_ENFORCEMENT</Text>
+
+                        <View className="bg-white/5 border border-white/10 p-5 mb-8 w-full">
+                            <View className="flex-row items-start mb-4">
+                                <View className="w-5 h-5 bg-white/10 items-center justify-center mr-3 mt-0.5">
+                                    <View className="w-1.5 h-1.5 bg-white" />
+                                </View>
+                                <Text className="flex-1 text-white/80 font-label text-[10px] uppercase tracking-wider leading-4">
+                                    Enabling this prevents the app from being uninstalled while a focus session is active.
+                                </Text>
+                            </View>
+                            <View className="flex-row items-start">
+                                <View className="w-5 h-5 bg-white/10 items-center justify-center mr-3 mt-0.5">
+                                    <View className="w-1.5 h-1.5 bg-white" />
+                                </View>
+                                <Text className="flex-1 text-white/80 font-label text-[10px] uppercase tracking-wider leading-4">
+                                    You will be redirected to the Android system settings to grant <Text className="text-white font-bold">Device Administrator</Text> access.
+                                </Text>
+                            </View>
+                        </View>
+
+                        <TouchableOpacity
+                            onPress={() => {
+                                setIsAdminModalVisible(false);
+                                setBlockUninstall(true);
+                                requestAdmin();
+                            }}
+                            className="w-full h-14 bg-white items-center justify-center mb-3"
+                        >
+                            <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">GRANT_PERMISSION</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            onPress={() => setIsAdminModalVisible(false)}
+                            className="w-full h-14 border border-white/20 items-center justify-center"
+                        >
+                            <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">ABORT_REQUEST</Text>
+                        </TouchableOpacity>
+                    </View>
+                </Animated.View>
+            )}
         </View>
     );
 };

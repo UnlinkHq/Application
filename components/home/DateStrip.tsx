@@ -10,33 +10,33 @@ interface Props {
   onOpenDatePicker: () => void;
 }
 
-export const DateStrip = memo(({ 
-  currentYear, 
-  currentMonth, 
-  selectedDate, 
-  onSelectDate, 
-  onOpenDatePicker 
+export const DateStrip = memo(({
+  currentYear,
+  currentMonth,
+  selectedDate,
+  onSelectDate,
+  onOpenDatePicker
 }: Props) => {
-  
+
   const dates = [];
   const today = new Date();
-  
+
   // Dynamic generation for MVP
   for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(today.getDate() - i);
-      dates.push({
-          day: d.toLocaleString('en-US', { weekday: 'short' }).toUpperCase(), // MON, TUE...
-          date: d.getDate(),
-          isToday: d.getDate() === today.getDate()
-      });
+    const d = new Date();
+    d.setDate(today.getDate() - i);
+    dates.push({
+      day: d.toLocaleString('en-US', { weekday: 'short' }).toUpperCase(), // MON, TUE...
+      date: d.getDate(),
+      isToday: d.getDate() === today.getDate()
+    });
   }
 
   return (
-    <View className="px-6 py-4 bg-black">
+    <View className="px-3 py-4 bg-black">
       {/* Month/Year Selection Row */}
       <View className="flex-row items-center justify-between mb-6">
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={onOpenDatePicker}
           className="active:opacity-70"
         >
@@ -48,25 +48,24 @@ export const DateStrip = memo(({
       </View>
 
       {/* Date Squares Row */}
-      <ScrollView 
-        horizontal 
+      <ScrollView
+        horizontal
         showsHorizontalScrollIndicator={false}
         className="flex-row"
         contentContainerStyle={{ gap: 16 }}
       >
         {dates.map((item, index) => {
           const isSelected = item.date === selectedDate;
-          
+
           return (
-            <TouchableOpacity 
-              key={index} 
+            <TouchableOpacity
+              key={index}
               onPress={() => onSelectDate(item.date)}
               activeOpacity={0.8}
-              className={`w-12 h-16 items-center justify-center border ${
-                isSelected 
-                  ? 'bg-white border-white' 
+              className={`w-12 h-16 items-center justify-center border ${isSelected
+                  ? 'bg-white border-white'
                   : 'bg-transparent border-white/10 opacity-40'
-              }`}
+                }`}
             >
               <Text className={`font-label text-[10px] ${isSelected ? 'text-black font-bold' : 'text-white'}`}>
                 {item.day}

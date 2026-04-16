@@ -109,17 +109,76 @@ class ScreenTimeModule : Module() {
         }
     }
 
-    Function("requestAdmin") {
+    Function("setSurgicalConfig") { youtube: Boolean, instagram: Boolean, studyMode: Boolean ->
       appContext.reactContext?.let { context ->
+        val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        prefs.edit().apply {
+            putBoolean("surgical_youtube", youtube)
+            putBoolean("surgical_instagram", instagram)
+            putBoolean("study_mode_active", studyMode)
+            commit()
+        }
+      }
+      return@Function null
+    }
+
+    Function("setUninstallProtection") { enabled: Boolean ->
+      appContext.reactContext?.let { context ->
+        val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        prefs.edit().apply {
+            putBoolean("is_uninstall_protected", enabled)
+            commit()
+        }
+      }
+      return@Function null
+    }
+
+    Function("setSessionDuration") { minutes: Int ->
+      appContext.reactContext?.let { context ->
+        val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        val startTime = System.currentTimeMillis()
+        prefs.edit().apply {
+            putInt("session_duration_mins", minutes)
+            putLong("session_start_time", startTime)
+            commit()
+        }
+        // Signal service to restart its timer if running
+        UnlinkAccessibilityService.instance?.startNativeTimer(minutes, startTime)
+      }
+      return@Function null
+    }
+
+    Function("setBlockingSuspended") { suspended: Boolean ->
+      appContext.reactContext?.let { context ->
+        val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        prefs.edit().apply {
+            putBoolean("is_blocking_suspended", suspended)
+            commit()
+        }
+        
+        // 1. DIRECT_MEMORY_LINK: Instant sync if service is running
+        UnlinkAccessibilityService.instance?.setSuspendedState(suspended)
+        
+        // 2. BROADCAST_FALLBACK: Redundant sync for safety
+        val intent = Intent("com.shahil.unlink.SYNC_LIST")
+        intent.setPackage(context.packageName)
+        context.sendBroadcast(intent)
+      }
+      return@Function null
+    }
+
+    Function("requestAdmin") {
+      val activity = appContext.currentActivity
+      val context = appContext.reactContext
+      if (activity != null && context != null) {
         try {
           val adminComponent = ComponentName(context.packageName, "com.shahil.screentime.UnlinkDeviceAdminReceiver")
           val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
           intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
           intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Enabling this prevents Unlink from being uninstalled.")
-          intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-          context.startActivity(intent)
+          activity.startActivity(intent)
         } catch (e: Exception) {
-          // Silently fail to maintain stability
+          Log.e("UnlinkAdmin", "Failed to start admin activity", e)
         }
       }
     }

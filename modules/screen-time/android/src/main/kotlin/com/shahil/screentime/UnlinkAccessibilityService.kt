@@ -54,8 +54,37 @@ class UnlinkAccessibilityService : AccessibilityService() {
 
     private val syncReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
+            setSuspendedState(null) // null triggers read from disk
+        }
+    }
+
+    /**
+     * DIRECT_SERVICE_LINK: Allows the UI to instantly kill all blocks
+     * passing 'null' forces a disk refresh.
+     */
+    fun setSuspendedState(suspended: Boolean?) {
+        if (suspended == null) {
             refreshFromDiskInternal()
-            performDualLayerScan()
+        } else {
+            isBlockingSuspended = suspended
+        }
+        
+        // IMMEDIATE_REACTION: Execute on Main Thread to kill walls instantly
+        val mainHandler = Handler(Looper.getMainLooper())
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            if (isBlockingSuspended) {
+                setWallVisibility(false, false)
+            } else {
+                performDualLayerScan()
+            }
+        } else {
+            mainHandler.post {
+                if (isBlockingSuspended) {
+                    setWallVisibility(false, false)
+                } else {
+                    performDualLayerScan()
+                }
+            }
         }
     }
 
@@ -89,10 +118,10 @@ class UnlinkAccessibilityService : AccessibilityService() {
         detectionThread = Thread {
             while (shouldRunDetection) {
                 try {
-                    // ATOMIC_HEARTBEAT: Still refreshing every beat to keep timer alive
+                    // ATOMIC_HEARTBEAT: Force refresh on every beat to ensure no state lag
                     refreshFromDiskInternal()
                     performDualLayerScan()
-                    Thread.sleep(150)
+                    Thread.sleep(50)
                 } catch (e: InterruptedException) {
                     break
                 } catch (e: Exception) {
@@ -108,26 +137,82 @@ class UnlinkAccessibilityService : AccessibilityService() {
         performDualLayerScan()
     }
 
+    @Volatile
+    private var surgicalYoutube = false
+    @Volatile
+    private var surgicalInstagram = false
+    @Volatile
+    private var studyModeActive = false
+    @Volatile
+    private var isBlockingSuspended = false
+
+    private var countdownTimer: android.os.CountDownTimer? = null
+
     private fun refreshFromDiskInternal() {
         try {
             val prefs = getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
             currentBlockedApps = prefs.getStringSet("blocked_apps", emptySet()) ?: emptySet()
             currentFocusMessage = prefs.getString("focus_message", "FOCUS_PROTOCOL_ENGAGED") ?: "FOCUS_PROTOCOL_ENGAGED"
             currentTimeRemaining = prefs.getString("time_remaining", "00:00") ?: "00:00"
+            
+            surgicalYoutube = prefs.getBoolean("surgical_youtube", false)
+            surgicalInstagram = prefs.getBoolean("surgical_instagram", false)
+            studyModeActive = prefs.getBoolean("study_mode_active", false)
+            isBlockingSuspended = prefs.getBoolean("is_blocking_suspended", false)
         } catch (e: Exception) {
             currentBlockedApps = emptySet()
         }
     }
 
+    fun startNativeTimer(minutes: Int, startTime: Long) {
+        pulseHandler.post {
+            countdownTimer?.cancel()
+            val totalMillis = minutes * 60 * 1000L
+            val elapsed = System.currentTimeMillis() - startTime
+            val remaining = totalMillis - elapsed
+
+            if (remaining > 0) {
+                countdownTimer = object : android.os.CountDownTimer(remaining, 10000) {
+                    override fun onTick(millisUntilFinished: Long) {
+                        // Periodic refresh handled by heartbeat
+                    }
+                    override fun onFinish() {
+                        teardownAllBlocks()
+                    }
+                }.start()
+            } else {
+                teardownAllBlocks()
+            }
+        }
+    }
+
+    private fun teardownAllBlocks() {
+        val prefs = getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        prefs.edit().apply {
+            putStringSet("blocked_apps", emptySet())
+            putBoolean("surgical_youtube", false)
+            putBoolean("surgical_instagram", false)
+            putBoolean("is_uninstall_protected", false)
+            putBoolean("is_blocking_suspended", false)
+            commit()
+        }
+        refreshFromDiskInternal()
+        setWallVisibility(false, false)
+    }
+
     private fun performDualLayerScan() {
-        if (currentBlockedApps.isEmpty()) {
-            setWallVisibility(false)
+        if (isBlockingSuspended) {
+            setWallVisibility(false, false)
             return
         }
 
         var foregroundPkg: String? = null
         try {
-            foregroundPkg = rootInActiveWindow?.packageName?.toString()
+            val root = rootInActiveWindow
+            foregroundPkg = root?.packageName?.toString()
+            if (foregroundPkg != null) {
+                Log.d("UnlinkEnforcement", "Detected Window: $foregroundPkg")
+            }
         } catch (e: Exception) {}
 
         if (foregroundPkg == null || foregroundPkg == "com.android.systemui") {
@@ -135,34 +220,113 @@ class UnlinkAccessibilityService : AccessibilityService() {
         }
 
         foregroundPkg?.let { pkg ->
-            val isTarget = currentBlockedApps.any { blocked -> pkg.contains(blocked, ignoreCase = true) }
+            val isFullBlock = currentBlockedApps.any { blocked -> pkg.contains(blocked, ignoreCase = true) }
             val isSafeZone = pkg == "com.android.systemui" || 
                              pkg.contains("launcher", ignoreCase = true) || 
                              pkg == getPackageName()
 
-            // REVERTED: We only block if we are actually in the target app
-            // We NO LONGER "shadow" the task switcher
-            if (isTarget && !isSafeZone) {
-                setWallVisibility(true)
+            if (isFullBlock && !isSafeZone) {
+                // LAYER_1: FULL_APP_BLOCK
+                setWallVisibility(true, false)
+            } else if (!isSafeZone && isSurgicalApp(pkg)) {
+                // LAYER_2: SURGICAL_BLOCK
+                val surgicalTriggered = detectSurgicalTriggers(pkg)
+                setWallVisibility(surgicalTriggered, true)
             } else {
-                setWallVisibility(false)
+                setWallVisibility(false, false)
             }
         } ?: run {
-            setWallVisibility(false)
+            setWallVisibility(false, false)
+        }
+    }
+
+    private fun isSurgicalApp(pkg: String): Boolean {
+        return (pkg == "com.google.android.youtube" && surgicalYoutube) ||
+               (pkg == "com.instagram.android" && surgicalInstagram)
+    }
+
+    private fun detectSurgicalTriggers(pkg: String): Boolean {
+        val rootNode = rootInActiveWindow ?: return false
+        
+        // 1. YouTube Shorts Detection
+        if (pkg == "com.google.android.youtube") {
+            val shortsNodes = rootNode.findAccessibilityNodeInfosByText("Shorts")
+            if (shortsNodes != null && shortsNodes.isNotEmpty()) {
+                // Many times "Shorts" text exists on the home tab, we need to check if it's the SELECTED tab
+                for (node in shortsNodes) {
+                    if (node.isSelected || node.isFocused || node.className?.contains("Button") == true) {
+                        // If it's a selected tab or a focused player area
+                        return true
+                    }
+                }
+            }
+            
+            // Fallback: Check for common Shorts view IDs or structural markers
+            if (rootNode.viewIdResourceName?.contains("shorts_player") == true) return true
+            
+            // Study Mode: Check video titles
+            if (studyModeActive) {
+                return detectNonStudyContent(rootNode)
+            }
+        }
+
+        // 2. Instagram Reels Detection
+        if (pkg == "com.instagram.android") {
+            val reelsNodes = rootNode.findAccessibilityNodeInfosByText("Reels")
+            if (reelsNodes != null && reelsNodes.isNotEmpty()) {
+                for (node in reelsNodes) {
+                    if (node.isSelected || node.className?.contains("Tab") == true) return true
+                }
+            }
+            if (rootNode.viewIdResourceName?.contains("reels_video_container") == true) return true
+        }
+
+        return false
+    }
+
+    private fun detectNonStudyContent(root: android.view.accessibility.AccessibilityNodeInfo): Boolean {
+        // Implementation for Study Mode: Scans for non-educational titles
+        // For now, if we match common distractors
+        val distractorKeywords = listOf("Gaming", "Prank", "Challenge", "Funny")
+        val allNodes = mutableListOf<android.view.accessibility.AccessibilityNodeInfo>()
+        findTextNodes(root, allNodes)
+        
+        for (node in allNodes) {
+            val text = node.text?.toString() ?: continue
+            for (keyword in distractorKeywords) {
+                if (text.contains(keyword, ignoreCase = true)) return true
+            }
+        }
+        return false
+    }
+
+    private fun findTextNodes(node: android.view.accessibility.AccessibilityNodeInfo?, results: MutableList<android.view.accessibility.AccessibilityNodeInfo>) {
+        if (node == null) return
+        if (node.text != null) results.add(node)
+        for (i in 0 until node.childCount) {
+            findTextNodes(node.getChild(i), results)
         }
     }
 
     private val visibilityHandler = Handler(Looper.getMainLooper())
     private var hideRunnable: Runnable? = null
+    private var isSurgicalWall = false
 
-    private fun setWallVisibility(visible: Boolean) {
-        pulseHandler.post {
+    private fun setWallVisibility(visible: Boolean, surgical: Boolean) {
+        val action = Runnable {
             try {
                 if (visible) {
                     hideRunnable?.let { visibilityHandler.removeCallbacks(it) }
                     hideRunnable = null
                     
-                    if (overlayView == null) createAbsoluteWall()
+                    // RE-CREATE WALL IF TYPE CHANGES (Full vs Surgical)
+                    if (isSurgicalWall != surgical && overlayView != null) {
+                        windowManager?.removeView(overlayView)
+                        overlayView = null
+                    }
+                    isSurgicalWall = surgical
+
+                    if (overlayView == null) createAbsoluteWall(surgical)
                     updateWallContent()
                     
                     if (!isWallActive) {
@@ -172,20 +336,29 @@ class UnlinkAccessibilityService : AccessibilityService() {
                         isWallActive = true
                     }
                 } else {
-                    if (isWallActive && hideRunnable == null) {
-                        hideRunnable = Runnable {
-                            overlayView?.animate()?.alpha(0f)?.setDuration(150)?.withEndAction {
-                                overlayView?.visibility = View.GONE
-                                isWallActive = false
-                                hideRunnable = null
-                            }?.start()
+                    // AGGRESSIVE_HIDE: Close animation gap
+                    if (hideRunnable == null) {
+                        if (isWallActive || (overlayView != null && overlayView?.visibility == View.VISIBLE)) {
+                            hideRunnable = Runnable {
+                                overlayView?.animate()?.alpha(0f)?.setDuration(100)?.withEndAction {
+                                    overlayView?.visibility = View.GONE
+                                    isWallActive = false
+                                    hideRunnable = null
+                                }?.start()
+                            }
+                            visibilityHandler.postDelayed(hideRunnable!!, 10)
                         }
-                        visibilityHandler.postDelayed(hideRunnable!!, 150)
                     }
                 }
             } catch (e: Exception) {
                 Log.e("UnlinkEnforcement", "Visibility toggle failure", e)
             }
+        }
+
+        if (Looper.myLooper() == Looper.getMainLooper()) {
+            action.run()
+        } else {
+            pulseHandler.post(action)
         }
     }
 
@@ -195,21 +368,34 @@ class UnlinkAccessibilityService : AccessibilityService() {
             val messageId = resources.getIdentifier("messageText", "id", myPackageName)
             val timerId = resources.getIdentifier("timerText", "id", myPackageName)
             
+            // Also surgical labels
+            val surgicalTitleId = resources.getIdentifier("surgicalTitle", "id", myPackageName)
+            
             if (messageId != 0) overlayView?.findViewById<TextView>(messageId)?.text = currentFocusMessage
             if (timerId != 0) overlayView?.findViewById<TextView>(timerId)?.text = currentTimeRemaining
+            if (surgicalTitleId != 0) overlayView?.findViewById<TextView>(surgicalTitleId)?.text = "SECTION_RESTRICTED"
         } catch (e: Exception) {}
     }
 
-    private fun createAbsoluteWall() {
+    private fun createAbsoluteWall(surgical: Boolean) {
+        if (isBlockingSuspended) return
+        
         try {
             val myPackageName = getPackageName()
             val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
-            val layoutId = resources.getIdentifier("blocking_overlay_full", "layout", myPackageName)
+            
+            val layoutName = if (surgical) "blocking_overlay_surgical" else "blocking_overlay_full"
+            val layoutId = resources.getIdentifier(layoutName, "layout", myPackageName)
 
             if (layoutId != 0) {
                 overlayView = inflater.inflate(layoutId, null)
-                overlayView?.findViewById<Button>(resources.getIdentifier("goHomeButton", "id", myPackageName))?.setOnClickListener {
-                    goHome()
+                
+                // Common Home Button
+                val homeBtnId = resources.getIdentifier(if (surgical) "surgicalGoHome" else "goHomeButton", "id", myPackageName)
+                if (homeBtnId != 0) {
+                    overlayView?.findViewById<Button>(homeBtnId)?.setOnClickListener {
+                        goHome()
+                    }
                 }
             } else {
                 overlayView = createFailsafeView()
@@ -236,7 +422,8 @@ class UnlinkAccessibilityService : AccessibilityService() {
         return try {
             val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
             val time = System.currentTimeMillis()
-            val usageEvents = usageStatsManager.queryEvents(time - 2000, time)
+            // Widen window to 5s to catch slow events
+            val usageEvents = usageStatsManager.queryEvents(time - 5000, time)
             val event = UsageEvents.Event()
             var lastPkg: String? = null
             
@@ -277,7 +464,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
             intent.addCategory(Intent.CATEGORY_HOME)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             startActivity(intent)
-            setWallVisibility(false)
+            setWallVisibility(false, false)
         } catch (e: Exception) {
             Log.e("UnlinkEnforcement", "Go home failed", e)
         }
