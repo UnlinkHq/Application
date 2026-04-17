@@ -25,8 +25,6 @@ import android.os.Vibrator
 import android.view.WindowManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
-import android.view.animation.DecelerateInterpolator
-import android.view.animation.OvershootInterpolator
 import android.widget.Button
 import android.widget.FrameLayout
 import android.widget.TextView
@@ -72,7 +70,6 @@ class UnlinkAccessibilityService : AccessibilityService() {
     private var currentTimeRemaining = ""
     private var blockExpiryTime: Long = 0L
     private var isNavigatingHome = false
-    private var isAnimating = false
 
     private val countdownHandler = Handler(Looper.getMainLooper())
     private val countdownRunnable = object : Runnable {
@@ -194,9 +191,11 @@ class UnlinkAccessibilityService : AccessibilityService() {
             putBoolean("surgical_youtube", false)
             putBoolean("surgical_instagram", false)
             putBoolean("is_blocking_suspended", false)
+            putLong("block_expiry_time", 0L)
             commit()
         }
         refreshFromDiskInternal()
+        // AUTO_STOP_EXIT: Trigger the smooth 180ms slide-down exit
         setWallVisibility(false, false)
     }
 
@@ -354,72 +353,38 @@ class UnlinkAccessibilityService : AccessibilityService() {
 
     private fun setWallVisibility(visible: Boolean, surgical: Boolean) {
         visibilityHandler.post {
+            // OS_LEVEL_TRANSITION: We use addView/removeView with system animations
+            // This is the "Regain Level" way to ensure 0ms jerking
+            
             if (overlayView == null) createAbsoluteWall(false)
             val view = overlayView ?: return@post
-            val params = view.layoutParams as? WindowManager.LayoutParams ?: return@post
+            
+            // SECURITY_GUARD: Check intended state to avoid redundant calls
+            if (visible == (view.parent != null)) return@post
             
             if (visible) {
-                if (view.visibility != View.VISIBLE) {
-                    isAnimating = true
-                    view.animate().cancel() 
-                    
-                    // LAYER_1: System-level blackout (Instant)
-                    params.dimAmount = 1.0f
-                    try { windowManager?.updateViewLayout(view, params) } catch (e: Exception) {}
-                    
-                    // LAYER_2: Haptic Feedback
-                    try {
-                        val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                            vibrator.vibrate(VibrationEffect.createOneShot(25, VibrationEffect.DEFAULT_AMPLITUDE))
-                        } else {
-                            vibrator.vibrate(25)
-                        }
-                    } catch (e: Exception) {}
+                try {
+                    val vibrator = getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        vibrator.vibrate(VibrationEffect.createOneShot(20, VibrationEffect.DEFAULT_AMPLITUDE))
+                    } else {
+                        vibrator.vibrate(20)
+                    }
+                } catch (e: Exception) {}
 
-                    // LAYER_3: Slide-Up Animation (Regain Style)
-                    val screenHeight = resources.displayMetrics.heightPixels.toFloat()
-                    view.alpha = 1f
-                    view.scaleX = 1f
-                    view.scaleY = 1f
-                    view.translationY = screenHeight // Start from bottom
-                    view.visibility = View.VISIBLE
-                    view.setLayerType(View.LAYER_TYPE_HARDWARE, null)
-                    
-                    view.animate()
-                        .translationY(0f)
-                        .setDuration(300)
-                        .setInterpolator(DecelerateInterpolator(1.6f))
-                        .withEndAction {
-                            view.setLayerType(View.LAYER_TYPE_NONE, null)
-                            isAnimating = false
-                        }
-                        .start()
-                    
-                    updateWallContent()
+                updateWallContent()
+                val params = view.layoutParams as WindowManager.LayoutParams
+                params.dimAmount = 1.0f
+                
+                try {
+                    windowManager?.addView(view, params)
                     countdownHandler.post(countdownRunnable)
-                }
+                } catch (e: Exception) {}
             } else {
-                if (view.visibility == View.VISIBLE && !isAnimating) {
-                    isAnimating = true
-                    view.animate().cancel()
-                    view.setLayerType(View.LAYER_TYPE_HARDWARE, null)
-                    
-                    val screenHeight = resources.displayMetrics.heightPixels.toFloat()
-                    view.animate()
-                        .translationY(screenHeight)
-                        .alpha(0.8f)
-                        .setDuration(220)
-                        .withEndAction {
-                            view.visibility = View.GONE
-                            params.dimAmount = 0.0f
-                            try { windowManager?.updateViewLayout(view, params) } catch (e: Exception) {}
-                            view.setLayerType(View.LAYER_TYPE_NONE, null)
-                            isAnimating = false
-                            countdownHandler.removeCallbacks(countdownRunnable)
-                        }
-                        .start()
-                }
+                try {
+                    windowManager?.removeView(view)
+                    countdownHandler.removeCallbacks(countdownRunnable)
+                } catch (e: Exception) {}
             }
         }
     }
@@ -482,9 +447,10 @@ class UnlinkAccessibilityService : AccessibilityService() {
                 WindowManager.LayoutParams.FLAG_DIM_BEHIND,
                 PixelFormat.TRANSLUCENT
             )
-            params.dimAmount = 0.0f // Start transparent
-            overlayView?.visibility = View.GONE
-            windowManager?.addView(overlayView, params)
+            params.dimAmount = 1.0f
+            params.windowAnimations = android.R.style.Animation_InputMethod
+            overlayView?.layoutParams = params
+            // We do NOT addView yet. We add it in setWallVisibility to trigger the OS animation.
         } catch (e: Exception) {}
     }
 
