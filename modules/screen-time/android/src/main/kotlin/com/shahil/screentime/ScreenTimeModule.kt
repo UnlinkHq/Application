@@ -43,6 +43,7 @@ class ScreenTimeModule : Module() {
             putStringSet("blocked_apps", set)
             putString("focus_message", message)
             putString("time_remaining", timeLeft)
+            putLong("block_expiry_time", 0L) // CLEAN_SLATE: Prevent previous session time from leaking
             commit()
         }
         
@@ -90,6 +91,9 @@ class ScreenTimeModule : Module() {
             val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
             prefs.edit().apply {
                 putStringSet("blocked_apps", emptySet())
+                putBoolean("surgical_youtube", false)
+                putBoolean("surgical_instagram", false)
+                putBoolean("is_blocking_suspended", false)
                 putLong("block_expiry_time", 0L)
                 commit()
             }

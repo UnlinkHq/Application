@@ -174,10 +174,11 @@ class UnlinkAccessibilityService : AccessibilityService() {
     private fun isBlockActive(pkg: String): Boolean {
         if (isBlockingSuspended) return false
         
+        // SESSION_SAFEGUARD: If no expiry is set, we are not in an active session
+        if (blockExpiryTime <= 0L) return false
+        
         val currentTime = System.currentTimeMillis()
-        if (blockExpiryTime > 0 && currentTime >= blockExpiryTime) {
-            // Timer expired, but we check if apps are still explicitly blocked in the list
-            // For now, if expiry > 0, the expiry is the primary source of truth for the block session.
+        if (currentTime >= blockExpiryTime) {
             return false
         }
         
@@ -194,8 +195,8 @@ class UnlinkAccessibilityService : AccessibilityService() {
             putLong("block_expiry_time", 0L)
             commit()
         }
-        refreshFromDiskInternal()
-        // AUTO_STOP_EXIT: Trigger the smooth 180ms slide-down exit
+        isNavigatingHome = false 
+        refreshServiceConfig() // RE-SYNC_FILTERS: Allow picking up new apps for sequential blocks
         setWallVisibility(false, false)
     }
 
