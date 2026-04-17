@@ -40,7 +40,7 @@ export class FocusStorageService {
     
     static async startSession(session: BlockSession): Promise<void> {
         console.log('--- [STORAGE_ENGINE] DEPLOYING_PROTOCOL ---');
-        console.log(JSON.stringify(session, null, 2));
+        // console.log(JSON.stringify(session, null, 2));
         
         // 1. Save locally as active
         await AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(session));

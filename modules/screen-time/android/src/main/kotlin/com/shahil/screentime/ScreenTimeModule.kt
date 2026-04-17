@@ -46,8 +46,9 @@ class ScreenTimeModule : Module() {
             commit()
         }
         
-        // 1. Memory Sync
-        UnlinkAccessibilityService.instance?.updateBlockedApps(set)
+        // 1. Memory Sync & Config Refresh
+        UnlinkAccessibilityService.instance?.refreshServiceConfig()
+        UnlinkAccessibilityService.instance?.setSuspendedState(false)
         
         // 2. Broadcast Sync
         val intent = Intent("com.shahil.unlink.SYNC_LIST")
@@ -86,7 +87,13 @@ class ScreenTimeModule : Module() {
 
     Function("stopBlockingService") {
         appContext.reactContext?.let { context ->
-            UnlinkAccessibilityService.instance?.updateBlockedApps(emptySet())
+            val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+            prefs.edit().apply {
+                putStringSet("blocked_apps", emptySet())
+                putLong("block_expiry_time", 0L)
+                commit()
+            }
+            UnlinkAccessibilityService.instance?.refreshServiceConfig()
         }
     }
 
@@ -118,6 +125,17 @@ class ScreenTimeModule : Module() {
             putBoolean("study_mode_active", studyMode)
             commit()
         }
+        
+        // 1. DIRECT_MEMORY_SYNC: Instant refresh for accessibility service
+        UnlinkAccessibilityService.instance?.setSuspendedState(null)
+        
+        // 2. BROADCAST_FALLBACK: Redundant sync for safety
+        val intent = Intent("com.shahil.unlink.SYNC_LIST")
+        intent.setPackage(context.packageName)
+        context.sendBroadcast(intent)
+        
+        // 3. COOLING_PERIOD: Allow WindowManager to stabilize during rapid mode swaps
+        Thread.sleep(10)
       }
       return@Function null
     }
@@ -137,13 +155,19 @@ class ScreenTimeModule : Module() {
       appContext.reactContext?.let { context ->
         val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
         val startTime = System.currentTimeMillis()
+        val expiryTime = startTime + (minutes * 60 * 1000L)
+        
         prefs.edit().apply {
             putInt("session_duration_mins", minutes)
             putLong("session_start_time", startTime)
+            putLong("block_expiry_time", expiryTime)
             commit()
         }
-        // Signal service to restart its timer if running
-        UnlinkAccessibilityService.instance?.startNativeTimer(minutes, startTime)
+        
+        // Force sync with service
+        val service = UnlinkAccessibilityService.instance
+        service?.refreshServiceConfig()
+        service?.setSuspendedState(false)
       }
       return@Function null
     }

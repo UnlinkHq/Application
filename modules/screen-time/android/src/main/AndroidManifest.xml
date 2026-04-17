@@ -3,5 +3,23 @@
 
     <!-- Screen Time Permissions -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"/>
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
+
+    <application>
+        <service
+            android:name=".UnlinkAccessibilityService"
+            android:enabled="true"
+            android:exported="true"
+            android:label="Unlink Surgical Engine"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+    </application>
     
 </manifest>

@@ -5,30 +5,25 @@
     android:layout_height="match_parent"
     android:background="#99000000">
 
-    <!-- Bottom Banner Area -->
+    <!-- Simple Bottom Card (Stable 40% logic) -->
     <com.google.android.material.card.MaterialCardView
+        android:id="@+id/surgicalConsole"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
         app:cardBackgroundColor="#131313"
-        app:cardCornerRadius="16dp"
-        app:cardElevation="12dp"
-        app:strokeColor="#33FFFFFF"
+        app:cardCornerRadius="0dp"
+        app:cardElevation="0dp"
+        app:strokeColor="#22FFFFFF"
         app:strokeWidth="1dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        android:layout_margin="16dp">
+        app:layout_constraintHeight_percent="0.45">
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:orientation="vertical"
-            android:padding="24dp">
-
-            <View
-                android:layout_width="40dp"
-                android:layout_height="4dp"
-                android:background="#33FFFFFF"
-                android:layout_gravity="center"
-                android:layout_marginBottom="24dp" />
+            android:padding="24dp"
+            android:gravity="center_vertical">
 
             <TextView
                 android:id="@+id/surgicalTitle"
@@ -38,19 +33,40 @@
                 android:text="SECTION_RESTRICTED"
                 android:textColor="#FFFFFF"
                 android:textSize="14sp"
-                android:letterSpacing="0.2"
+                android:letterSpacing="0.1"
+                android:textAllCaps="true" />
+
+            <TextView
+                android:id="@+id/messageText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:fontFamily="sans-serif-light"
+                android:text="STRICT_PROTOCOL_ENGAGED"
+                android:textColor="#66FFFFFF"
+                android:textSize="10sp"
                 android:textAllCaps="true" />
 
             <TextView
                 android:id="@+id/surgicalMessage"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:fontFamily="sans-serif-thin"
-                android:text="You cannot access Reels or Shorts during this session. Stay focused on your primary intent."
+                android:layout_marginTop="16dp"
+                android:fontFamily="sans-serif"
+                android:text="Addictive content detection active. Please return to your primary task to continue your session."
                 android:textColor="#99FFFFFF"
                 android:textSize="12sp"
                 android:lineSpacingExtra="4dp" />
+
+            <TextView
+                android:id="@+id/timerText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:fontFamily="monospace"
+                android:text="00:00:00"
+                android:textColor="#44FFFFFF"
+                android:textSize="12sp" />
 
             <Button
                 android:id="@+id/surgicalGoHome"
@@ -61,18 +77,7 @@
                 android:fontFamily="sans-serif-black"
                 android:text="GO_HOME"
                 android:textColor="#000000"
-                app:cornerRadius="4dp" />
-
-            <TextView
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
-                android:textAlignment="center"
-                android:fontFamily="sans-serif-thin"
-                android:text="TAP_OUTSIDE_TO_RETURN_TO_MAIN_APP"
-                android:textColor="#44FFFFFF"
-                android:textSize="8sp"
-                android:letterSpacing="0.1" />
+                app:cornerRadius="2dp" />
 
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
