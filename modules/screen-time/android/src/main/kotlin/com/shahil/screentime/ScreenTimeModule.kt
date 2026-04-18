@@ -35,6 +35,44 @@ class ScreenTimeModule : Module() {
       }
     }
 
+    Function("startFocusProtocol") { config: Map<String, Any> ->
+      appContext.reactContext?.let { context ->
+        val packageNames = config["apps"] as? List<String> ?: emptyList()
+        val durationMins = (config["durationMins"] as? Double ?: 0.0).toLong()
+        val surgicalFlagsMap = config["surgicalFlags"] as? Map<String, Any>
+        val surgicalYoutube = (surgicalFlagsMap?.get("youtube") as? Boolean) ?: (config["surgicalYoutube"] as? Boolean ?: false)
+        val surgicalInstagram = (surgicalFlagsMap?.get("instagram") as? Boolean) ?: (config["surgicalInstagram"] as? Boolean ?: false)
+        val message = config["message"] as? String ?: "FOCUS_PROTOCOL_ENGAGED"
+        
+        val set = packageNames.toSet()
+        val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        
+        val startTime = System.currentTimeMillis()
+        val expiryTime = if (durationMins > 0) startTime + (durationMins * 60 * 1000L) else 0L
+
+        prefs.edit().apply {
+            putStringSet("blocked_apps", set)
+            putString("focus_message", message)
+            putBoolean("surgical_youtube", surgicalYoutube)
+            putBoolean("surgical_instagram", surgicalInstagram)
+            putLong("block_expiry_time", expiryTime)
+            putLong("session_start_time", startTime)
+            putBoolean("is_blocking_suspended", false)
+            commit()
+        }
+        
+        // Broadcast to Accessibility Service
+        UnlinkAccessibilityService.instance?.refreshServiceConfig()
+        UnlinkAccessibilityService.instance?.setSuspendedState(false)
+        
+        val intent = Intent("com.shahil.unlink.SYNC_LIST")
+        intent.setPackage(context.packageName)
+        context.sendBroadcast(intent)
+      }
+      return@Function null
+    }
+
+    // LEGACY_SUPPORT: Keep for compatibility but ensure they don't reset each other
     Function("setBlockedApps") { packageNames: List<String>, message: String, timeLeft: String ->
       appContext.reactContext?.let { context ->
         val set = packageNames.toSet()
@@ -43,18 +81,9 @@ class ScreenTimeModule : Module() {
             putStringSet("blocked_apps", set)
             putString("focus_message", message)
             putString("time_remaining", timeLeft)
-            putLong("block_expiry_time", 0L) // CLEAN_SLATE: Prevent previous session time from leaking
             commit()
         }
-        
-        // 1. Memory Sync & Config Refresh
         UnlinkAccessibilityService.instance?.refreshServiceConfig()
-        UnlinkAccessibilityService.instance?.setSuspendedState(false)
-        
-        // 2. Broadcast Sync
-        val intent = Intent("com.shahil.unlink.SYNC_LIST")
-        intent.setPackage(context.packageName)
-        context.sendBroadcast(intent)
       }
       return@Function null
     }
@@ -69,7 +98,12 @@ class ScreenTimeModule : Module() {
         val hasAccess = enabledServices?.contains(expectedService) == true
         
         val appOps = context.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
-        val usageMode = appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
+        val usageMode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            appOps.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
+        } else {
+            @Suppress("DEPRECATION")
+            appOps.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), context.packageName)
+        }
         val hasUsage = usageMode == AppOpsManager.MODE_ALLOWED
         
         val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -321,6 +355,15 @@ class ScreenTimeModule : Module() {
         }
     }
 
+    Function("openAccessibilitySettings") {
+        val context = appContext.reactContext
+        if (context != null) {
+            val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+        }
+    }
+
     AsyncFunction("getUsageStats") { startTime: Double, endTime: Double ->
       val context = appContext.reactContext ?: return@AsyncFunction mapOf<String, Any>()
       val usageStatsManager = context.getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
@@ -335,6 +378,8 @@ class ScreenTimeModule : Module() {
       var currentPkg: String? = null
       var currentStart: Long = 0L
       
+      val ACTIVITY_RESUMED = android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED
+      val ACTIVITY_PAUSED = android.app.usage.UsageEvents.Event.ACTIVITY_PAUSED
       val MOVE_TO_FOREGROUND = android.app.usage.UsageEvents.Event.MOVE_TO_FOREGROUND
       val MOVE_TO_BACKGROUND = android.app.usage.UsageEvents.Event.MOVE_TO_BACKGROUND
 
@@ -344,7 +389,7 @@ class ScreenTimeModule : Module() {
           val time = event.timeStamp
           val type = event.eventType
 
-          if (type == MOVE_TO_FOREGROUND) {
+          if (type == ACTIVITY_RESUMED || type == MOVE_TO_FOREGROUND) {
               if (currentPkg != null) {
                    val duration = time - currentStart
                    if (duration > 0) {
@@ -354,7 +399,7 @@ class ScreenTimeModule : Module() {
               currentPkg = pkg
               currentStart = time
               pickupMap[pkg] = (pickupMap[pkg] ?: 0) + 1
-          } else if (type == MOVE_TO_BACKGROUND) {
+          } else if (type == ACTIVITY_PAUSED || type == MOVE_TO_BACKGROUND) {
               if (currentPkg == pkg) {
                   val duration = time - currentStart
                   if (duration > 0) {

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:background="#CC000000" android:paddingHorizontal="20dp"
+    android:paddingVertical="14dp">
+    <TextView android:id="@+id/banner_text" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:layout_gravity="center"
+        android:text="Blocked by Unlink" android:textColor="#FFFFFF"
+        android:textSize="15sp" android:textStyle="bold" />
+</FrameLayout>

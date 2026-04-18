@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    AndroidManifest.xml — relevant excerpts for Unlink
+
+    Add these inside your <manifest> and <application> blocks.
+    Full manifest not shown — only the Unlink-specific additions.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.unlink.app">
+
+    <!-- ── Permissions ─────────────────────────────────────────────────────── -->
+
+    <!--
+        SYSTEM_ALERT_WINDOW (Draw Over Other Apps)
+        Required for WindowManager TYPE_APPLICATION_OVERLAY.
+        On Android 6+: user must grant this manually in Special App Access settings.
+        On Android 10+: auto-granted for apps installed from Play Store (with caveats).
+
+        Direct the user to:
+        Settings > Apps > Unlink > Special app access > Display over other apps
+    -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!--
+        FOREGROUND_SERVICE
+        AccessibilityService itself doesn't need this, but if you add a
+        companion monitoring service (for app launch detection), you will.
+        Declaring it now avoids a crash if you add it later.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <!-- ── Application block ───────────────────────────────────────────────── -->
+    <application>
+
+        <!--
+            AccessibilityService registration.
+
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            This is MANDATORY. Without it, any app can bind to your service.
+            The system enforces this permission — only the Android OS can bind it.
+
+            android:exported="true"
+            Must be true so the system Settings app can display and toggle it.
+
+            The meta-data tag points to our config XML which scopes
+            the service to YouTube only.
+        -->
+        <service
+            android:name=".service.UnlinkAccessibilityService"
+            android:exported="true"
+            android:label="@string/accessibility_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+
+        </service>
+
+    </application>
+
+</manifest>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Unlink AccessibilityService Configuration
+    File location: res/xml/accessibility_service_config.xml
+
+    Key decisions documented inline.
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+
+    <!-- Only listen to YouTube. Never declare a global listener — wastes battery
+         and triggers Play Store scrutiny. Package-scoped = surgical. -->
+    android:packageNames="com.google.android.youtube"
+
+    <!-- Only the two event types we actually need.
+         TYPE_WINDOW_CONTENT_CHANGED — feed layout changes (new cards loaded)
+         TYPE_VIEW_SCROLLED         — user is actively scrolling the feed
+         TYPE_WINDOW_STATE_CHANGED  — user navigated to a new screen (tab change)
+         Everything else is noise. -->
+    android:accessibilityEventTypes="typeWindowContentChanged|typeViewScrolled|typeWindowStateChanged"
+
+    <!-- FLAG_REPORT_VIEW_IDS: lets us read viewIdResourceName if YouTube
+         ever exposes stable IDs (rare but useful as Signal 4 fallback).
+         FLAG_RETRIEVE_INTERACTIVE_WINDOWS: required to call rootInActiveWindow
+         reliably across multi-window / split-screen scenarios. -->
+    android:accessibilityFlags="flagReportViewIds|flagRetrieveInteractiveWindows"
+
+    <!-- IMPORTANT_FOR_ACCESSIBILITY: we only need view bounds + text content.
+         We do NOT need full window content (too expensive on A20).
+         "interactive" = only nodes the user can interact with.
+         This drastically reduces the size of the accessibility tree we traverse. -->
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:canRetrieveWindowContent="true"
+
+    <!-- notificationTimeout: minimum ms between accessibility event callbacks.
+         120ms matches our SCAN_DEBOUNCE_MS constant.
+         Lower = more responsive but more CPU burn. 120ms is invisible to users. -->
+    android:notificationTimeout="120"
+
+    <!-- Description shown to users in Accessibility Settings.
+         Must be honest — describe what the service actually does.
+         Vague descriptions get flagged by Play Store review. -->
+    android:description="@string/accessibility_service_description"
+
+    <!-- Settings activity — shown as a link in Accessibility Settings.
+         Lets users configure blocking rules without leaving the system settings. -->
+    android:settingsActivity=".ui.settings.SettingsActivity" />
