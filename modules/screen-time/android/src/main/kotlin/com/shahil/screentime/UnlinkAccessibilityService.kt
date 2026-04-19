@@ -31,6 +31,7 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
@@ -107,10 +108,22 @@ class UnlinkAccessibilityService : AccessibilityService() {
         }
     }
 
+    private var lastEventTime = 0L
+
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        // QUEUE DE-SATURATION: Throttle only spammy scroll and layout events to ~60fps (15ms).
+        // 40ms caused the overlays to lag behind the 60fps feed during fast scrolls (floating bleed).
+        // Guarantees vital events (like going to Home screen) process instantly with zero lag.
+        val eventType = event.eventType
+        if (eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED || eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+            val now = System.currentTimeMillis()
+            if (now - lastEventTime < 15L) return 
+            lastEventTime = now
+        }
+
         val pkg = event.packageName?.toString() ?: return
         if (pkg == "com.android.systemui" || isLauncherOrHomePackage(pkg)) {
-            hideShortsOverlay()
+            clearMultiOverlays()
             return
         }        
         val isSurgicalMode = (pkg == "com.google.android.youtube" && cachedSurgicalYoutube) ||
@@ -118,8 +131,26 @@ class UnlinkAccessibilityService : AccessibilityService() {
 
         // MODE_ISOLATION: Strictly separate Surgical Scanning from Normal App Blocking
         if (isSurgicalMode) {
-            val root = rootInActiveWindow ?: return
+            val root = rootInActiveWindow
+            
+            // CROSS-TALK PREVENTION: Android sometimes fires delayed events for background apps.
+            // If YouTube is dying and returns a null root, or the active window shifts to Launcher, INSTANTLY purge overlays.
+            if (root == null || root.packageName?.toString() != pkg) {
+                clearMultiOverlays()
+                return
+            }
+
             val matches = hybridDetector.findAllMatches(root, pkg)
+            
+            // MEDIA PLAYER AUTO-EJECT: If the user bypasses tabs via a deep link and the actual full-screen 
+            // Shorts player begins playing audio, we MUST kill it immediately to silence the background.
+            // ELITE_FAST_PASS returns a singular full-screen rect for the player.
+            val isFullScreenPlayer = matches.size == 1 && matches[0].rect.height() >= resources.displayMetrics.heightPixels * 0.95f
+            if (isFullScreenPlayer) {
+                performGlobalAction(GLOBAL_ACTION_BACK)
+                showEliteSurgicalBanner("YouTube Shorts Locked")
+            }
+            
             syncMultiOverlays(matches)
             // Normal blocking is skipped while surgical mode is active for this package
             return
@@ -330,16 +361,30 @@ class UnlinkAccessibilityService : AccessibilityService() {
 
     private val hybridDetector = HybridShortsDetector()
 
+    data class TargetMask(val rect: android.graphics.Rect, val isGhost: Boolean)
     data class DetectionResult(val isDetected: Boolean, val targetRect: android.graphics.Rect? = null, val confidence: Int = 0)
     data class MultiDetectionResult(val items: List<android.graphics.Rect>)
 
     private inner class HybridShortsDetector {
 
-        fun findAllMatches(root: AccessibilityNodeInfo, pkg: String): List<android.graphics.Rect> {
+        private var currentFeedBounds: android.graphics.Rect? = null
+        
+        // ZONE-LOCK TRACKING
+        private var cachedShortWidth = -1
+        private var cachedShortHeight = -1
+
+        fun resetZoneLock() {
+            cachedShortWidth = -1
+            cachedShortHeight = -1
+        }
+
+        fun findAllMatches(root: AccessibilityNodeInfo, pkg: String): List<TargetMask> {
             sessionScanCount++
             checkVersionDrift()
 
-            val matches = mutableListOf<android.graphics.Rect>()
+            val matches = mutableListOf<TargetMask>()
+            val screenHeight = resources.displayMetrics.heightPixels
+            currentFeedBounds = null
 
             // 1. ELITE_FAST_PASS: Check for known full-screen player containers
             if (pkg == "com.google.android.youtube") {
@@ -347,7 +392,27 @@ class UnlinkAccessibilityService : AccessibilityService() {
                 for (id in playerIds) {
                     if (root.findAccessibilityNodeInfosByViewId(id).isNotEmpty()) {
                         sessionHitCount++
-                        return listOf(android.graphics.Rect(0, 0, resources.displayMetrics.widthPixels, resources.displayMetrics.heightPixels))
+                        return listOf(TargetMask(android.graphics.Rect(0, 0, resources.displayMetrics.widthPixels, screenHeight), isGhost = true))
+                    }
+                }
+                
+                // 1.5 SHELF_AWARENESS: Find the entire Shorts Row container (The "Master Shelf")
+                // This is 100% stable even if internal thumbnails haven't finished rendering.
+                val shelfIds = listOf(
+                    "com.google.android.youtube:id/reels_shelf", 
+                    "com.google.android.youtube:id/shorts_shelf",
+                    "com.google.android.youtube:id/inline_shelf",
+                    "com.google.android.youtube:id/reels_shelf_container"
+                )
+                for (id in shelfIds) {
+                    val nodes = root.findAccessibilityNodeInfosByViewId(id)
+                    for (node in nodes) {
+                        val rect = android.graphics.Rect()
+                        node.getBoundsInScreen(rect)
+                        if (rect.height() > 50) { // Valid height
+                             sessionHitCount++
+                             return listOf(TargetMask(rect, isGhost = true))
+                        }
                     }
                 }
             }
@@ -355,39 +420,108 @@ class UnlinkAccessibilityService : AccessibilityService() {
             // 2. SURGICAL_SWEEP: Iterate entire tree for thumb-sized matches
             val potentialMatches = mutableListOf<android.graphics.Rect>()
             traverseTreeShallow(root) { node ->
+                val rect = android.graphics.Rect()
+                node.getBoundsInScreen(rect)
+
+                // Track the master feed container bounds dynamically for precision clipping
+                if (node.className?.contains("RecyclerView") == true && rect.height() > screenHeight * 0.6f) {
+                    // Update if we find a more restrictive (smaller) feed container
+                    if (currentFeedBounds == null || rect.height() < currentFeedBounds!!.height()) {
+                        currentFeedBounds = rect
+                    }
+                }
+
                 val score = scoreNode(node, pkg)
                 if (score >= 2) {
-                    val rect = android.graphics.Rect()
-                    node.getBoundsInScreen(rect)
                     potentialMatches.add(rect)
                 }
             }
 
             // 3. LEAF_NODE_FILTER: If a parent container matches, and its children match, drop the parent.
-            val finalMatches = potentialMatches.filter { parentRect ->
+            val leafMatches = potentialMatches.filter { parentRect ->
                 !potentialMatches.any { childRect ->
                     parentRect != childRect && parentRect.contains(childRect)
                 }
             }
 
-            // Ensure we don't return duplicate overlays for nested views with identical bounds
-            matches.addAll(finalMatches.distinct())
-
-            // LOUD VISUAL DEBUGGER FOR USER ASSURANCE
-            val now = System.currentTimeMillis()
-            if (now - lastDebugToastTime > 1500L) {
-                lastDebugToastTime = now
-                visibilityHandler.post {
-                    android.widget.Toast.makeText(
-                        this@UnlinkAccessibilityService, 
-                        "🛡️ Engine Status: Found ${matches.size} Targets (Raw: ${potentialMatches.size})", 
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
+            // 4. PRECISION_CLIPPING & DE-DUPLICATION: Ensure overlays don't overflow onto top/bottom navigation bars during scroll
+            val deDuplicatedMatches = mutableListOf<android.graphics.Rect>()
+            
+            // ARTIFICIAL SCREEN CLAMPING: 
+            val topSafeLimit = (screenHeight * 0.11f).toInt()
+            val bottomSafeLimit = (screenHeight * 0.90f).toInt()
+            
+            val activeClampingBounds = currentFeedBounds ?: android.graphics.Rect(0, 0, resources.displayMetrics.widthPixels, screenHeight)
+            activeClampingBounds.top = kotlin.math.max(activeClampingBounds.top, topSafeLimit)
+            activeClampingBounds.bottom = kotlin.math.min(activeClampingBounds.bottom, bottomSafeLimit)
+            
+            leafMatches.distinct().forEach { currentRect ->
+                val overlapMatches = deDuplicatedMatches.filter { 
+                    android.graphics.Rect.intersects(it, currentRect) && 
+                    kotlin.math.abs(it.centerX() - currentRect.centerX()) < (currentRect.width() / 4)
+                }
+                
+                if (overlapMatches.isNotEmpty()) {
+                    val combinedUnion = android.graphics.Rect(currentRect)
+                    overlapMatches.forEach { combinedUnion.union(it) }
+                    deDuplicatedMatches.removeAll(overlapMatches)
+                    deDuplicatedMatches.add(combinedUnion)
+                } else {
+                    deDuplicatedMatches.add(currentRect)
                 }
             }
 
-            if (matches.isNotEmpty()) sessionHitCount++
-            return matches
+            // 5. MEGA-MASK CLUSTER FUSION: Group nearby shorts and merge them into one 'Big One'.
+            // This maximizes performance on low-end hardware by reducing WindowManager views.
+            val finalMatchesFiltered = mutableListOf<TargetMask>()
+            val clusters = mutableListOf<MutableList<android.graphics.Rect>>()
+            val sortedMatches = deDuplicatedMatches.sortedBy { it.top }
+            
+            for (rect in sortedMatches) {
+                // If it's a Bottom Nav item, do not merge it with Grid clusters
+                val isBottomNav = rect.bottom > screenHeight * 0.85f && rect.width() < resources.displayMetrics.widthPixels / 3
+                if (isBottomNav) {
+                    finalMatchesFiltered.add(TargetMask(rect, isGhost = false))
+                    continue
+                }
+
+                // Normal Grid items: Look for a vertically nearby cluster to join (within 600px tolerance)
+                val nearbyCluster = clusters.find { cluster ->
+                    cluster.any { it.bottom >= rect.top - 600 && it.top <= rect.bottom + 600 }
+                }
+                
+                if (nearbyCluster != null) {
+                    nearbyCluster.add(rect)
+                } else {
+                    clusters.add(mutableListOf(rect))
+                }
+            }
+            
+            // Generate final masks by Unioning all members of each cluster
+            for (cluster in clusters) {
+                val unionRect = android.graphics.Rect(cluster[0])
+                for (i in 1 until cluster.size) {
+                    unionRect.union(cluster[i])
+                }
+                
+                // Final Clipping to Feed Bounds
+                val clippedRect = android.graphics.Rect()
+                if (clippedRect.setIntersect(unionRect, activeClampingBounds)) {
+                    finalMatchesFiltered.add(TargetMask(clippedRect, isGhost = true))
+                }
+            }
+
+            // ZONE-LOCK REGISTRATION: If we found pure unobstructed shapes, cache the exact blueprint dimensions.
+            if (deDuplicatedMatches.isNotEmpty() && cachedShortWidth == -1) {
+                val pure = deDuplicatedMatches.find { it.top > 10 && it.bottom < screenHeight - 10 }
+                if (pure != null) {
+                    cachedShortWidth = pure.width()
+                    cachedShortHeight = pure.height()
+                }
+            }
+            
+            if (finalMatchesFiltered.isNotEmpty()) sessionHitCount++
+            return finalMatchesFiltered
         }
 
         fun detect(root: AccessibilityNodeInfo, pkg: String): DetectionResult {
@@ -459,13 +593,36 @@ class UnlinkAccessibilityService : AccessibilityService() {
                 return 0 
             }
 
-            // GEOMETRIC_AGGRESSION: YouTube Shorts have a strictly distinct vertical aspect ratio.
-            val ratio = rect.height().toFloat() / rect.width()
-            val isCorrectRatio = ratio in 1.15f..3.0f 
+            // EDGE RELAXATION: When scrolling off-screen, Android dynamically squishes the height of the view's bounds.
+            val isTouchingEdge = rect.top <= 10 || rect.bottom >= screenHeight - 10
+
+            // ZONE-LOCK DISCOVERY OVERRIDE: If we already have the cached footprint, skip all math!
+            if (cachedShortWidth != -1 && cachedShortHeight != -1) {
+                val widthMatch = kotlin.math.abs(rect.width() - cachedShortWidth) < 5
+                
+                // Relaxed Tolerance: Height can physically vary by ~120px depending on multi-line Title Wrapping!
+                val heightMatch = kotlin.math.abs(rect.height() - cachedShortHeight) < 120 
+                
+                if (widthMatch && (heightMatch || isTouchingEdge)) {
+                    return 2
+                }
+            } else {
+                // First-Run Dynamic Search
+                val ratio = rect.height().toFloat() / rect.width()
+                val isCorrectRatio = ratio in 1.15f..3.0f 
+                
+                if ((isCorrectRatio || isTouchingEdge) && rect.width() > screenWidth / 6) {
+                    // If it walks like a duck and quacks like a duck, it's a Short.
+                    return 2
+                }
+            }
+
+            // NAVIGATIONAL SHIELD: Target Bottom Menu "Shorts" Tab
+            val contentDesc = node.contentDescription?.toString() ?: ""
+            val resourceId = node.viewIdResourceName ?: ""
             
-            if (isCorrectRatio && rect.width() > screenWidth / 6) {
-                // If it walks like a duck and quacks like a duck, it's a Short.
-                // We bypass text checks entirely to prevent language/layout failures.
+            val isShortsTab = contentDesc.contains("Shorts", true) || resourceId.contains("pivot_shorts", ignoreCase = true)
+            if (rect.bottom > screenHeight * 0.85f && isShortsTab) {
                 return 2
             }
 
@@ -473,9 +630,19 @@ class UnlinkAccessibilityService : AccessibilityService() {
         }
 
         private fun traverseTreeShallow(node: AccessibilityNodeInfo, depth: Int = 0, visitor: (AccessibilityNodeInfo) -> Unit) {
-            // CRITICAL FIX: YouTube's layout is incredibly deep. A limit of 10 was pruning the tree 
-            // BEFORE reaching the actual Shorts cards. Bumped to 25 to securely reach deep thumbnails.
+            // CRITICAL FIX: YouTube's layout is incredibly deep. Bumped to 25 to securely reach deep thumbnails.
             if (depth > 25) return 
+
+            val rect = android.graphics.Rect()
+            node.getBoundsInScreen(rect)
+            
+            // A02 LOW-END OPTIMIZATION: Spatial Early-Pruning
+            // If the UI node is tinier than a standard thumbnail, it mathematically cannot hold a Short.
+            // Instantly halt recursion on this branch. This skips ~90% of the UI (buttons, icons, text), removing all lag!
+            val screenWidth = resources.displayMetrics.widthPixels
+            val screenHeight = resources.displayMetrics.heightPixels
+            if (rect.width() < screenWidth / 7 || rect.height() < screenHeight / 7) return
+
             visitor(node)
             for (i in 0 until node.childCount) {
                 node.getChild(i)?.let { traverseTreeShallow(it, depth + 1, visitor) }
@@ -547,35 +714,81 @@ class UnlinkAccessibilityService : AccessibilityService() {
 
     private val activeOverlays = mutableListOf<View>()
     private val overlayPool = mutableListOf<View>()
+    private var lastValidTargetsTime = 0L
 
-    private fun syncMultiOverlays(targets: List<android.graphics.Rect>) {
+    private fun syncMultiOverlays(targets: List<TargetMask>) {
         visibilityHandler.post {
             val wm = windowManager ?: return@post
             
+            // HYSTERESIS (ANTI-FLICKER): If targets are empty, don't clear immediately.
+            // Android Accessibility Tree often "drops" nodes during high-speed scrolling for 1-2 frames.
+            // We keep the last known masks alive for 200ms to bridge this gap.
+            if (targets.isEmpty()) {
+                if (System.currentTimeMillis() - lastValidTargetsTime < 200L) {
+                    return@post // Maintain current overlays to avoid flicker
+                }
+            } else {
+                lastValidTargetsTime = System.currentTimeMillis()
+            }
+
             // 1. Cleanup extra overlays if we have more than needed
             while (activeOverlays.size > targets.size) {
                 val view = activeOverlays.removeAt(activeOverlays.size - 1)
-                try { wm.removeView(view) } catch (e: Exception) {}
+                view.animate().cancel() // Kill lingering alpha animations
+                try { 
+                    view.visibility = View.GONE // INSTANT-KILL BYPASS: Force UI invisible before system animation kicks in
+                    wm.removeView(view) 
+                } catch (e: Exception) {}
                 overlayPool.add(view)
             }
 
             // 2. Update/Add overlays for all targets
-            targets.forEachIndexed { index, rect ->
-                val params = createOverlayParams(rect)
+            targets.forEachIndexed { index, target ->
+                val params = createOverlayParams(target.rect, target.isGhost)
                 
                 if (index < activeOverlays.size) {
                     // REUSE: Update existing view
                     try { wm.updateViewLayout(activeOverlays[index], params) } catch (e: Exception) {}
+                    
+                    val view = activeOverlays[index]
+                    val padlockId = resources.getIdentifier("padlock_icon", "id", packageName)
+                    val padlock = if (padlockId != 0) view.findViewById<android.widget.ImageView>(padlockId) else null
+                    
+                    // Perfect Synchronization: Padlock only shows on SOLID blocks (Security), never on GHOST blocks (Content)
+                    if (padlock != null) {
+                        padlock.visibility = if (target.isGhost) android.view.View.GONE else android.view.View.VISIBLE
+                    }
+                    view.isClickable = !target.isGhost
                 } else {
                     // SPAWN: Get from pool or create new
                     val view = if (overlayPool.isNotEmpty()) overlayPool.removeAt(0) else inflateOverlay()
                     if (view != null) {
                         try {
-                            if (!android.provider.Settings.canDrawOverlays(this)) {
+                            if (!android.provider.Settings.canDrawOverlays(this@UnlinkAccessibilityService)) {
                                 handlePermissionFailure()
                                 return@post
                             }
+                            
+                            val padlockId = resources.getIdentifier("padlock_icon", "id", packageName)
+                            val padlock = if (padlockId != 0) view.findViewById<android.widget.ImageView>(padlockId) else null
+                            if (padlock != null) {
+                                padlock.visibility = if (target.isGhost) android.view.View.GONE else android.view.View.VISIBLE
+                            }
+                            view.isClickable = !target.isGhost
+                            
+                            // ALPHA ENTRY ANIMATION: Premium native fade-in to prevent clunky pop-ups.
+                            view.alpha = 0f
+                            view.visibility = android.view.View.VISIBLE
                             wm.addView(view, params)
+                            
+                            view.setLayerType(View.LAYER_TYPE_HARDWARE, null) // PERFORMANCE: Optimize for entry animation
+                            view.animate()
+                                .alpha(1f)
+                                .setDuration(150L) // 150ms buttery smooth entry fade
+                                .withLayer()
+                                .withEndAction { view.setLayerType(View.LAYER_TYPE_NONE, null) }
+                                .start()
+                                
                             activeOverlays.add(view)
                         } catch (e: Exception) {
                             if (e is android.view.WindowManager.BadTokenException) handlePermissionFailure()
@@ -587,10 +800,15 @@ class UnlinkAccessibilityService : AccessibilityService() {
     }
 
     private fun clearMultiOverlays() {
+        hybridDetector.resetZoneLock()
         visibilityHandler.post {
             val wm = windowManager ?: return@post
             activeOverlays.forEach { view ->
-                try { wm.removeView(view) } catch (e: Exception) {}
+                view.animate().cancel() // Kill lingering alpha animations
+                try { 
+                    view.visibility = View.GONE
+                    wm.removeView(view) 
+                } catch (e: Exception) {}
                 overlayPool.add(view)
             }
             activeOverlays.clear()
@@ -601,14 +819,17 @@ class UnlinkAccessibilityService : AccessibilityService() {
         val shortsLayoutId = resources.getIdentifier("overlay_shorts_feed_block", "layout", packageName)
         if (shortsLayoutId == 0) return null
         return LayoutInflater.from(this).inflate(shortsLayoutId, null).apply {
-            setOnClickListener { 
-                showEliteSurgicalBanner("Access Restricted")
-                performGlobalAction(GLOBAL_ACTION_BACK)
+            val clickTargetId = resources.getIdentifier("shorts_overlay_click_target", "id", packageName)
+            val clickTarget = findViewById<View>(clickTargetId) ?: this
+            clickTarget.setOnClickListener { 
+                // NON-INTRUSIVE UX: Do not force an artificial BACK navigation which jars the user.
+                // Allow the click to bounce harmlessly off the solid shield with a beautiful toast notification.
+                showEliteSurgicalBanner("YouTube Shorts Locked")
             }
         }
     }
 
-    private fun createOverlayParams(targetRect: android.graphics.Rect?): WindowManager.LayoutParams {
+    private fun createOverlayParams(targetRect: android.graphics.Rect?, isGhost: Boolean = false): WindowManager.LayoutParams {
         return WindowManager.LayoutParams().apply {
             type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
             format = PixelFormat.TRANSLUCENT
@@ -616,6 +837,11 @@ class UnlinkAccessibilityService : AccessibilityService() {
                     WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
                     WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
             
+            // GHOST SCROLL OVERRIDE: Prevent overlay from eating gestures so thumb scrolling passes through.
+            if (isGhost) {
+                flags = flags or WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+            }
+
             if (targetRect != null) {
                 gravity = Gravity.TOP or Gravity.LEFT
                 x = targetRect.left
@@ -626,7 +852,10 @@ class UnlinkAccessibilityService : AccessibilityService() {
                 width = WindowManager.LayoutParams.MATCH_PARENT
                 height = WindowManager.LayoutParams.MATCH_PARENT
             }
-            windowAnimations = android.R.style.Animation_Toast
+            
+            // ZERO-LATENCY OVERRIDE: 0 completely bypasses Android's default Window exit animations.
+            // Without this, removeView() would trigger a 2-second system fade-out animation.
+            windowAnimations = 0
         }
     }
 
