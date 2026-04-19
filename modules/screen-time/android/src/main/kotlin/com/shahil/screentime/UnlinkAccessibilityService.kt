@@ -122,12 +122,21 @@ class UnlinkAccessibilityService : AccessibilityService() {
         }
 
         val pkg = event.packageName?.toString() ?: return
-        if (pkg == "com.android.systemui" || isLauncherOrHomePackage(pkg)) {
-            clearMultiOverlays()
+        val isShortsApp = pkg == "com.google.android.youtube" || pkg == "com.instagram.android"
+        
+        // 0ms VAPORIZATION: If we leave YouTube/Instagram, kill everything INSTANTLY without a handler delay.
+        if (!isShortsApp || isLauncherOrHomePackage(pkg)) {
+            clearMultiOverlays(forceInstant = true)
             return
-        }        
+        }
+
+        // NAVIGATION_INTERCEPT: If user clicks something, they are likely entering a video or leaving a feed.
+        // Kill the hysteresis buffer to ensure the box doesn't follow them into the player.
+        val isNaturalNavigation = eventType == AccessibilityEvent.TYPE_VIEW_CLICKED || 
+                                 eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+        
         val isSurgicalMode = (pkg == "com.google.android.youtube" && cachedSurgicalYoutube) ||
-                              (pkg == "com.instagram.android" && cachedSurgicalInstagram)
+                               (pkg == "com.instagram.android" && cachedSurgicalInstagram)
 
         // MODE_ISOLATION: Strictly separate Surgical Scanning from Normal App Blocking
         if (isSurgicalMode) {
@@ -136,23 +145,32 @@ class UnlinkAccessibilityService : AccessibilityService() {
             // CROSS-TALK PREVENTION: Android sometimes fires delayed events for background apps.
             // If YouTube is dying and returns a null root, or the active window shifts to Launcher, INSTANTLY purge overlays.
             if (root == null || root.packageName?.toString() != pkg) {
-                clearMultiOverlays()
+                clearMultiOverlays(forceInstant = true)
                 return
             }
 
             val matches = hybridDetector.findAllMatches(root, pkg)
             
-            // MEDIA PLAYER AUTO-EJECT: If the user bypasses tabs via a deep link and the actual full-screen 
-            // Shorts player begins playing audio, we MUST kill it immediately to silence the background.
-            // ELITE_FAST_PASS returns a singular full-screen rect for the player.
-            val isFullScreenPlayer = matches.size == 1 && matches[0].rect.height() >= resources.displayMetrics.heightPixels * 0.95f
+            // ELITE VIEWPORT CALCULATION: Constant bounds to prevent resizing lag
+            val screenHeight = resources.displayMetrics.heightPixels
+            val screenWidth = resources.displayMetrics.widthPixels
+            
+            // 5% AGGRESSIVE LIMIT
+            val topSafeLimit = (screenHeight * 0.05f).toInt()
+            val bottomSafeLimit = (screenHeight * 0.90f).toInt()
+            val activeClampingBounds = android.graphics.Rect(0, topSafeLimit, screenWidth, bottomSafeLimit)
+            
+            // MEDIA PLAYER AUTO-EJECT
+            val isFullScreenPlayer = matches.size == 1 && matches[0].rect.height() >= screenHeight * 0.95f
             if (isFullScreenPlayer) {
                 performGlobalAction(GLOBAL_ACTION_BACK)
                 showEliteSurgicalBanner("YouTube Shorts Locked")
+                clearMultiOverlays(forceInstant = true)
+                return
             }
             
-            syncMultiOverlays(matches)
-            // Normal blocking is skipped while surgical mode is active for this package
+            // Use navigation signal to decide if we should allow hysteresis (anti-flicker)
+            syncMultiOverlays(matches, activeClampingBounds, allowHysteresis = !isNaturalNavigation)
             return
         }
 
@@ -383,6 +401,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
             checkVersionDrift()
 
             val matches = mutableListOf<TargetMask>()
+            val potentialMatches = mutableListOf<android.graphics.Rect>()
             val screenHeight = resources.displayMetrics.heightPixels
             currentFeedBounds = null
 
@@ -409,16 +428,15 @@ class UnlinkAccessibilityService : AccessibilityService() {
                     for (node in nodes) {
                         val rect = android.graphics.Rect()
                         node.getBoundsInScreen(rect)
-                        if (rect.height() > 50) { // Valid height
-                             sessionHitCount++
-                             return listOf(TargetMask(rect, isGhost = true))
+                        if (rect.height() > 50) { 
+                            // ACCUMULATE: Add to potential matches for cluster fusion instead of returning early
+                            potentialMatches.add(rect)
                         }
                     }
                 }
             }
 
             // 2. SURGICAL_SWEEP: Iterate entire tree for thumb-sized matches
-            val potentialMatches = mutableListOf<android.graphics.Rect>()
             traverseTreeShallow(root) { node ->
                 val rect = android.graphics.Rect()
                 node.getBoundsInScreen(rect)
@@ -448,7 +466,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
             val deDuplicatedMatches = mutableListOf<android.graphics.Rect>()
             
             // ARTIFICIAL SCREEN CLAMPING: 
-            val topSafeLimit = (screenHeight * 0.11f).toInt()
+            val topSafeLimit = (screenHeight * 0.04f).toInt()
             val bottomSafeLimit = (screenHeight * 0.90f).toInt()
             
             val activeClampingBounds = currentFeedBounds ?: android.graphics.Rect(0, 0, resources.displayMetrics.widthPixels, screenHeight)
@@ -485,9 +503,9 @@ class UnlinkAccessibilityService : AccessibilityService() {
                     continue
                 }
 
-                // Normal Grid items: Look for a vertically nearby cluster to join (within 600px tolerance)
+                // Normal Grid items: Look for a vertically nearby cluster to join (within 800px tolerance)
                 val nearbyCluster = clusters.find { cluster ->
-                    cluster.any { it.bottom >= rect.top - 600 && it.top <= rect.bottom + 600 }
+                    cluster.any { it.bottom >= rect.top - 800 && it.top <= rect.bottom + 800 }
                 }
                 
                 if (nearbyCluster != null) {
@@ -716,102 +734,126 @@ class UnlinkAccessibilityService : AccessibilityService() {
     private val overlayPool = mutableListOf<View>()
     private var lastValidTargetsTime = 0L
 
-    private fun syncMultiOverlays(targets: List<TargetMask>) {
-        visibilityHandler.post {
-            val wm = windowManager ?: return@post
-            
-            // HYSTERESIS (ANTI-FLICKER): If targets are empty, don't clear immediately.
-            // Android Accessibility Tree often "drops" nodes during high-speed scrolling for 1-2 frames.
-            // We keep the last known masks alive for 200ms to bridge this gap.
-            if (targets.isEmpty()) {
-                if (System.currentTimeMillis() - lastValidTargetsTime < 200L) {
-                    return@post // Maintain current overlays to avoid flicker
-                }
-            } else {
-                lastValidTargetsTime = System.currentTimeMillis()
-            }
+    // NATIVE-SLIDE VIEWPORT: A static window that clips everything moving past its borders.
+    private var viewportContainer: FrameLayout? = null
+    private var viewportParams: WindowManager.LayoutParams? = null
 
-            // 1. Cleanup extra overlays if we have more than needed
-            while (activeOverlays.size > targets.size) {
-                val view = activeOverlays.removeAt(activeOverlays.size - 1)
-                view.animate().cancel() // Kill lingering alpha animations
-                try { 
-                    view.visibility = View.GONE // INSTANT-KILL BYPASS: Force UI invisible before system animation kicks in
-                    wm.removeView(view) 
-                } catch (e: Exception) {}
-                overlayPool.add(view)
+    private fun ensureViewport(bounds: android.graphics.Rect) {
+        val wm = windowManager ?: return
+        if (viewportContainer == null) {
+            viewportContainer = FrameLayout(this).apply { clipChildren = true }
+            viewportParams = createOverlayParams(bounds, isGhost = true).apply {
+                width = resources.displayMetrics.widthPixels
+                height = bounds.height()
+                y = bounds.top
+                gravity = Gravity.TOP or Gravity.START
             }
-
-            // 2. Update/Add overlays for all targets
-            targets.forEachIndexed { index, target ->
-                val params = createOverlayParams(target.rect, target.isGhost)
-                
-                if (index < activeOverlays.size) {
-                    // REUSE: Update existing view
-                    try { wm.updateViewLayout(activeOverlays[index], params) } catch (e: Exception) {}
-                    
-                    val view = activeOverlays[index]
-                    val padlockId = resources.getIdentifier("padlock_icon", "id", packageName)
-                    val padlock = if (padlockId != 0) view.findViewById<android.widget.ImageView>(padlockId) else null
-                    
-                    // Perfect Synchronization: Padlock only shows on SOLID blocks (Security), never on GHOST blocks (Content)
-                    if (padlock != null) {
-                        padlock.visibility = if (target.isGhost) android.view.View.GONE else android.view.View.VISIBLE
-                    }
-                    view.isClickable = !target.isGhost
-                } else {
-                    // SPAWN: Get from pool or create new
-                    val view = if (overlayPool.isNotEmpty()) overlayPool.removeAt(0) else inflateOverlay()
-                    if (view != null) {
-                        try {
-                            if (!android.provider.Settings.canDrawOverlays(this@UnlinkAccessibilityService)) {
-                                handlePermissionFailure()
-                                return@post
-                            }
-                            
-                            val padlockId = resources.getIdentifier("padlock_icon", "id", packageName)
-                            val padlock = if (padlockId != 0) view.findViewById<android.widget.ImageView>(padlockId) else null
-                            if (padlock != null) {
-                                padlock.visibility = if (target.isGhost) android.view.View.GONE else android.view.View.VISIBLE
-                            }
-                            view.isClickable = !target.isGhost
-                            
-                            // ALPHA ENTRY ANIMATION: Premium native fade-in to prevent clunky pop-ups.
-                            view.alpha = 0f
-                            view.visibility = android.view.View.VISIBLE
-                            wm.addView(view, params)
-                            
-                            view.setLayerType(View.LAYER_TYPE_HARDWARE, null) // PERFORMANCE: Optimize for entry animation
-                            view.animate()
-                                .alpha(1f)
-                                .setDuration(150L) // 150ms buttery smooth entry fade
-                                .withLayer()
-                                .withEndAction { view.setLayerType(View.LAYER_TYPE_NONE, null) }
-                                .start()
-                                
-                            activeOverlays.add(view)
-                        } catch (e: Exception) {
-                            if (e is android.view.WindowManager.BadTokenException) handlePermissionFailure()
-                        }
-                    }
+            try { wm.addView(viewportContainer, viewportParams) } catch (e: Exception) {}
+        } else {
+            viewportParams?.let {
+                if (it.y != bounds.top || it.height != bounds.height()) {
+                    it.y = bounds.top
+                    it.height = bounds.height()
+                    try { wm.updateViewLayout(viewportContainer, it) } catch (e: Exception) {}
                 }
             }
         }
     }
 
-    private fun clearMultiOverlays() {
-        hybridDetector.resetZoneLock()
+    private fun syncMultiOverlays(targets: List<TargetMask>, bounds: android.graphics.Rect, allowHysteresis: Boolean = true) {
+        val wm = windowManager ?: return
+        
+        // INSTANT_VAPORIZE ACTION: If hysteresis is disallowed, kill extra views synchronously
+        if (!allowHysteresis && targets.isEmpty()) {
+            clearMultiOverlays(forceInstant = true)
+            return
+        }
+
         visibilityHandler.post {
-            val wm = windowManager ?: return@post
-            activeOverlays.forEach { view ->
-                view.animate().cancel() // Kill lingering alpha animations
-                try { 
-                    view.visibility = View.GONE
-                    wm.removeView(view) 
-                } catch (e: Exception) {}
+            ensureViewport(bounds)
+            val vpc = viewportContainer ?: return@post
+            
+            if (targets.isEmpty()) {
+                if (allowHysteresis && System.currentTimeMillis() - lastValidTargetsTime < 200L) return@post 
+            } else {
+                lastValidTargetsTime = System.currentTimeMillis()
+            }
+
+            val feedTargets = targets.filter { it.isGhost }
+            val navTargets = targets.filter { !it.isGhost }
+
+            // 1. Viewport Children (Sliding Masks)
+            while (vpc.childCount > feedTargets.size) {
+                val view = vpc.getChildAt(vpc.childCount - 1)
+                vpc.removeView(view)
                 overlayPool.add(view)
             }
+
+            feedTargets.forEachIndexed { index, target ->
+                val view = if (index < vpc.childCount) {
+                    vpc.getChildAt(index)
+                } else {
+                    val v = if (overlayPool.isNotEmpty()) overlayPool.removeAt(0) else inflateOverlay()
+                    if (v != null) {
+                        v.alpha = 0f
+                        v.visibility = View.VISIBLE
+                        vpc.addView(v, FrameLayout.LayoutParams(target.rect.width(), target.rect.height()))
+                        v.animate().alpha(1f).setDuration(150L).start()
+                        v
+                    } else null
+                }
+                
+                view?.let {
+                    if (it.layoutParams.width != target.rect.width() || it.layoutParams.height != target.rect.height()) {
+                        it.layoutParams.width = target.rect.width()
+                        it.layoutParams.height = target.rect.height()
+                        it.requestLayout()
+                    }
+                    it.translationX = target.rect.left.toFloat()
+                    it.translationY = (target.rect.top - bounds.top).toFloat()
+                }
+            }
+
+            // 2. Clear out legacy cards
+            activeOverlays.forEach { try { wm.removeView(it) } catch (e: Exception) {} }
             activeOverlays.clear()
+            
+            // 3. Navigation Shields
+            navTargets.forEach { target ->
+                val params = createOverlayParams(target.rect, isGhost = false)
+                val view = inflateOverlay() ?: return@forEach
+                try { 
+                    wm.addView(view, params)
+                    activeOverlays.add(view)
+                } catch (e: Exception) {}
+            }
+        }
+    }
+
+    private fun clearMultiOverlays(forceInstant: Boolean = false) {
+        hybridDetector.resetZoneLock()
+        
+        val action = {
+            val wm = windowManager
+            if (wm != null) {
+                viewportContainer?.let { vpc ->
+                    for (i in 0 until vpc.childCount) overlayPool.add(vpc.getChildAt(i))
+                    vpc.removeAllViews()
+                    try { wm.removeView(vpc) } catch (e: Exception) {}
+                }
+                viewportContainer = null
+                activeOverlays.forEach { view ->
+                    try { wm.removeView(view) } catch (e: Exception) {}
+                    overlayPool.add(view)
+                }
+                activeOverlays.clear()
+            }
+        }
+
+        if (forceInstant) {
+            action()
+        } else {
+            visibilityHandler.post(action)
         }
     }
 
