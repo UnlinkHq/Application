@@ -5,6 +5,14 @@ import ScreenTime from '../modules/screen-time';
 const ACTIVE_SESSION_KEY = '@unlink_active_session';
 const LIBRARY_BLOCKS_KEY = '@unlink_library_blocks';
 
+export interface ScrollingAppConfig {
+    enabled: boolean;
+    intentGate: boolean;
+    hideShorts?: boolean; // YouTube specific
+    dmSafeZone?: boolean; // Instagram specific
+    finiteFeed: boolean;
+}
+
 export interface BlockSession {
     id: string; // Unique ID for each session or template
     title: string;
@@ -12,11 +20,13 @@ export interface BlockSession {
     durationMins: number;
     apps: string[];
     appIcons?: string[];
-    surgicalFlags: {
-        youtube: boolean;
-        instagram: boolean;
-        studyMode?: boolean;
+    
+    scrollingProtocol: {
+        enabled: boolean;
+        youtube: ScrollingAppConfig;
+        instagram: ScrollingAppConfig;
     };
+
     strictnessConfig: {
         mode: 'normal' | 'qr_code' | 'mom_test' | 'money';
         qrCodeData?: string; // The generated signature
@@ -38,28 +48,49 @@ export interface BlockSession {
 export class FocusStorageService {
     // --- Active Session Management ---
     
-    static async startSession(session: BlockSession): Promise<void> {
+    static async startSession(rawSession: any): Promise<void> {
         console.log('--- [STORAGE_ENGINE] DEPLOYING_PROTOCOL ---');
-        // console.log(JSON.stringify(session, null, 2));
         
-        // 1. Save locally as active
+        // 1. Instantly migrate/harden the session so there's no missing data
+        const session = FocusStorageService.migrateSession(rawSession);
+        
+        // 2. Save locally as active
         await AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(session));
         
-        // 2. Transmit to Native Layer (Android)
+        // 3. Transmit to Native Layer (Android)
         if (Platform.OS === 'android') {
             ScreenTime.setBlockingSuspended(false);
-            ScreenTime.setSurgicalConfig(
-                session.surgicalFlags.youtube,
-                session.surgicalFlags.instagram,
-                session.surgicalFlags.studyMode || false
-            );
-            ScreenTime.setUninstallProtection(session.strictnessConfig.isUninstallProtected);
-            ScreenTime.setSessionDuration(session.durationMins);
             
-            ScreenTime.setBlockedApps(session.apps, "FOCUS_PROTOCOL_ENGAGED", "");
+            // Send config BEFORE blocks so the background service is ready
+            ScreenTime.setSurgicalConfig({
+                youtube: session.scrollingProtocol.youtube.enabled,
+                instagram: session.scrollingProtocol.instagram.enabled,
+                config: {
+                    ytGate: session.scrollingProtocol.youtube.intentGate,
+                    ytShelf: session.scrollingProtocol.youtube.hideShorts,
+                    ytFinite: session.scrollingProtocol.youtube.finiteFeed,
+                    igGate: session.scrollingProtocol.instagram.intentGate,
+                    igDMs: session.scrollingProtocol.instagram.dmSafeZone,
+                    igFinite: session.scrollingProtocol.instagram.finiteFeed
+                }
+            });
+            ScreenTime.setUninstallProtection(session.strictnessConfig?.isUninstallProtected ?? false);
+            ScreenTime.setSessionDuration(session.durationMins || 0);
+            
+            let hardBlockedApps = session.apps || [];
+            
+            // Exclude apps from hard blocking if their surgical (scrolling) protocol is enabled
+            if (session.scrollingProtocol?.youtube?.enabled) {
+                hardBlockedApps = hardBlockedApps.filter((app: string) => app !== 'com.google.android.youtube');
+            }
+            if (session.scrollingProtocol?.instagram?.enabled) {
+                hardBlockedApps = hardBlockedApps.filter((app: string) => app !== 'com.instagram.android');
+            }
+
+            ScreenTime.setBlockedApps(hardBlockedApps, "FOCUS_PROTOCOL_ENGAGED", "");
         }
         
-        // 3. For iOS, we rely on the activateShield call or standard family controls
+        // 4. For iOS, we rely on the activateShield call or standard family controls
         if (Platform.OS === 'ios') {
             ScreenTime.activateShield();
         }
@@ -128,7 +159,8 @@ export class FocusStorageService {
         if (!data) return null;
         
         try {
-            const session: BlockSession = JSON.parse(data);
+            const sessionData = JSON.parse(data);
+            const session = FocusStorageService.migrateSession(sessionData);
             
             // Time-Aware Validation: If the focus budget is exhausted, terminate the session
             if (!session.isOnBreak) {
@@ -152,7 +184,9 @@ export class FocusStorageService {
 
     static async getLibraryBlocks(): Promise<BlockSession[]> {
         const data = await AsyncStorage.getItem(LIBRARY_BLOCKS_KEY);
-        return data ? JSON.parse(data) : [];
+        if (!data) return [];
+        const items = JSON.parse(data);
+        return items.map((item: any) => FocusStorageService.migrateSession(item));
     }
 
     static async saveBlock(block: BlockSession): Promise<void> {
@@ -172,5 +206,35 @@ export class FocusStorageService {
         const library = await this.getLibraryBlocks();
         const updated = library.filter(b => b.id !== id);
         await AsyncStorage.setItem(LIBRARY_BLOCKS_KEY, JSON.stringify(updated));
+    }
+
+    static migrateSession(session: any): BlockSession {
+        // Deep clone or construct to ensure we aren't mutating the original
+        // while also providing default fallbacks everywhere
+        const oldFlags = session.surgicalFlags || {};
+        const oldConfig = oldFlags.config || {};
+        
+        const sp = session.scrollingProtocol || {};
+        const yt = sp.youtube || {};
+        const ig = sp.instagram || {};
+
+        return {
+            ...session,
+            scrollingProtocol: {
+                enabled: sp.enabled ?? (oldFlags.youtube || oldFlags.instagram || false),
+                youtube: {
+                    enabled: yt.enabled ?? (oldFlags.youtube || false),
+                    intentGate: yt.intentGate ?? oldConfig.ytGate ?? true,
+                    hideShorts: yt.hideShorts ?? oldConfig.ytShelf ?? true,
+                    finiteFeed: yt.finiteFeed ?? oldConfig.ytFinite ?? true
+                },
+                instagram: {
+                    enabled: ig.enabled ?? (oldFlags.instagram || false),
+                    intentGate: ig.intentGate ?? oldConfig.igGate ?? true,
+                    dmSafeZone: ig.dmSafeZone ?? oldConfig.igDMs ?? true,
+                    finiteFeed: ig.finiteFeed ?? oldConfig.igFinite ?? true
+                }
+            }
+        };
     }
 }

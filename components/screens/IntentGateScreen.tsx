@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from 're
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import * as Haptics from 'expo-haptics';
-import { BlurView } from 'expo-blur';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export const IntentGateScreen = () => {
@@ -13,7 +12,7 @@ export const IntentGateScreen = () => {
 
     const [countdown, setCountdown] = useState(3);
     const [showActions, setShowActions] = useState(false);
-    
+
     const fadeAnim = useState(new Animated.Value(0))[0];
     const scaleAnim = useState(new Animated.Value(0.95))[0];
 
@@ -75,13 +74,13 @@ export const IntentGateScreen = () => {
                         <Text style={styles.statusText}>FOCUSING_SYSTEM...</Text>
                     </View>
                 ) : (
-                    <Animated.View 
+                    <Animated.View
                         style={[
-                            styles.actionSection, 
+                            styles.actionSection,
                             { opacity: fadeAnim, transform: [{ scale: scaleAnim }] }
                         ]}
                     >
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.primaryButton}
                             onPress={() => handleAction('DM')}
                             activeOpacity={0.8}
@@ -90,7 +89,7 @@ export const IntentGateScreen = () => {
                             <Text style={styles.primaryButtonText}>DM CONNECT ONLY</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.secondaryButton}
                             onPress={() => handleAction('COMMUNITY')}
                             activeOpacity={0.8}
@@ -99,7 +98,7 @@ export const IntentGateScreen = () => {
                             <Text style={styles.secondaryButtonText}>COMMUNITY STATUS</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.cancelButton}
                             onPress={() => handleAction('CANCEL')}
                         >
@@ -127,7 +126,7 @@ const styles = StyleSheet.create({
     },
     protocolText: {
         color: 'rgba(255, 255, 255, 0.2)',
-        fontFamily: Platform.OS === 'ios' ? 'Inter-Black' : 'sans-serif-black',
+        fontFamily: 'Inter_900Black',
         fontSize: 10,
         letterSpacing: 4,
     },
@@ -138,14 +137,14 @@ const styles = StyleSheet.create({
     greeting: {
         color: 'rgba(255, 255, 255, 0.6)',
         fontSize: 16,
-        fontFamily: Platform.OS === 'ios' ? 'SpaceGrotesk-Light' : 'sans-serif-light',
+        fontFamily: 'SpaceGrotesk_300Light',
         marginBottom: 8,
     },
     question: {
         color: '#FFF',
         fontSize: 28,
         textAlign: 'center',
-        fontFamily: Platform.OS === 'ios' ? 'Inter-Black' : 'sans-serif-black',
+        fontFamily: 'Inter_900Black',
         lineHeight: 34,
     },
     appName: {
@@ -159,7 +158,7 @@ const styles = StyleSheet.create({
     timer: {
         color: '#FFF',
         fontSize: 80,
-        fontFamily: Platform.OS === 'ios' ? 'Inter-Black' : 'sans-serif-black',
+        fontFamily: 'Inter_900Black',
     },
     statusText: {
         color: 'rgba(255, 255, 255, 0.3)',
@@ -185,7 +184,7 @@ const styles = StyleSheet.create({
     primaryButtonText: {
         color: '#000',
         fontSize: 14,
-        fontFamily: Platform.OS === 'ios' ? 'Inter-Black' : 'sans-serif-black',
+        fontFamily: 'Inter_900Black',
         letterSpacing: 1,
     },
     secondaryButton: {
@@ -203,7 +202,7 @@ const styles = StyleSheet.create({
     secondaryButtonText: {
         color: '#FFF',
         fontSize: 14,
-        fontFamily: Platform.OS === 'ios' ? 'Inter-Black' : 'sans-serif-black',
+        fontFamily: 'Inter_900Black',
         letterSpacing: 1,
     },
     cancelButton: {
@@ -214,6 +213,6 @@ const styles = StyleSheet.create({
     cancelButtonText: {
         color: 'rgba(255, 255, 255, 0.4)',
         fontSize: 14,
-        fontFamily: Platform.OS === 'ios' ? 'SpaceGrotesk-Medium' : 'sans-serif-medium',
+        fontFamily: 'SpaceGrotesk_500Medium',
     },
 });

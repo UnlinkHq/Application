@@ -68,8 +68,15 @@ class UnlinkAccessibilityService : AccessibilityService() {
     private var gateCountdown = 3
     private val gateHandler = Handler(Looper.getMainLooper())
     
-    // CORE_STATE: Blocked apps and active filters
     private var currentBlockedApps: Set<String> = emptySet()
+    private var isSurgicalYoutube = false
+    private var isSurgicalInstagram = false
+    
+    // GRANULAR_COACH_CONFIG
+    private var isYtGateEnabled = true
+    private var isYtShelfEnabled = true
+    private var isIgGateEnabled = true
+    private var isIgDmsEnabled = true
     
     // CACHED_STATE: Fast access to session data
     private var cachedIsBlockingSuspended = false
@@ -77,6 +84,12 @@ class UnlinkAccessibilityService : AccessibilityService() {
     private var currentTimeRemaining = ""
     private var blockExpiryTime: Long = 0L
     private var isNavigatingHome = false
+    private var isBlockingSuspended = false
+    
+    // RE_AUTH_TIMER_PROTOCOL
+    private var lastForegroundPackage: String? = null
+    private var isYtFiniteEnabled = true
+    private var isIgFiniteEnabled = true
 
     private val countdownHandler = Handler(Looper.getMainLooper())
     private val countdownRunnable = object : Runnable {
@@ -88,7 +101,14 @@ class UnlinkAccessibilityService : AccessibilityService() {
 
     private val syncReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            setSuspendedState(null)
+            when (intent?.action) {
+                "com.shahil.unlink.SYNC_LIST" -> setSuspendedState(null)
+                Intent.ACTION_SCREEN_OFF -> {
+                    // INSTANT_RESET_ON_SCREEN_OFF: Premium behavior confirmation
+                    authorizedApps.clear()
+                    Log.d("UnlinkReAuth", "Screen off detected. Authorization reset.")
+                }
+            }
         }
     }
 
@@ -106,32 +126,87 @@ class UnlinkAccessibilityService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         val eventType = event.eventType
-        val pkg = event.packageName?.toString() ?: return
 
-        if (isLauncherOrHomePackage(pkg) || pkg == packageName) {
-            setWallVisibility(false, false)
+        // RESPOND TO BROAD EVENTS TO CATCH GESTURE NAVIGATION
+        if (eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED && eventType != AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             return
         }
 
-        // FULL_BLOCK_PRIORITY: If the app is hard-blocked, show the wall immediately.
-        if (isBlockActive(pkg)) {
-            setWallVisibility(true, false)
+        // INFALLIBLE FOREGROUND TRACKING: 
+        // Always trust the active window root over the raw event. This instantly neutralizes 
+        // background-refresh pollution (e.g. YouTube PiP firing fake foreground events).
+        val pkg = rootInActiveWindow?.packageName?.toString() ?: event.packageName?.toString() ?: return
+
+        // IGNORE SELF TO PREVENT OVERLAY BLINKING
+        if (pkg == packageName) {
             return
         }
 
-        // INTENT_GATE_LOGIC: Target apps (Instagram/YouTube) trigger the Entry Gate.
-        val isTargetApp = pkg == "com.google.android.youtube" || pkg == "com.instagram.android"
-        if (isTargetApp) {
-            if (!authorizedApps.contains(pkg)) {
-                showIntentGate(pkg)
+        val isTarget = pkg == "com.google.android.youtube" || pkg == "com.instagram.android"
+        val wasInTarget = lastForegroundPackage == "com.google.android.youtube" || lastForegroundPackage == "com.instagram.android"
+
+        // EXIT_DETECTION: If we just left a target app
+        if (wasInTarget && !isTarget) {
+            val lastPkg = lastForegroundPackage!!
+            val exitTime = System.currentTimeMillis()
+            
+            val prefs = getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+            prefs.edit().putLong("exit_time_$lastPkg", exitTime).apply()
+            Log.d("UnlinkReAuth", "Left $lastPkg at $exitTime. Exit recorded.")
+        }
+
+        // ENTRY_DETECTION: If we just entered a target app from somewhere else
+        if (isTarget && pkg != lastForegroundPackage) {
+            val prefs = getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+            val lastExit = prefs.getLong("exit_time_$pkg", 0L)
+            val sessionStartTime = prefs.getLong("session_start_time", 0L)
+            val outOfAppDuration = System.currentTimeMillis() - lastExit
+            
+            // RE_AUTH_TIMEOUT: 30 seconds OR User started a new session
+            if (outOfAppDuration > 30000L || lastExit < sessionStartTime) {
+                authorizedApps.remove(pkg)
+                Log.d("UnlinkReAuth", "Entry into $pkg requires re-auth. (outOfApp: ${outOfAppDuration/1000}s, beforeSession: ${lastExit < sessionStartTime})")
             } else {
-                setWallVisibility(false, false)
+                Log.d("UnlinkReAuth", "Quick return to $pkg (${outOfAppDuration/1000}s). Session maintained.")
             }
+        }
+
+        if (isLauncherOrHomePackage(pkg)) {
+            lastForegroundPackage = pkg
+            setWallVisibility(false)
+            hideIntentGate()
             return
         }
 
-        // DEFAULT: No action for other apps unless they were recently blocked.
-        if (!isNavigatingHome) setWallVisibility(false, false)
+        // INTENT_GATE_LOGIC
+        val isInstagram = pkg == "com.instagram.android"
+        val isYoutube = pkg == "com.google.android.youtube"
+        
+        if (isInstagram || isYoutube) {
+            val surgicalEnabled = (isInstagram && isSurgicalInstagram) || (isYoutube && isSurgicalYoutube)
+            
+            if (surgicalEnabled) {
+                val gateEnabled = if (isInstagram) isIgGateEnabled else isYtGateEnabled
+                
+                if (gateEnabled && !authorizedApps.contains(pkg)) {
+                    showIntentGate(pkg) // Calm 3-sec gate
+                    lastForegroundPackage = pkg
+                    return
+                } else {
+                    setWallVisibility(false) // Authorized or Gate Off
+                }
+            }
+        }
+
+        lastForegroundPackage = pkg
+
+        // FULL_BLOCK_PRIORITY
+        if (isBlockActive(pkg)) {
+            setWallVisibility(true)
+            return
+        }
+
+        if (!isNavigatingHome) setWallVisibility(false)
     }
 
     override fun onServiceConnected() {
@@ -143,7 +218,10 @@ class UnlinkAccessibilityService : AccessibilityService() {
             createNotificationChannel()
             startForeground(NOTIFICATION_ID, createNotification())
             
-            val filter = IntentFilter("com.shahil.unlink.SYNC_LIST")
+            val filter = IntentFilter()
+            filter.addAction("com.shahil.unlink.SYNC_LIST")
+            filter.addAction(Intent.ACTION_SCREEN_OFF)
+            
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 registerReceiver(syncReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
             } else {
@@ -188,11 +266,11 @@ class UnlinkAccessibilityService : AccessibilityService() {
         targetPackages.add("com.android.systemui")
 
         val info = serviceInfo
-        info.eventTypes = AccessibilityEvent.TYPE_WINDOWS_CHANGED or
-                        AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
-                        AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
-                        AccessibilityEvent.TYPE_VIEW_CLICKED
-        info.packageNames = targetPackages.toTypedArray()
+        if (info != null) {
+            info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
+            info.packageNames = null // GLOBAL TRACKING FOR EXIT DETECTION
+            serviceInfo = info // THIS APPLIES THE CHANGES TO ANDROID SYSTEM
+        }
         
         // Immediate check
         performSecurityCheck()
@@ -234,7 +312,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
         }
         isNavigatingHome = false 
         refreshServiceConfig() 
-        setWallVisibility(false, false)
+        setWallVisibility(false)
     }
 
     private fun refreshFromDiskInternal() {
@@ -246,6 +324,17 @@ class UnlinkAccessibilityService : AccessibilityService() {
             blockExpiryTime = prefs.getLong("block_expiry_time", 0L)
             cachedIsBlockingSuspended = prefs.getBoolean("is_blocking_suspended", false)
             isBlockingSuspended = prefs.getBoolean("is_blocking_suspended", false)
+            
+            isSurgicalYoutube = prefs.getBoolean("surgical_youtube", false)
+            isSurgicalInstagram = prefs.getBoolean("surgical_instagram", false)
+            
+            // Load Granular Coach Config
+            isYtGateEnabled = prefs.getBoolean("coach_yt_gate", true)
+            isYtShelfEnabled = prefs.getBoolean("coach_yt_shelf", true)
+            isYtFiniteEnabled = prefs.getBoolean("coach_yt_finite", true)
+            isIgGateEnabled = prefs.getBoolean("coach_ig_gate", true)
+            isIgDmsEnabled = prefs.getBoolean("coach_ig_dms", true)
+            isIgFiniteEnabled = prefs.getBoolean("coach_ig_finite", true)
         } catch (e: Exception) {}
     }
 
@@ -516,13 +605,28 @@ class UnlinkAccessibilityService : AccessibilityService() {
                     gateOverlayView?.findViewById<TextView>(questionId)?.text = "Why are you opening\n$appName today?"
                 }
 
-                // Interaction Logic
+                // Emotional Hooks & Motivation
+                val brainStatusId = resources.getIdentifier("brainStatusText", "id", myPackageName)
+                if (brainStatusId != 0) {
+                    gateOverlayView?.findViewById<TextView>(brainStatusId)?.text = "🧠 12% FRESH BRAIN"
+                }
+                
+                val winLineId = resources.getIdentifier("winLineText", "id", myPackageName)
+                if (winLineId != 0) {
+                    gateOverlayView?.findViewById<TextView>(winLineId)?.text = "You've already won back 47 minutes this week 🔥\nYour brain thanks you."
+                }
+
+                // Interaction Logic - 4 Commitment Options
                 val dmBtnId = resources.getIdentifier("dmOnlyButton", "id", myPackageName)
-                val commBtnId = resources.getIdentifier("communityButton", "id", myPackageName)
+                val longVidBtnId = resources.getIdentifier("longVideosButton", "id", myPackageName)
+                val reelsLimitBtnId = resources.getIdentifier("reelsLimitButton", "id", myPackageName)
+                val focusBtnId = resources.getIdentifier("fullFocusButton", "id", myPackageName)
                 val cancelId = resources.getIdentifier("cancelButton", "id", myPackageName)
 
                 gateOverlayView?.findViewById<View>(dmBtnId)?.setOnClickListener { authorizeSession(pkg) }
-                gateOverlayView?.findViewById<View>(commBtnId)?.setOnClickListener { authorizeSession(pkg) }
+                gateOverlayView?.findViewById<View>(longVidBtnId)?.setOnClickListener { authorizeSession(pkg) }
+                gateOverlayView?.findViewById<View>(reelsLimitBtnId)?.setOnClickListener { authorizeSession(pkg) }
+                gateOverlayView?.findViewById<View>(focusBtnId)?.setOnClickListener { authorizeSession(pkg) }
                 gateOverlayView?.findViewById<View>(cancelId)?.setOnClickListener { hideIntentGate(); goHome() }
 
                 windowManager?.addView(gateOverlayView, params)

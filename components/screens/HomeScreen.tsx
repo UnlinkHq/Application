@@ -81,12 +81,12 @@ const ActiveProtocolStatus = ({
                 </View>
                 
                 <View className="flex-1 flex-row flex-wrap gap-2">
-                    {session.surgicalFlags.youtube && (
+                    {session.scrollingProtocol?.youtube?.enabled && (
                         <View className="px-2 py-0.5 border border-red-500/30 bg-red-500/5">
                             <Text className="text-red-500 font-label text-[7px] uppercase tracking-widest">YT_SHORTS</Text>
                         </View>
                     )}
-                    {session.surgicalFlags.instagram && (
+                    {session.scrollingProtocol?.instagram?.enabled && (
                         <View className="px-2 py-0.5 border border-pink-500/30 bg-pink-500/5">
                             <Text className="text-pink-500 font-label text-[7px] uppercase tracking-widest">IG_REELS</Text>
                         </View>

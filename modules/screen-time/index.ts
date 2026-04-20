@@ -9,7 +9,7 @@ interface ScreenTimeModuleInterface {
     deactivateAdmin(): void;
     getUsageStats(startTime: number, endTime: number): Promise<any>;
     getInstalledApps(): Promise<{ packageName: string, label: string, icon: string, category?: number }[]>;
-    
+
     // Permission Functions
     hasOverlayPermission(): Promise<boolean>;
     requestOverlayPermission(): void;
@@ -18,7 +18,7 @@ interface ScreenTimeModuleInterface {
     isUsageStatsPermissionGranted(): Promise<boolean>;
     requestUsageStatsPermission(): Promise<void>;
     openAppInfoSettings(): Promise<void>;
-    
+
     // Persistence Functions
     isBatteryOptimizationExempted(): Promise<boolean>;
     requestBatteryOptimizationExemption(): void;
@@ -33,8 +33,9 @@ interface ScreenTimeModuleInterface {
     // Blocking & Dashboard Functions
     setBlockedApps(packageNames: string[], message: string, timeLeft: string): Promise<void>;
     setSurgicalFlags(youtubeShorts: boolean, instagramReels: boolean, studyMode?: boolean): void;
+    setSurgicalConfig(config: any): void;
     setUninstallProtection(enabled: boolean): void;
-    setSessionDuration(minutes: Int): void;
+    setSessionDuration(minutes: number): void;
     setBlockingSuspended(suspended: boolean): void;
     setSessionData(startTime: number, durationMins: number): void;
     getAppIcon(packageName: string): Promise<string>;
@@ -56,21 +57,21 @@ try {
     // Mock implementation for development/Expo Go
     ScreenTimeModule = {
         hasPermission: async () => false,
-        requestPermission: () => {},
+        requestPermission: () => { },
         isAdminActive: () => false,
-        requestAdmin: () => {},
-        deactivateAdmin: () => {},
+        requestAdmin: () => { },
+        deactivateAdmin: () => { },
         getUsageStats: async () => ({}),
         getInstalledApps: async () => [],
         hasOverlayPermission: async () => false,
-        requestOverlayPermission: () => {},
+        requestOverlayPermission: () => { },
         isAccessibilityServiceEnabled: async () => false,
-        requestAccessibilityPermission: async () => {},
+        requestAccessibilityPermission: async () => { },
         isUsageStatsPermissionGranted: async () => false,
-        requestUsageStatsPermission: async () => {},
-        openAppInfoSettings: async () => {},
+        requestUsageStatsPermission: async () => { },
+        openAppInfoSettings: async () => { },
         isBatteryOptimizationExempted: async () => false,
-        requestBatteryOptimizationExemption: () => {},
+        requestBatteryOptimizationExemption: () => { },
         getEngineHealth: async () => ({
             overlay: false,
             accessibility: false,
@@ -78,16 +79,17 @@ try {
             batteryExempt: false,
             isEnforcing: false
         }),
-        setBlockedApps: async () => {},
-        setSurgicalFlags: () => {},
-        setUninstallProtection: () => {},
-        setSessionDuration: () => {},
-        setBlockingSuspended: () => {},
-        setSessionData: () => {},
+        setBlockedApps: async () => { },
+        setSurgicalFlags: () => { },
+        setSurgicalConfig: () => { },
+        setUninstallProtection: () => { },
+        setSessionDuration: () => { },
+        setBlockingSuspended: () => { },
+        setSessionData: () => { },
         getAppIcon: async () => '',
-        stopBlockingService: () => {},
-        activateShield: () => {},
-        deactivateShield: () => {},
+        stopBlockingService: () => { },
+        activateShield: () => { },
+        deactivateShield: () => { },
         getSelectionCount: () => 0
     };
 }
@@ -139,6 +141,10 @@ export function setBlockedApps(packageNames: string[], message: string, timeLeft
 
 export function setSurgicalFlags(youtubeShorts: boolean, instagramReels: boolean, studyMode: boolean = false): void {
     ScreenTimeModule.setSurgicalFlags(youtubeShorts, instagramReels, studyMode);
+}
+
+export function setSurgicalConfig(config: any): void {
+    ScreenTimeModule.setSurgicalConfig(config);
 }
 
 export function setUninstallProtection(enabled: boolean): void {

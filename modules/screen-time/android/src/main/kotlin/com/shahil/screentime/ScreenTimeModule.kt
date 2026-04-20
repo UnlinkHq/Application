@@ -154,26 +154,39 @@ class ScreenTimeModule : Module() {
         }
     }
 
-    Function("setSurgicalConfig") { youtube: Boolean, instagram: Boolean, studyMode: Boolean ->
+    Function("setSurgicalConfig") { config: Map<String, Any> ->
       appContext.reactContext?.let { context ->
         val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        
+        val youtube = config["youtube"] as? Boolean ?: false
+        val instagram = config["instagram"] as? Boolean ?: false
+        val studyMode = config["studyMode"] as? Boolean ?: false
+        
+        // Granular Coach Config
+        val coachConfig = config["config"] as? Map<String, Any>
+        val ytGate = coachConfig?.get("ytGate") as? Boolean ?: true
+        val ytShelf = coachConfig?.get("ytShelf") as? Boolean ?: true
+        val ytFinite = coachConfig?.get("ytFinite") as? Boolean ?: true
+        val igGate = coachConfig?.get("igGate") as? Boolean ?: true
+        val igDMs = coachConfig?.get("igDMs") as? Boolean ?: true
+        val igFinite = coachConfig?.get("igFinite") as? Boolean ?: true
+
         prefs.edit().apply {
             putBoolean("surgical_youtube", youtube)
             putBoolean("surgical_instagram", instagram)
             putBoolean("study_mode_active", studyMode)
+            
+            // Persist granular flags
+            putBoolean("coach_yt_gate", ytGate)
+            putBoolean("coach_yt_shelf", ytShelf)
+            putBoolean("coach_yt_finite", ytFinite)
+            putBoolean("coach_ig_gate", igGate)
+            putBoolean("coach_ig_dms", igDMs)
+            putBoolean("coach_ig_finite", igFinite)
             commit()
         }
         
-        // 1. DIRECT_MEMORY_SYNC: Instant refresh for accessibility service
-        UnlinkAccessibilityService.instance?.setSuspendedState(null)
-        
-        // 2. BROADCAST_FALLBACK: Redundant sync for safety
-        val intent = Intent("com.shahil.unlink.SYNC_LIST")
-        intent.setPackage(context.packageName)
-        context.sendBroadcast(intent)
-        
-        // 3. COOLING_PERIOD: Allow WindowManager to stabilize during rapid mode swaps
-        Thread.sleep(10)
+        UnlinkAccessibilityService.instance?.refreshServiceConfig()
       }
       return@Function null
     }
