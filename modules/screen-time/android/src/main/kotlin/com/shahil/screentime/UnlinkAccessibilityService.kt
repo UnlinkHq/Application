@@ -35,9 +35,16 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.app.NotificationCompat
+import kotlin.math.abs
 
 class UnlinkAccessibilityService : AccessibilityService() {
 
+    // DEVICE_TIER_ARCHITECTURE: Dynamic performance scaling for battery & low-end frames
+    enum class DeviceTier { HIGH, MID, LOW }
+    private var currentTier = DeviceTier.HIGH
+    private var consecutiveSlowFrames = 0
+    private var lastFrameTimeNanos = 0L
+    
     companion object {
         @Volatile
         var instance: UnlinkAccessibilityService? = null
@@ -91,6 +98,12 @@ class UnlinkAccessibilityService : AccessibilityService() {
         }
     }
 
+    // SCROLL_PHYSICS_STATE
+    private var lastLayoutEventTime = 0L
+    private var lastScrollY = Int.MIN_VALUE
+    private var accumulatedDeltaY = 0f
+    private var isScrollActive = false
+
 
     private val syncReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -111,79 +124,116 @@ class UnlinkAccessibilityService : AccessibilityService() {
     private var lastEventTime = 0L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        // QUEUE DE-SATURATION: Throttle only spammy scroll and layout events to ~60fps (15ms).
-        // 40ms caused the overlays to lag behind the 60fps feed during fast scrolls (floating bleed).
-        // Guarantees vital events (like going to Home screen) process instantly with zero lag.
         val eventType = event.eventType
-        if (eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED || eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
+
+        // THROTTLE_PROTECTION: Only layout/content events are throttled.
+        // Scroll events MUST pass through instantly for physics tracking.
+        if (eventType == AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED) {
             val now = System.currentTimeMillis()
-            if (now - lastEventTime < 15L) return 
-            lastEventTime = now
+            if (now - lastLayoutEventTime < 15L) return 
+            lastLayoutEventTime = now
         }
 
         val pkg = event.packageName?.toString() ?: return
         val isShortsApp = pkg == "com.google.android.youtube" || pkg == "com.instagram.android"
         
-        // 0ms VAPORIZATION: If we leave YouTube/Instagram, kill everything INSTANTLY without a handler delay.
         if (!isShortsApp || isLauncherOrHomePackage(pkg)) {
+            lastScrollY = Int.MIN_VALUE
+            stickyScrollView?.stopAndHide()
             clearMultiOverlays(forceInstant = true)
             return
         }
 
-        // NAVIGATION_INTERCEPT: If user clicks something, they are likely entering a video or leaving a feed.
-        // Kill the hysteresis buffer to ensure the box doesn't follow them into the player.
         val isNaturalNavigation = eventType == AccessibilityEvent.TYPE_VIEW_CLICKED || 
                                  eventType == AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED
         
+        if (isNaturalNavigation) {
+            lastScrollY = Int.MIN_VALUE
+            stickyScrollView?.stopAndHide()
+        }
+
         val isSurgicalMode = (pkg == "com.google.android.youtube" && cachedSurgicalYoutube) ||
                                (pkg == "com.instagram.android" && cachedSurgicalInstagram)
 
-        // MODE_ISOLATION: Strictly separate Surgical Scanning from Normal App Blocking
         if (isSurgicalMode) {
             val root = rootInActiveWindow
             
-            // CROSS-TALK PREVENTION: Android sometimes fires delayed events for background apps.
-            // If YouTube is dying and returns a null root, or the active window shifts to Launcher, INSTANTLY purge overlays.
             if (root == null || root.packageName?.toString() != pkg) {
+                lastScrollY = Int.MIN_VALUE
+                stickyScrollView?.stopAndHide()
                 clearMultiOverlays(forceInstant = true)
+                return
+            }
+
+            // FAST_PATH_SCROLL: If already locked, skip heavy detection and use physics
+            if (eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && stickyScrollView?.isLocked == true) {
+                handleScrollPhysics(event)
                 return
             }
 
             val matches = hybridDetector.findAllMatches(root, pkg)
             
-            // ELITE VIEWPORT CALCULATION: Constant bounds to prevent resizing lag
             val screenHeight = resources.displayMetrics.heightPixels
             val screenWidth = resources.displayMetrics.widthPixels
-            
-            // 5% AGGRESSIVE LIMIT
             val topSafeLimit = (screenHeight * 0.05f).toInt()
             val bottomSafeLimit = (screenHeight * 0.90f).toInt()
             val activeClampingBounds = android.graphics.Rect(0, topSafeLimit, screenWidth, bottomSafeLimit)
             
-            // MEDIA PLAYER AUTO-EJECT
             val isFullScreenPlayer = matches.size == 1 && matches[0].rect.height() >= screenHeight * 0.95f
             if (isFullScreenPlayer) {
                 performGlobalAction(GLOBAL_ACTION_BACK)
                 showEliteSurgicalBanner("YouTube Shorts Locked")
+                stickyScrollView?.stopAndHide()
                 clearMultiOverlays(forceInstant = true)
                 return
             }
             
-            // Use navigation signal to decide if we should allow hysteresis (anti-flicker)
+            // LOCKING_MECHANISM: Anchor the physics engine to the most prominent match
+            if (matches.isNotEmpty()) {
+                val best = matches.maxByOrNull { it.rect.height() * it.rect.width() }
+                best?.let {
+                    val clamped = android.graphics.Rect()
+                    if (clamped.setIntersect(it.rect, activeClampingBounds)) {
+                        ensureStickyOverlay()
+                        if (stickyScrollView?.isLocked == false) {
+                            stickyScrollView?.lockAnchor(clamped)
+                            lastScrollY = Int.MIN_VALUE
+                        }
+                    }
+                }
+            }
+
             syncMultiOverlays(matches, activeClampingBounds, allowHysteresis = !isNaturalNavigation)
             return
         }
 
-        // NORMAL_BLOCK_FALLBACK: If surgical is OFF, standard app blocking takes over
         if (isBlockActive(pkg)) {
+            stickyScrollView?.stopAndHide()
             clearMultiOverlays()
             setWallVisibility(true, false)
             return
         }
 
-        // CLEANUP: If neither, ensure all shields are down
+        stickyScrollView?.stopAndHide()
         clearMultiOverlays()
         if (!isNavigatingHome) setWallVisibility(false, false)
+    }
+
+    private fun handleScrollPhysics(event: AccessibilityEvent) {
+        val overlay = stickyScrollView ?: return
+        
+        val deltaY: Float = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            (-event.scrollDeltaY).toFloat()
+        } else {
+            val currentY = event.scrollY
+            if (lastScrollY == Int.MIN_VALUE) { lastScrollY = currentY; return }
+            val d = (lastScrollY - currentY).toFloat()
+            lastScrollY = currentY
+            d
+        }
+
+        if (abs(deltaY) < 0.5f) return
+        overlay.applyScrollDelta(deltaY)
     }
 
     override fun onServiceConnected() {
@@ -207,9 +257,26 @@ class UnlinkAccessibilityService : AccessibilityService() {
             
             // PRE_PRODUCTION_INFLATION: Load overlays into memory for 0ms transition
             preInflateOverlays()
+            detectDeviceTier()
         } catch (e: Exception) {
             Log.e("UnlinkProduction", "FATAL: Service start failure", e)
         }
+    }
+
+    private fun detectDeviceTier() {
+        val activityManager = getSystemService(Context.ACTIVITY_SERVICE) as android.app.ActivityManager
+        val memoryInfo = android.app.ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(memoryInfo)
+        
+        val totalRamGb = memoryInfo.totalMem / (1024 * 1024 * 1024)
+        val cores = Runtime.getRuntime().availableProcessors()
+        
+        currentTier = when {
+            totalRamGb >= 6 && cores >= 8 -> DeviceTier.HIGH
+            totalRamGb >= 4 && cores >= 4 -> DeviceTier.MID
+            else -> DeviceTier.LOW
+        }
+        Log.d("UnlinkPerformance", "Device Tier Detected: $currentTier (RAM: ${totalRamGb}GB, Cores: $cores)")
     }
 
     private fun preInflateOverlays() {
@@ -1309,11 +1376,182 @@ class UnlinkAccessibilityService : AccessibilityService() {
     override fun onDestroy() {
         countdownHandler.removeCallbacks(countdownRunnable)
         hideShortsOverlay()
+        stickyScrollView?.let { 
+            try { windowManager?.removeView(it) } catch (e: Exception) {} 
+        }
+        stickyScrollView = null
+        stickyAdded = false
         try { unregisterReceiver(syncReceiver) } catch (e: Exception) {}
         super.onDestroy()
     }
 
     override fun onInterrupt() {
         hideShortsOverlay()
+        stickyScrollView?.stopAndHide()
+    }
+
+    // =========================================================================
+    //  STICKY_PHYSICS_ENGINE (V10.1)
+    //  Architecture:
+    //  1. Reactive: Move instantly on Accessibility scroll deltas (translationY).
+    //  2. Periodic: Correct drift at 60Hz/30Hz/none based on DeviceTier.
+    //  3. GPU-Accelerated: hardware layers enable smooth 0ms transforms.
+    // =========================================================================
+    private var stickyScrollView: StickyMaskView? = null
+    private var stickyAdded = false
+
+    inner class StickyMaskView(context: Context) : View(context), Choreographer.FrameCallback {
+        private val paint = android.graphics.Paint().apply {
+            color = Color.parseColor("#F5000000") // Slight alpha for "Glassmorphism" feel
+            style = android.graphics.Paint.Style.FILL
+            isAntiAlias = false // Low-end Optimization: skip AA for solid blocks
+        }
+
+        private val choreographer = Choreographer.getInstance()
+        var isLocked = false
+            private set
+
+        private val drawRect = android.graphics.Rect()
+        private val liveRect = android.graphics.Rect()
+        private var driftCounter = 0
+
+        fun lockAnchor(rect: android.graphics.Rect) {
+            drawRect.set(rect)
+            isLocked = true
+            post {
+                translationY = 0f
+                alpha = 1f
+                invalidate()
+            }
+            if (currentTier != DeviceTier.LOW) {
+                choreographer.postFrameCallback(this)
+            }
+        }
+
+        fun stopAndHide() {
+            isLocked = false
+            choreographer.removeFrameCallback(this)
+            post {
+                translationY = 0f
+                alpha = 0f
+                drawRect.setEmpty()
+                invalidate()
+            }
+        }
+
+        override fun doFrame(frameTimeNanos: Long) {
+            if (!isLocked) return
+
+            // FRAME_PULSE_OPTIMIZATION: 
+            // High tier = correction every 2 frames (~60fps update if 120Hz)
+            // Mid tier = correction every 4 frames (~30fps update)
+            // Low tier = loop stopped entirely (moves ONLY on accessibility events)
+            val correctionInterval = if (currentTier == DeviceTier.HIGH) 2 else 4
+            
+            if (++driftCounter >= correctionInterval) {
+                driftCounter = 0
+                performLimitedDriftCorrection()
+            }
+
+            // AUTO-DEGRADE: If frame pulse is delayed > 32ms (missing frames), downgrade tier
+            if (lastFrameTimeNanos != 0L) {
+                val frameDiffMs = (frameTimeNanos - lastFrameTimeNanos) / 1000000
+                if (frameDiffMs > 32L) {
+                    consecutiveSlowFrames++
+                    if (consecutiveSlowFrames > 10) {
+                        degradePerformanceTier()
+                        consecutiveSlowFrames = 0
+                    }
+                } else {
+                    consecutiveSlowFrames = 0
+                }
+            }
+            lastFrameTimeNanos = frameTimeNanos
+            choreographer.postFrameCallback(this)
+        }
+
+        private fun performLimitedDriftCorrection() {
+            // IPC_ISOLATION: rootInActiveWindow is slow. We only call it here, 
+            // shielded by the tiered interval, never in the main event path.
+            val root = rootInActiveWindow ?: return
+            
+            // TARGETED_LOOKUP: Only check the 3 most common shelf IDs to avoid tree traversal
+            val shelfIds = listOf(
+                "com.google.android.youtube:id/reels_shelf",
+                "com.google.android.youtube:id/shorts_shelf",
+                "com.google.android.youtube:id/reels_shelf_container"
+            )
+            
+            for (id in shelfIds) {
+                val nodes = root.findAccessibilityNodeInfosByViewId(id)
+                if (nodes.isNotEmpty()) {
+                    val node = nodes[0]
+                    node.getBoundsInScreen(liveRect)
+                    
+                    if (liveRect.bottom > 0 && liveRect.top < resources.displayMetrics.heightPixels) {
+                        val targetTranslation = (liveRect.top - drawRect.top).toFloat()
+                        val error = targetTranslation - translationY
+                        
+                        // LERP_CORRECTION: 0.35f factor for semi-rigid sticky feel
+                        if (abs(error) > 1f) {
+                            translationY += error * 0.35f
+                        } else {
+                            translationY = targetTranslation
+                        }
+                    }
+                    break
+                }
+            }
+        }
+
+        private fun degradePerformanceTier() {
+            if (currentTier == DeviceTier.HIGH) currentTier = DeviceTier.MID
+            else if (currentTier == DeviceTier.MID) currentTier = DeviceTier.LOW
+            Log.w("UnlinkPerformance", "Downgrading tier to $currentTier due to frame lag")
+        }
+
+        fun applyScrollDelta(deltaY: Float) {
+            // ZERO-LATENCY: translationY is a GPU-accelerated property.
+            // Bypasses layout passes and invalidation.
+            translationY += deltaY
+        }
+
+        override fun onDraw(canvas: android.graphics.Canvas) {
+            super.onDraw(canvas)
+            if (!drawRect.isEmpty) {
+                canvas.drawRect(drawRect, paint)
+            }
+        }
+    }
+
+    private fun ensureStickyOverlay() {
+        if (stickyAdded && stickyScrollView != null) return
+        val view = StickyMaskView(this).apply { 
+            alpha = 0f 
+            // GPU_TRANSFORM: enable hardware layer for translationY performance
+            setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        }
+        
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
+            PixelFormat.TRANSLUCENT
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            windowAnimations = 0 // Instant vaporization
+        }
+        
+        try {
+            windowManager?.addView(view, params)
+            stickyScrollView = view
+            stickyAdded = true
+        } catch (e: Exception) {
+            Log.e("UnlinkDebug", "Failed to add sticky overlay", e)
+        }
     }
 }
