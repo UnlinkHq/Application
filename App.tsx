@@ -38,6 +38,7 @@ import { GlobalModals } from './components/ui/GlobalModals';
 import { FocusStorageService, BlockSession } from './services/FocusStorageService';
 import { FocusActiveScreen } from './components/blocks/FocusActiveScreen';
 import { AgreementScreen } from './components/screens/AgreementScreen';
+import { IntentGateScreen } from './components/screens/IntentGateScreen';
 import './global.css';
 
 // Build 0.81.5 has fixed safeAreaView but dependencies might still use it
@@ -90,6 +91,7 @@ const NavigationTree = ({ isFirstLaunch, onCompleteOnboarding }: { isFirstLaunch
             <Stack.Screen name="Main" component={TabNavigator} />
             <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="Agreement" component={AgreementScreen} />
+            <Stack.Screen name="IntentGate" component={IntentGateScreen} options={{ gestureEnabled: false }} />
         </Stack.Navigator>
       <BreakOverlay />
     </NavigationContainer>

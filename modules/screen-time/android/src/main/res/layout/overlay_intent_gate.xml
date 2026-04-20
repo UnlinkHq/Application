@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/intent_gate_bg"
+    android:padding="32dp">
+
+    <!-- Header Section -->
+    <TextView
+        android:id="@+id/gateProtocolLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="64dp"
+        android:fontFamily="sans-serif-black"
+        android:letterSpacing="0.4"
+        android:text="INTENT_GATE_V2"
+        android:textColor="#33FFFFFF"
+        android:textSize="10sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/greetingText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="32dp"
+        android:fontFamily="sans-serif-light"
+        android:text="Hey there, quick breath."
+        android:textColor="#99FFFFFF"
+        android:textSize="14sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/gateProtocolLabel" />
+
+    <TextView
+        android:id="@+id/intentQuestion"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:fontFamily="sans-serif-black"
+        android:textAlignment="center"
+        android:text="Why are you opening\nInstagram today?"
+        android:textColor="#FFFFFF"
+        android:textSize="24sp"
+        android:lineSpacingExtra="4dp"
+        app:layout_constraintTop_toBottomOf="@id/greetingText" />
+
+    <!-- Countdown / Calm State -->
+    <LinearLayout
+        android:id="@+id/calmContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="48dp"
+        android:gravity="center"
+        android:orientation="vertical"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/intentQuestion">
+
+        <TextView
+            android:id="@+id/calmTimerText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-black"
+            android:text="3"
+            android:textColor="#FFFFFF"
+            android:textSize="48sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-thin"
+            android:letterSpacing="0.1"
+            android:text="FOCUSING_SYSTEM..."
+            android:textColor="#44FFFFFF"
+            android:textSize="9sp" />
+    </LinearLayout>
+
+    <!-- Action Buttons (Hidden during calm phase) -->
+    <LinearLayout
+        android:id="@+id/actionContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_marginBottom="32dp">
+
+        <Button
+            android:id="@+id/dmOnlyButton"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/intent_button_primary"
+            android:fontFamily="sans-serif-black"
+            android:letterSpacing="0.1"
+            android:text="DM CONNECT ONLY"
+            android:textColor="#000000"
+            android:textAllCaps="true" />
+
+        <Button
+            android:id="@+id/communityButton"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:layout_marginBottom="24dp"
+            android:background="@drawable/intent_button_secondary"
+            android:fontFamily="sans-serif-black"
+            android:letterSpacing="0.1"
+            android:text="COMMUNITY STATUS"
+            android:textColor="#FFFFFF"
+            android:textAllCaps="true" />
+
+        <TextView
+            android:id="@+id/cancelButton"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:gravity="center"
+            android:fontFamily="sans-serif-medium"
+            android:text="Actually, nevermind."
+            android:textColor="#66FFFFFF"
+            android:textSize="14sp" />
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
