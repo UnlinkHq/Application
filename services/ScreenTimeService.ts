@@ -39,6 +39,15 @@ export const ScreenTimeService = {
         }
     },
 
+    async getGlobalBrainrot(): Promise<{score: number, date: string}> {
+        if (Platform.OS !== 'android') return {score: 0, date: ''};
+        try {
+            return await ScreenTimeModule.getGlobalBrainrot();
+        } catch (e) {
+            return {score: 0, date: ''};
+        }
+    },
+
     getCachedUsage(dateTimestamp: number): DailyUsage | null {
         const startOfDay = new Date(dateTimestamp);
         startOfDay.setHours(0, 0, 0, 0);

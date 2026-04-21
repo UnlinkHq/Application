@@ -40,6 +40,7 @@ interface ScreenTimeModuleInterface {
     setSessionData(startTime: number, durationMins: number): void;
     getAppIcon(packageName: string): Promise<string>;
     stopBlockingService(): void;
+    getGlobalBrainrot(): Promise<{score: number, date: string}>;
 
     // iOS Shield functions
     activateShield(): void;
@@ -88,6 +89,7 @@ try {
         setSessionData: () => { },
         getAppIcon: async () => '',
         stopBlockingService: () => { },
+        getGlobalBrainrot: async () => ({ score: 0, date: '' }),
         activateShield: () => { },
         deactivateShield: () => { },
         getSelectionCount: () => 0
@@ -209,4 +211,8 @@ export async function requestUsageStatsPermission(): Promise<void> {
 
 export async function getEngineHealth() {
     return await ScreenTimeModule.getEngineHealth();
+}
+
+export async function getGlobalBrainrot(): Promise<{score: number, date: string}> {
+    return await ScreenTimeModule.getGlobalBrainrot();
 }

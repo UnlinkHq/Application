@@ -189,8 +189,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
                     // This elegantly prevents native Android double-reporting during kinetic scrolling physics.
                     if (now - lastBrainrotScrollTime > 2000L) {
                         lastBrainrotScrollTime = now
-                        shortsScrollCount++
-                        updateGlobalRot(1.5f) // Increase global rot by 1.5% for every scroll
+                        updateGlobalRot(1.5f, true) // Increase global rot by 1.5% and increment global count
                         showAndUpdateBrainrotMeter()
                     }
                 }
@@ -392,17 +391,20 @@ class UnlinkAccessibilityService : AccessibilityService() {
         setWallVisibility(false)
     }
 
+    private var globalShortsCount = 0
+
     private fun getCurrentDateString(): String {
         val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
         return sdf.format(java.util.Date())
     }
 
-    private fun updateGlobalRot(delta: Float) {
+    private fun updateGlobalRot(delta: Float, isScroll: Boolean = false) {
         val prefs = getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
         val today = getCurrentDateString()
         
         if (lastBrainrotDate != today) {
             globalBrainrotScore = 0f
+            globalShortsCount = 0
             lastBrainrotDate = today
         }
         
@@ -410,13 +412,18 @@ class UnlinkAccessibilityService : AccessibilityService() {
         if (globalBrainrotScore < 0f) globalBrainrotScore = 0f
         if (globalBrainrotScore > 100f) globalBrainrotScore = 100f
         
+        if (isScroll) {
+            globalShortsCount++
+        }
+        
         prefs.edit().apply {
             putFloat("global_brainrot_score", globalBrainrotScore)
+            putInt("global_shorts_count", globalShortsCount)
             putString("global_brainrot_date", lastBrainrotDate)
             apply()
         }
         
-        Log.d("BrainrotGlobal", "Updated Brainrot by $delta. Current: $globalBrainrotScore%")
+        Log.d("BrainrotGlobal", "Updated Brainrot by $delta. Current: $globalBrainrotScore%. Total Shorts: $globalShortsCount")
         
         // Dead Brain Check
         if (globalBrainrotScore >= 75f && isCurrentlyInShortsMode) {
@@ -507,10 +514,16 @@ class UnlinkAccessibilityService : AccessibilityService() {
             
             if (lastBrainrotDate != today) {
                 globalBrainrotScore = 0f
+                globalShortsCount = 0
                 lastBrainrotDate = today
-                prefs.edit().putFloat("global_brainrot_score", 0f).putString("global_brainrot_date", today).apply()
+                prefs.edit()
+                    .putFloat("global_brainrot_score", 0f)
+                    .putInt("global_shorts_count", 0)
+                    .putString("global_brainrot_date", today)
+                    .apply()
             } else {
                 globalBrainrotScore = prefs.getFloat("global_brainrot_score", 0f)
+                globalShortsCount = prefs.getInt("global_shorts_count", 0)
             }
             
         } catch (e: Exception) {}
@@ -918,20 +931,20 @@ class UnlinkAccessibilityService : AccessibilityService() {
                 val emojiTv = view.findViewById<TextView>(emojiId)
                 val countTv = view.findViewById<TextView>(countId)
                 
-                countTv?.text = shortsScrollCount.toString()
+                countTv?.text = globalShortsCount.toString()
                 
                 when {
-                    shortsScrollCount >= 20 -> {
+                    globalShortsCount >= 20 -> {
                         emojiTv?.text = "💀"
                         val bgDrawable = container?.background as? android.graphics.drawable.GradientDrawable
                         bgDrawable?.setColor(Color.parseColor("#CCAA0000")) // Severe Red
                     }
-                    shortsScrollCount >= 10 -> {
+                    globalShortsCount >= 10 -> {
                         emojiTv?.text = "🤢"
                         val bgDrawable = container?.background as? android.graphics.drawable.GradientDrawable
                         bgDrawable?.setColor(Color.parseColor("#CCAA5500")) // Hot Orange
                     }
-                    shortsScrollCount >= 5 -> {
+                    globalShortsCount >= 5 -> {
                         emojiTv?.text = "🧟"
                         val bgDrawable = container?.background as? android.graphics.drawable.GradientDrawable
                         bgDrawable?.setColor(Color.parseColor("#CCAAAA00")) // Medium Yellow

@@ -173,6 +173,8 @@ export const HomeScreen = () => {
 
     const [isLoading, setIsLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    
+    const [brainrotScore, setBrainrotScore] = useState<number>(0);
 
     useEffect(() => {
         const checkActiveSession = async () => {
@@ -256,6 +258,11 @@ export const HomeScreen = () => {
 
                     // 2. Background Revalidation (bypass cache if forceRefresh is true)
                     const data = await ScreenTimeService.getDailyUsage(date.getTime(), forceRefresh);
+                    
+                    const brainrotData = await ScreenTimeService.getGlobalBrainrot();
+                    if (brainrotData.score !== undefined) {
+                        setBrainrotScore(brainrotData.score);
+                    }
 
                     // Only update state if data actually changed
                     // (prevents unnecessary re-renders)
@@ -399,6 +406,10 @@ export const HomeScreen = () => {
                         <Text className="font-headline font-black text-2xl tracking-[0.2em] text-white">UNLINK</Text>
                     </View>
                     <View className="flex-row items-center gap-4">
+                        <View className="flex-row items-center gap-1 bg-[#1a1a1a] px-2 py-1 rounded-sm border border-white/10">
+                            <Text className="text-white text-xs mr-1">{brainrotScore > 75 ? "🧟" : (brainrotScore > 50 ? "🤢" : (brainrotScore > 20 ? "🤔" : "🧠"))}</Text>
+                            <Text className="text-white font-headline text-xs">{brainrotScore.toFixed(1)}%</Text>
+                        </View>
                         <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
                             <MaterialIcons name="settings" size={20} color="white" />
                         </TouchableOpacity>
