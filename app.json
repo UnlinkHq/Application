@@ -11,12 +11,12 @@
     },
     "plugins": [],
     "orientation": "portrait",
-    "icon": "./assets/favicon.png",
-    "userInterfaceStyle": "light",
+    "icon": "./assets/logo_unlink.png",
+    "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/favicon.png",
+      "image": "./assets/logo_unlink.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#000000"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -27,8 +27,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/favicon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/logo_unlink.png",
+        "backgroundColor": "#000000"
       },
       "permissions": [
         "android.permission.PACKAGE_USAGE_STATS",

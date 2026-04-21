@@ -30,13 +30,18 @@ export const PermissionBanner = () => {
       const currentHealth = await getEngineHealth();
       setHealth(currentHealth);
 
-      const allGranted = currentHealth.overlay && 
-                         currentHealth.accessibility && 
+      const coreGranted = currentHealth.overlay && 
                          currentHealth.usage && 
                          currentHealth.batteryExempt;
       
+      const allGranted = coreGranted && currentHealth.accessibility;
+      
+      // We only show the banner if core permissions are missing, 
+      // or if session is active and accessibility is missing.
+      const shouldShow = !coreGranted || (!allGranted && currentHealth.isEnforcing);
+
       Animated.spring(slideAnim, {
-        toValue: allGranted ? -200 : 0,
+        toValue: shouldShow ? 0 : -200,
         useNativeDriver: true,
         tension: 50,
         friction: 8,
@@ -57,8 +62,8 @@ export const PermissionBanner = () => {
   const handleFixAccessibility = () => {
     requestAccessibilityPermission();
     Alert.alert(
-      "Android 13/14 Troubleshooting",
-      "If the switch is 'Grayed Out':\n1. Go to App Info (Settings -> Apps -> Unlink)\n2. Tap the 3 dots in the top right\n3. Tap 'Allow Restricted Settings'\n4. Return here and try again.",
+      "Android 13/14 Support",
+      "To enable Surgical mode, Unlink needs Accessibility enabled.\n\nIf the switch is 'Grayed Out':\n1. App Info (Settings -> Apps -> Unlink)\n2. Tap ':' (top right) -> 'Allow Restricted Settings'\n3. Return here.",
       [
         { text: "Open App Info", onPress: () => openAppInfoSettings() },
         { text: "Got it", style: "cancel" }
@@ -84,7 +89,9 @@ export const PermissionBanner = () => {
     }
   };
 
-  const isAllGood = health.overlay && health.accessibility && health.usage && health.batteryExempt;
+  const isCoreGood = health.overlay && health.usage && health.batteryExempt;
+  const isAllGood = isCoreGood && health.accessibility;
+  
   if (isAllGood && !loading) return null;
 
   return (
@@ -92,11 +99,15 @@ export const PermissionBanner = () => {
       <View style={styles.card}>
         <View style={styles.header}>
           <View style={styles.iconContainer}>
-            <Ionicons name="alert-circle" color="#FF3B30" size={24} />
+            <Ionicons name={isCoreGood ? "information-circle" : "alert-circle"} color={isCoreGood ? "#FF9500" : "#FF3B30"} size={24} />
           </View>
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>ENGINE_CRITICAL_FAILURE</Text>
-            <Text style={styles.subtitle}>Background persistence is compromised</Text>
+            <Text style={[styles.title, isCoreGood && { color: '#FF9500' }]}>
+              {isCoreGood ? 'SURGICAL_PROTOCOL_OFFLINE' : 'ENGINE_CRITICAL_FAILURE'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {isCoreGood ? 'Enable Accessibility for Surgical & Scroll protection' : 'Core background persistence is compromised'}
+            </Text>
           </View>
         </View>
 

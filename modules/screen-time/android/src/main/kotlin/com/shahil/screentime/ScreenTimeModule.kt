@@ -65,6 +65,8 @@ class ScreenTimeModule : Module() {
             commit()
         }
         
+        syncBlockingService(context)
+        
         // Broadcast to Accessibility Service
         UnlinkAccessibilityService.instance?.refreshServiceConfig()
         UnlinkAccessibilityService.instance?.setSuspendedState(false)
@@ -144,6 +146,7 @@ class ScreenTimeModule : Module() {
                 putLong("block_expiry_time", 0L)
                 commit()
             }
+            syncBlockingService(context)
             UnlinkAccessibilityService.instance?.refreshServiceConfig()
         }
     }
@@ -231,13 +234,14 @@ class ScreenTimeModule : Module() {
         val expiryTime = startTime + (minutes * 60 * 1000L)
         
         prefs.edit().apply {
-            putInt("session_duration_mins", minutes)
+            putLong("session_duration_mins", minutes.toLong())
             putLong("session_start_time", startTime)
             putLong("block_expiry_time", expiryTime)
             commit()
         }
         
         // Force sync with service
+        syncBlockingService(context)
         val service = UnlinkAccessibilityService.instance
         service?.refreshServiceConfig()
         service?.setSuspendedState(false)
@@ -506,5 +510,26 @@ class ScreenTimeModule : Module() {
         bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 70, outputStream)
         return android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.NO_WRAP)
     } catch (e: Exception) { return null }
+  }
+
+  private fun syncBlockingService(context: Context) {
+    val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+    val expiryTime = prefs.getLong("block_expiry_time", 0L)
+    val isSessionActive = expiryTime > System.currentTimeMillis()
+    
+    val expectedService = "${context.packageName}/com.shahil.screentime.UnlinkAccessibilityService"
+    val enabledServices = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
+    val hasAccessibility = enabledServices?.contains(expectedService) == true
+    
+    val intent = Intent(context, FallbackBlockingService::class.java)
+    if (isSessionActive && !hasAccessibility) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(intent)
+        } else {
+            context.startService(intent)
+        }
+    } else {
+        context.stopService(intent)
+    }
   }
 }

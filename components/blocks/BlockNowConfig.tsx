@@ -29,7 +29,9 @@ import {
     getSelectionCount,
     activateShield,
     deactivateShield,
-    FamilyPickerView
+    FamilyPickerView,
+    getEngineHealth,
+    requestAccessibilityPermission
 } from '../../modules/screen-time';
 import { ModernToggle } from '../ui/ModernToggle';
 import { FocusStorageService } from '../../services/FocusStorageService';
@@ -199,15 +201,20 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
     const [isQrSaving, setIsQrSaving] = useState(false);
     const [isQrSaved, setIsQrSaved] = useState(false);
     const [nativeIosCount, setNativeIosCount] = useState(0);
+    const [hasAccessibility, setHasAccessibility] = useState(true);
+    const [showAccessibilityDisclosure, setShowAccessibilityDisclosure] = useState(false);
+    const [pendingToggle, setPendingToggle] = useState<(() => void) | null>(null);
 
-    const syncNativeStatus = useCallback(() => {
+    const syncNativeStatus = useCallback(async () => {
         // iOS: Always sync selection count
         if (Platform.OS === 'ios') {
             setNativeIosCount(getSelectionCount());
         }
-        // Android: Sync Admin status
+        // Android: Sync Admin status & Accessibility
         if (Platform.OS === 'android') {
             setBlockUninstall(isAdminActive());
+            const health = await getEngineHealth();
+            setHasAccessibility(health.accessibility);
         }
     }, []);
 
@@ -559,6 +566,11 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                 <TouchableOpacity
                                     activeOpacity={0.9}
                                     onPress={() => {
+                                        if (Platform.OS === 'android' && !hasAccessibility && !isFocusCoachEnabled) {
+                                            setPendingToggle(() => () => setIsFocusCoachEnabled(true));
+                                            setShowAccessibilityDisclosure(true);
+                                            return;
+                                        }
                                         setIsFocusCoachEnabled(!isFocusCoachEnabled);
                                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                     }}
@@ -589,6 +601,11 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                                 <Switch
                                                     value={blockShorts.youtube}
                                                     onValueChange={(v) => {
+                                                        if (Platform.OS === 'android' && v && !hasAccessibility) {
+                                                            setPendingToggle(() => () => setBlockShorts(p => ({ ...p, youtube: true })));
+                                                            setShowAccessibilityDisclosure(true);
+                                                            return;
+                                                        }
                                                         setBlockShorts(p => ({ ...p, youtube: v }));
                                                         if (v) {
                                                             setFocusCoachConfig(p => ({ ...p, ytGate: true, ytShelf: true, ytFinite: true }));
@@ -640,6 +657,11 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                                 <Switch
                                                     value={blockShorts.instagram}
                                                     onValueChange={(v) => {
+                                                        if (Platform.OS === 'android' && v && !hasAccessibility) {
+                                                            setPendingToggle(() => () => setBlockShorts(p => ({ ...p, instagram: true })));
+                                                            setShowAccessibilityDisclosure(true);
+                                                            return;
+                                                        }
                                                         setBlockShorts(p => ({ ...p, instagram: v }));
                                                         if (v) {
                                                             setFocusCoachConfig(p => ({ ...p, igGate: true, igDMs: true, igFinite: true }));
@@ -806,6 +828,55 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                         >
                             <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">ACKNOWLEDGE_DEEP_FOCUS</Text>
                         </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
+            
+            {/* Accessibility Disclosure Modal (Play Store Compliance) */}
+            <Modal
+                visible={showAccessibilityDisclosure}
+                transparent
+                animationType="slide"
+            >
+                <View className="flex-1 bg-black/95 justify-center px-8">
+                    <View className="bg-[#0e0e0e] p-8 border border-white/20">
+                        <View className="w-16 h-16 border border-white/10 items-center justify-center mb-8">
+                            <Ionicons name="eye-outline" size={32} color="white" />
+                        </View>
+                        
+                        <Text className="text-white font-headline font-black text-2xl uppercase tracking-[0.2em] mb-4">
+                            Surgical_Shield
+                        </Text>
+                        
+                        <Text className="text-white/60 font-label text-[11px] leading-5 mb-8">
+                            Unlink uses the <Text className="text-white font-bold">Accessibility Service API</Text> to provide surgical shielding for YouTube and Instagram.
+                            {"\n\n"}
+                            This allows us to:
+                            {"\n"}• Detect when you enter 'Shorts' or 'Reels' sections.
+                            {"\n"}• Filter distracting content inside apps.
+                            {"\n"}• Prevent app tampering during active sessions.
+                            {"\n\n"}
+                            <Text className="text-white/40 italic">We do NOT collect or store your personal data. All processing happens on-device.</Text>
+                        </Text>
+
+                        <View className="flex-row gap-4">
+                            <TouchableOpacity 
+                                onPress={() => setShowAccessibilityDisclosure(false)}
+                                className="flex-1 h-14 border border-white/10 items-center justify-center"
+                            >
+                                <Text className="text-white font-headline font-black text-[10px] uppercase tracking-widest">DECLINE</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                onPress={() => {
+                                    setShowAccessibilityDisclosure(false);
+                                    requestAccessibilityPermission();
+                                    if (pendingToggle) pendingToggle();
+                                }}
+                                className="flex-1 h-14 bg-white items-center justify-center"
+                            >
+                                <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">ENABLE_SHIELD</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
             </Modal>
