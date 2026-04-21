@@ -71,11 +71,16 @@ class UnlinkAccessibilityService : AccessibilityService() {
     private var currentBlockedApps: Set<String> = emptySet()
     private var isSurgicalYoutube = false
     private var isSurgicalInstagram = false
-    
-    // BRAINROT_METER_STATE
+    private var isIgFiniteEnabled = true
+    private var lastForegroundPackage: String? = null
+    private var lastBrainrotScrollTime: Long = 0
     private var shortsScrollCount = 0
     private var isCurrentlyInShortsMode = false
-    private var lastBrainrotScrollTime = 0L
+    
+    // Live Binge Architecture
+    private var last_target_app_entry_time = 0L
+    private var live_reels_in_this_binge = 0
+    private var nudge45Shown = false
     private var brainrotOverlayView: View? = null
     private val brainrotHandler = Handler(Looper.getMainLooper())
     private val brainrotHideRunnable = Runnable { hideBrainrotMeter() }
@@ -99,9 +104,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
     private var isBlockingSuspended = false
     
     // RE_AUTH_TIMER_PROTOCOL
-    private var lastForegroundPackage: String? = null
     private var isYtFiniteEnabled = true
-    private var isIgFiniteEnabled = true
 
     private val countdownHandler = Handler(Looper.getMainLooper())
     private val countdownRunnable = object : Runnable {
@@ -189,8 +192,27 @@ class UnlinkAccessibilityService : AccessibilityService() {
                     // This elegantly prevents native Android double-reporting during kinetic scrolling physics.
                     if (now - lastBrainrotScrollTime > 2000L) {
                         lastBrainrotScrollTime = now
-                        updateGlobalRot(1.5f, true) // Increase global rot by 1.5% and increment global count
+                        live_reels_in_this_binge++
+                        
+                        // Live Binge Math
+                        val liveBingeMinutes = if (last_target_app_entry_time > 0L) {
+                            (now - last_target_app_entry_time) / 60000L
+                        } else {
+                            0L
+                        }
+                        
+                        val bingeMultiplier = if (liveBingeMinutes > 45) 1.8f else 1.0f
+                        
+                        // For a standard short, if bingeMultiplier connects, it adds more rot!
+                        val rotDelta = 1.5f * bingeMultiplier
+                        
+                        updateGlobalRot(rotDelta, true)
                         showAndUpdateBrainrotMeter()
+                        
+                        if (liveBingeMinutes > 45 && !nudge45Shown) {
+                            showBingeNudgeOverlay()
+                            nudge45Shown = true
+                        }
                     }
                 }
             }
@@ -235,6 +257,13 @@ class UnlinkAccessibilityService : AccessibilityService() {
             val lastExit = prefs.getLong("exit_time_$pkg", 0L)
             val sessionStartTime = prefs.getLong("session_start_time", 0L)
             val outOfAppDuration = System.currentTimeMillis() - lastExit
+            
+            if (outOfAppDuration > 5 * 60 * 1000L || last_target_app_entry_time == 0L) {
+                last_target_app_entry_time = System.currentTimeMillis()
+                live_reels_in_this_binge = 0
+                nudge45Shown = false
+                Log.d("BrainrotGlobal", "Binge Reset! User was away for >5m.")
+            }
             
             // RE_AUTH_TIMEOUT: 30 seconds OR User started a new session
             if (outOfAppDuration > 30000L || lastExit < sessionStartTime) {
@@ -428,6 +457,52 @@ class UnlinkAccessibilityService : AccessibilityService() {
         // Dead Brain Check
         if (globalBrainrotScore >= 75f && isCurrentlyInShortsMode) {
             triggerDeadBrainLock()
+        }
+    }
+
+    // Nudge State
+    private var bingeNudgeOverlayView: View? = null
+
+    private fun showBingeNudgeOverlay() {
+        visibilityHandler.post {
+            try {
+                if (bingeNudgeOverlayView != null && bingeNudgeOverlayView?.parent != null) return@post
+                
+                val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
+                val layoutId = resources.getIdentifier("overlay_binge_nudge", "layout", packageName)
+                if (layoutId == 0) return@post
+                
+                bingeNudgeOverlayView = inflater.inflate(layoutId, null)
+                val params = WindowManager.LayoutParams(
+                    -1, -1, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                    WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or 
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or 
+                    WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                    PixelFormat.TRANSLUCENT
+                )
+                
+                val takeBreakId = resources.getIdentifier("takeBreakButton", "id", packageName)
+                val continueId = resources.getIdentifier("continueBingeButton", "id", packageName)
+                
+                bingeNudgeOverlayView?.findViewById<View>(takeBreakId)?.setOnClickListener {
+                    try { if (bingeNudgeOverlayView?.parent != null) windowManager?.removeView(bingeNudgeOverlayView) } catch (e: Exception) {}
+                    bingeNudgeOverlayView = null
+                    goHome()
+                    updateGlobalRot(-12.0f)
+                    Toast.makeText(this@UnlinkAccessibilityService, "Break taken! Brain is healing ❤️\u200D\uD83E\uDE79 +12%", Toast.LENGTH_SHORT).show()
+                    last_target_app_entry_time = System.currentTimeMillis() // Reset binge clock
+                }
+                
+                bingeNudgeOverlayView?.findViewById<View>(continueId)?.setOnClickListener {
+                    try { if (bingeNudgeOverlayView?.parent != null) windowManager?.removeView(bingeNudgeOverlayView) } catch (e: Exception) {}
+                    bingeNudgeOverlayView = null
+                }
+                
+                windowManager?.addView(bingeNudgeOverlayView, params)
+                vibrate(200)
+            } catch (e: Exception) {
+                Log.e("UnlinkBinge", "Failed to add nudge: \${e.message}")
+            }
         }
     }
 
@@ -812,9 +887,10 @@ class UnlinkAccessibilityService : AccessibilityService() {
                         else -> "🧠"
                     }
                     val statusText = when {
-                        globalBrainrotScore > 75f -> "CRITICAL ROT"
-                        globalBrainrotScore > 50f -> "HEAVY ROT"
-                        globalBrainrotScore > 20f -> "MODERATE ROT"
+                        globalBrainrotScore > 80f -> "CRITICAL ROT"
+                        globalBrainrotScore > 60f -> "HEAVY ROT"
+                        globalBrainrotScore > 40f -> "STARTING TO ROT"
+                        globalBrainrotScore > 20f -> "MILD FOG"
                         else -> "FRESH BRAIN"
                     }
                     gateOverlayView?.findViewById<TextView>(brainStatusId)?.text = "$emoji $formattedScore% $statusText"
@@ -827,15 +903,15 @@ class UnlinkAccessibilityService : AccessibilityService() {
                 val focusBtnId = resources.getIdentifier("fullFocusButton", "id", myPackageName)
                 val cancelId = resources.getIdentifier("cancelButton", "id", myPackageName)
 
-                gateOverlayView?.findViewById<View>(dmBtnId)?.setOnClickListener { authorizeSession(pkg, -2.0f) }
-                gateOverlayView?.findViewById<View>(longVidBtnId)?.setOnClickListener { authorizeSession(pkg, -2.0f) }
-                gateOverlayView?.findViewById<View>(reelsLimitBtnId)?.setOnClickListener { authorizeSession(pkg, -0.5f) }
-                gateOverlayView?.findViewById<View>(focusBtnId)?.setOnClickListener { authorizeSession(pkg, -5.0f) }
+                gateOverlayView?.findViewById<View>(dmBtnId)?.setOnClickListener { authorizeSession(pkg, -15.0f, "DMs only = brain saved 😎 +15%") }
+                gateOverlayView?.findViewById<View>(longVidBtnId)?.setOnClickListener { authorizeSession(pkg, -6.0f, "Long videos only! +6%") }
+                gateOverlayView?.findViewById<View>(reelsLimitBtnId)?.setOnClickListener { authorizeSession(pkg, -8.0f, "Respecting your limits! +8%") }
+                gateOverlayView?.findViewById<View>(focusBtnId)?.setOnClickListener { authorizeSession(pkg, -25.0f, "Focus Session started! +25%") }
                 gateOverlayView?.findViewById<View>(cancelId)?.setOnClickListener { 
                     hideIntentGate()
                     goHome()
-                    updateGlobalRot(-3.0f) // Reward for backing out completely
-                    Toast.makeText(this@UnlinkAccessibilityService, "Brain Saved ❤️\u200D\uD83E\uDE79 -3.0%", Toast.LENGTH_SHORT).show()
+                    updateGlobalRot(-10.0f) // Reward for backing out completely
+                    Toast.makeText(this@UnlinkAccessibilityService, "Brain Saved ❤️\u200D\uD83E\uDE79 +10.0%", Toast.LENGTH_SHORT).show()
                 }
 
                 windowManager?.addView(gateOverlayView, params)
@@ -874,10 +950,11 @@ class UnlinkAccessibilityService : AccessibilityService() {
         gateHandler.post(runnable)
     }
 
-    private fun authorizeSession(pkg: String, healingDelta: Float = 0f) {
+    private fun authorizeSession(pkg: String, healingDelta: Float = 0f, message: String = "") {
         if (healingDelta < 0f) {
             updateGlobalRot(healingDelta)
-            Toast.makeText(this, "Brain Healing ❤️\u200D\uD83E\uDE79 $healingDelta%", Toast.LENGTH_SHORT).show()
+            val msg = if (message.isNotEmpty()) message else "Brain Healing ❤️\u200D\uD83E\uDE79 ${-healingDelta}%"
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
         }
         authorizedApps.add(pkg)
         gateStatus = GateStatus.AUTHORIZED
@@ -934,23 +1011,28 @@ class UnlinkAccessibilityService : AccessibilityService() {
                 countTv?.text = globalShortsCount.toString()
                 
                 when {
-                    globalShortsCount >= 20 -> {
-                        emojiTv?.text = "💀"
+                    globalBrainrotScore > 80f -> {
+                        emojiTv?.text = "🧟♂️"
                         val bgDrawable = container?.background as? android.graphics.drawable.GradientDrawable
                         bgDrawable?.setColor(Color.parseColor("#CCAA0000")) // Severe Red
                     }
-                    globalShortsCount >= 10 -> {
-                        emojiTv?.text = "🤢"
+                    globalBrainrotScore > 60f -> {
+                        emojiTv?.text = "😵💫"
                         val bgDrawable = container?.background as? android.graphics.drawable.GradientDrawable
-                        bgDrawable?.setColor(Color.parseColor("#CCAA5500")) // Hot Orange
+                        bgDrawable?.setColor(Color.parseColor("#CCAA3300")) // Hot Orange
                     }
-                    globalShortsCount >= 5 -> {
-                        emojiTv?.text = "🧟"
+                    globalBrainrotScore > 40f -> {
+                        emojiTv?.text = "😐"
                         val bgDrawable = container?.background as? android.graphics.drawable.GradientDrawable
-                        bgDrawable?.setColor(Color.parseColor("#CCAAAA00")) // Medium Yellow
+                        bgDrawable?.setColor(Color.parseColor("#CCAA7700")) // Medium Yellow
+                    }
+                    globalBrainrotScore > 20f -> {
+                        emojiTv?.text = "🙂"
+                        val bgDrawable = container?.background as? android.graphics.drawable.GradientDrawable
+                        bgDrawable?.setColor(Color.parseColor("#CC55AA00")) // Light Green
                     }
                     else -> {
-                        emojiTv?.text = "🧠"
+                        emojiTv?.text = "😎"
                         val bgDrawable = container?.background as? android.graphics.drawable.GradientDrawable
                         bgDrawable?.setColor(Color.parseColor("#99000000")) // Healthy Dark
                     }

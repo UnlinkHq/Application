@@ -1,5 +1,5 @@
 import { requireNativeModule, requireNativeViewManager } from 'expo-modules-core';
-
+import { Platform } from 'react-native';
 // Define the native module interface
 interface ScreenTimeModuleInterface {
     hasPermission(): Promise<boolean>;
@@ -40,7 +40,7 @@ interface ScreenTimeModuleInterface {
     setSessionData(startTime: number, durationMins: number): void;
     getAppIcon(packageName: string): Promise<string>;
     stopBlockingService(): void;
-    getGlobalBrainrot(): Promise<{score: number, date: string}>;
+    getGlobalBrainrot(): Promise<{score: number, date: string, shortsCount: number}>;
 
     // iOS Shield functions
     activateShield(): void;
@@ -89,7 +89,7 @@ try {
         setSessionData: () => { },
         getAppIcon: async () => '',
         stopBlockingService: () => { },
-        getGlobalBrainrot: async () => ({ score: 0, date: '' }),
+        getGlobalBrainrot: async () => ({ score: 0, date: '', shortsCount: 0 }),
         activateShield: () => { },
         deactivateShield: () => { },
         getSelectionCount: () => 0
@@ -213,6 +213,11 @@ export async function getEngineHealth() {
     return await ScreenTimeModule.getEngineHealth();
 }
 
-export async function getGlobalBrainrot(): Promise<{score: number, date: string}> {
-    return await ScreenTimeModule.getGlobalBrainrot();
+export async function getGlobalBrainrot(): Promise<{score: number, date: string, shortsCount: number}> {
+    if (Platform.OS !== 'android') return {score: 0, date: '', shortsCount: 0};
+    try {
+        return await ScreenTimeModule.getGlobalBrainrot();
+    } catch (e) {
+        return {score: 0, date: '', shortsCount: 0};
+    }
 }

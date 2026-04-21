@@ -175,6 +175,7 @@ export const HomeScreen = () => {
     const [refreshing, setRefreshing] = useState(false);
     
     const [brainrotScore, setBrainrotScore] = useState<number>(0);
+    const [globalShortsCount, setGlobalShortsCount] = useState<number>(0);
 
     useEffect(() => {
         const checkActiveSession = async () => {
@@ -262,6 +263,7 @@ export const HomeScreen = () => {
                     const brainrotData = await ScreenTimeService.getGlobalBrainrot();
                     if (brainrotData.score !== undefined) {
                         setBrainrotScore(brainrotData.score);
+                        setGlobalShortsCount(brainrotData.shortsCount || 0);
                     }
 
                     // Only update state if data actually changed
@@ -406,9 +408,12 @@ export const HomeScreen = () => {
                         <Text className="font-headline font-black text-2xl tracking-[0.2em] text-white">UNLINK</Text>
                     </View>
                     <View className="flex-row items-center gap-4">
-                        <View className="flex-row items-center gap-1 bg-[#1a1a1a] px-2 py-1 rounded-sm border border-white/10">
-                            <Text className="text-white text-xs mr-1">{brainrotScore > 75 ? "🧟" : (brainrotScore > 50 ? "🤢" : (brainrotScore > 20 ? "🤔" : "🧠"))}</Text>
-                            <Text className="text-white font-headline text-xs">{brainrotScore.toFixed(1)}%</Text>
+                        <View className="flex-row items-center gap-2 bg-[#141414] px-2 py-1.5 rounded-sm border border-white/10">
+                            <Text className="text-white text-[10px] mr-0.5">{brainrotScore > 80 ? "🧟‍♂️" : (brainrotScore > 60 ? "😵‍💫" : (brainrotScore > 40 ? "😐" : (brainrotScore > 20 ? "🙂" : "😎")))}</Text>
+                            <Text className="text-white font-headline text-[10px] tracking-wide font-bold">{brainrotScore.toFixed(1)}%</Text>
+                            <View className="w-[1px] h-3 bg-white/20 mx-1" />
+                            <MaterialCommunityIcons name="gesture-swipe-up" size={10} color="#919191" />
+                            <Text className="text-[#919191] font-headline text-[10px] font-bold">{globalShortsCount}</Text>
                         </View>
                         <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
                             <MaterialIcons name="settings" size={20} color="white" />

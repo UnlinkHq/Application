@@ -39,12 +39,12 @@ export const ScreenTimeService = {
         }
     },
 
-    async getGlobalBrainrot(): Promise<{score: number, date: string}> {
-        if (Platform.OS !== 'android') return {score: 0, date: ''};
+    async getGlobalBrainrot(): Promise<{score: number, date: string, shortsCount: number}> {
+        if (Platform.OS !== 'android') return {score: 0, date: '', shortsCount: 0};
         try {
             return await ScreenTimeModule.getGlobalBrainrot();
         } catch (e) {
-            return {score: 0, date: ''};
+            return {score: 0, date: '', shortsCount: 0};
         }
     },
 

@@ -136,11 +136,12 @@ class ScreenTimeModule : Module() {
     }
 
     AsyncFunction("getGlobalBrainrot") {
-        val context = appContext.reactContext ?: return@AsyncFunction mapOf("score" to 0f, "date" to "")
+        val context = appContext.reactContext ?: return@AsyncFunction mapOf("score" to 0f, "date" to "", "shortsCount" to 0)
         val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
         val score = prefs.getFloat("global_brainrot_score", 0f)
+        val shorts = prefs.getInt("global_shorts_count", 0)
         val date = prefs.getString("global_brainrot_date", "") ?: ""
-        return@AsyncFunction mapOf("score" to score, "date" to date)
+        return@AsyncFunction mapOf("score" to score, "date" to date, "shortsCount" to shorts)
     }
 
     Function("isBatteryOptimizationExempted") {
