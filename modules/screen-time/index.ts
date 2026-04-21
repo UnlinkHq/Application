@@ -1,4 +1,4 @@
-import { requireNativeModule, requireNativeViewManager } from 'expo-modules-core';
+import { requireNativeModule, requireNativeViewManager, EventEmitter } from 'expo-modules-core';
 import { Platform } from 'react-native';
 // Define the native module interface
 interface ScreenTimeModuleInterface {
@@ -38,6 +38,7 @@ interface ScreenTimeModuleInterface {
     setSessionDuration(minutes: number): void;
     setBlockingSuspended(suspended: boolean): void;
     setSessionData(startTime: number, durationMins: number): void;
+    setBreaksRemaining(count: number): void;
     getAppIcon(packageName: string): Promise<string>;
     stopBlockingService(): void;
     getGlobalBrainrot(): Promise<{score: number, date: string, shortsCount: number}>;
@@ -87,6 +88,7 @@ try {
         setSessionDuration: () => { },
         setBlockingSuspended: () => { },
         setSessionData: () => { },
+        setBreaksRemaining: () => { },
         getAppIcon: async () => '',
         stopBlockingService: () => { },
         getGlobalBrainrot: async () => ({ score: 0, date: '', shortsCount: 0 }),
@@ -165,6 +167,10 @@ export function setSessionData(startTime: number, durationMins: number): void {
     ScreenTimeModule.setSessionData(startTime, durationMins);
 }
 
+export function setBreaksRemaining(count: number): void {
+    ScreenTimeModule.setBreaksRemaining(count);
+}
+
 export async function getAppIcon(packageName: string): Promise<string> {
     return await ScreenTimeModule.getAppIcon(packageName);
 }
@@ -220,4 +226,11 @@ export async function getGlobalBrainrot(): Promise<{score: number, date: string,
     } catch (e) {
         return {score: 0, date: '', shortsCount: 0};
     }
+}
+
+// Event Handling
+const emitter = new EventEmitter(ScreenTimeModule as any);
+
+export function addNativeBreakListener(listener: (event: any) => void): any {
+  return (emitter as any).addListener('onNativeBreakToggle', listener);
 }

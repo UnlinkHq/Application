@@ -9,9 +9,10 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val action = intent.action
         if (action == Intent.ACTION_BOOT_COMPLETED || 
-            action == "android.intent.action.QUICKBOOT_POWERON") {
+            action == "android.intent.action.QUICKBOOT_POWERON" ||
+            action == Intent.ACTION_MY_PACKAGE_REPLACED) {
             
-            Log.d("UnlinkBoot", "System Reboot Detected. Resuming Focus Engine...")
+            Log.d("UnlinkBoot", "Survival Event Detected: $action. Resuming Focus Engine...")
             
             val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
             val startTime = prefs.getLong("session_start_time", 0)

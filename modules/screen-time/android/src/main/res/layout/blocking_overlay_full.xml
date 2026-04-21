@@ -4,118 +4,153 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#000000"
-    android:padding="32dp">
+    android:padding="24dp">
 
-    <ImageView
-        android:id="@+id/shieldIcon"
-        android:layout_width="64dp"
-        android:layout_height="64dp"
-        android:layout_marginTop="80dp"
-        android:src="@android:drawable/ic_menu_gallery"
+    <!-- Section 01: BRAIN_ROT_MONITOR -->
+    <LinearLayout
+        android:id="@+id/rotContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="48dp"
+        android:gravity="center"
+        android:orientation="vertical"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/rotEmoji"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🧟‍♂️"
+            android:textSize="48sp" />
+
+        <TextView
+            android:id="@+id/rotStatusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:fontFamily="sans-serif-black"
+            android:letterSpacing="0.1"
+            android:text="Your Brain is at 78% Rot"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp" />
+    </LinearLayout>
 
     <TextView
         android:id="@+id/protocolLabel"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="24dp"
-        android:fontFamily="sans-serif-black"
-        android:letterSpacing="0.4"
-        android:text="FOCUS_PROTOCOL_ENGAGED"
-        android:textColor="#66FFFFFF"
-        android:textSize="10sp"
+        android:layout_marginTop="48dp"
+        android:fontFamily="sans-serif-medium"
+        android:letterSpacing="0.2"
+        android:text="REMAINING RESTRICTION PERIOD"
+        android:textColor="#44FFFFFF"
+        android:textSize="9sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/shieldIcon" />
+        app:layout_constraintTop_toBottomOf="@id/rotContainer" />
 
     <TextView
         android:id="@+id/timerText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="48dp"
         android:fontFamily="sans-serif-black"
-        android:text="00:00"
+        android:letterSpacing="-0.02"
+        android:text="04:37"
         android:textColor="#FFFFFF"
-        android:textSize="72sp"
-        android:letterSpacing="-0.05"
+        android:textSize="64sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/protocolLabel" />
 
-    <TextView
-        android:id="@+id/timerLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:fontFamily="sans-serif-thin"
-        android:letterSpacing="0.2"
-        android:text="REMAINING_RESTRICTION_PERIOD"
-        android:textColor="#33FFFFFF"
-        android:textSize="9sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/timerText" />
-
-    <!-- 
-        REGAIN STABILITY: Replaced MaterialCardView with a standard FrameLayout.
-        Material Components crash when inflated inside a system Accessibility Service.
-    -->
+    <!-- Section 02: COACH_MESSAGE_HUB -->
     <FrameLayout
         android:id="@+id/messageCard"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="64dp"
-        android:background="#131313"
-        app:layout_constraintTop_toBottomOf="@id/timerLabel">
+        android:layout_marginTop="40dp"
+        android:background="#0A0A0A"
+        app:layout_constraintTop_toBottomOf="@id/timerText">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:gravity="center"
             android:orientation="vertical"
-            android:padding="24dp">
+            android:padding="28dp">
 
             <TextView
                 android:id="@+id/messageText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textAlignment="center"
                 android:fontFamily="sans-serif-black"
-                android:text="Digital environment locked."
+                android:lineSpacingExtra="4dp"
+                android:text="You chose to protect your focus today."
+                android:textAlignment="center"
                 android:textColor="#FFFFFF"
                 android:textSize="18sp" />
 
-            <View
-                android:layout_width="48dp"
-                android:layout_height="1dp"
-                android:layout_gravity="center"
-                android:layout_marginVertical="16dp"
-                android:background="#33FFFFFF" />
-
             <TextView
+                android:id="@+id/coachSubText"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:fontFamily="sans-serif-medium"
+                android:lineHeight="18dp"
+                android:text="Your brain is already starting to feel clearer ❤️🩹"
                 android:textAlignment="center"
-                android:fontFamily="sans-serif-thin"
-                android:text="UNLINK_SYSTEM_ENFORCEMENT"
-                android:textColor="#66FFFFFF"
-                android:textSize="10sp"
-                android:letterSpacing="0.1"
-                android:textStyle="italic" />
+                android:textColor="#88FFFFFF"
+                android:textSize="12sp" />
+
         </LinearLayout>
     </FrameLayout>
 
-    <!-- Standard Button for system-level stability -->
-    <Button
-        android:id="@+id/goHomeButton"
+    <!-- Section 03: POSITIVE_ACTION_STACK -->
+    <LinearLayout
+        android:id="@+id/actionStack"
         android:layout_width="match_parent"
-        android:layout_height="64dp"
-        android:layout_marginBottom="32dp"
-        android:background="#FFFFFF"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp"
+        android:orientation="vertical"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <Button
+            android:id="@+id/goHomeButton"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:backgroundTint="#FFFFFF"
+            android:fontFamily="sans-serif-black"
+            android:letterSpacing="0.1"
+            android:text="I'M GOOD — KEEP GOING"
+            android:textColor="#000000" />
+
+        <Button
+            android:id="@+id/takeBreakButton"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="#131313"
+            android:fontFamily="sans-serif-black"
+            android:letterSpacing="0.05"
+            android:text="TAKE A  BREAK"
+            android:textColor="#FFFFFF" />
+
+      
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/brandingText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"
         android:fontFamily="sans-serif-black"
         android:letterSpacing="0.3"
-        android:text="GO_HOME"
-        android:textColor="#000000"
-        app:layout_constraintBottom_toBottomOf="parent" />
+        android:text="UNLINK • FOCUS COACH"
+        android:textColor="#22FFFFFF"
+        android:textSize="8sp"
+        app:layout_constraintBottom_toTopOf="@id/actionStack"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

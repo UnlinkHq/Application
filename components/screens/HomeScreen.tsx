@@ -46,7 +46,7 @@ const ActiveProtocolStatus = ({
             {/* Context Header */}
             <View className="flex-row items-center justify-between mb-4">
                 <View className="flex-row items-center gap-2">
-                    <View className={`w-2 h-2 rounded-full ${isOnBreak ? 'bg-[#72fe88]' : 'bg-white'} ${!isOnBreak && 'animate-pulse'}`} />
+                    <View className={`w-2 h-2 rounded-full ${isOnBreak ? 'bg-[#72fe88]' : 'bg-white'} ${!isOnBreak ? 'animate-pulse' : ''}`} />
                     <Text className={`font-headline font-black text-[10px] uppercase tracking-[0.15em] ${isOnBreak ? 'text-[#72fe88]' : 'text-white'}`}>
                         {isOnBreak ? `Break Active (${session.timedBreaks.durationMins}m)` : 'Protocol Engaged'}
                     </Text>
@@ -208,9 +208,17 @@ export const HomeScreen = () => {
             }
         });
 
+        // Instant Sync: Listen for native break toggles
+        const { addNativeBreakListener } = require('../../modules/screen-time');
+        const nativeSub = addNativeBreakListener?.((event: any) => {
+            console.log('[HomeScreen] Received native break request sync');
+            checkActiveSession();
+        });
+
         return () => {
             if (intervalId) clearInterval(intervalId);
             subscription.remove();
+            nativeSub?.remove?.();
         };
     }, [selectedDate, isFocused, activeConfigId]);
 

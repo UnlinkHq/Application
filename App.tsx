@@ -39,6 +39,7 @@ import { FocusStorageService, BlockSession } from './services/FocusStorageServic
 import { FocusActiveScreen } from './components/blocks/FocusActiveScreen';
 import { AgreementScreen } from './components/screens/AgreementScreen';
 import { IntentGateScreen } from './components/screens/IntentGateScreen';
+import { addNativeBreakListener } from './modules/screen-time';
 import './global.css';
 
 // Build 0.81.5 has fixed safeAreaView but dependencies might still use it
@@ -135,8 +136,21 @@ export default function App() {
         const session = await FocusStorageService.getActiveSession();
         setActiveSession(session);
     }, 15000);
+
+    // Listen for native break requests from the coach overlay
+    const subscription = addNativeBreakListener(async (event) => {
+        console.log('[App] Received native break request sync');
+        const session = await FocusStorageService.getActiveSession();
+        if (session && !session.isOnBreak) {
+            const updated = await FocusStorageService.toggleBreak();
+            if (updated) setActiveSession(updated);
+        }
+    });
     
-    return () => clearInterval(interval);
+    return () => {
+        subscription.remove();
+        clearInterval(interval);
+    };
   }, []);
 
   if (!fontsLoaded || isFirstLaunch === null) {

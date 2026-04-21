@@ -3,6 +3,8 @@ package com.shahil.screentime
 import android.app.AppOpsManager
 import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
 import android.content.Context
 import android.content.Intent
 import android.content.ComponentName
@@ -23,6 +25,7 @@ class ScreenTimeModule : Module() {
   
   override fun definition() = ModuleDefinition {
     Name("ScreenTime")
+    Events("onNativeBreakToggle")
 
     Function("isAdminActive") {
       try {
@@ -58,6 +61,7 @@ class ScreenTimeModule : Module() {
             putLong("block_expiry_time", expiryTime)
             putLong("session_start_time", startTime)
             putBoolean("is_blocking_suspended", false)
+            putInt("breaks_remaining", (config["breaksRemaining"] as? Double ?: 0.0).toInt())
             commit()
         }
         
@@ -68,6 +72,15 @@ class ScreenTimeModule : Module() {
         val intent = Intent("com.shahil.unlink.SYNC_LIST")
         intent.setPackage(context.packageName)
         context.sendBroadcast(intent)
+      }
+      return@Function null
+    }
+
+    Function("setBreaksRemaining") { remaining: Int ->
+      appContext.reactContext?.let { context ->
+        val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        prefs.edit().putInt("breaks_remaining", remaining).commit()
+        UnlinkAccessibilityService.instance?.refreshServiceConfig()
       }
       return@Function null
     }
@@ -451,6 +464,24 @@ class ScreenTimeModule : Module() {
         } catch (e: Exception) {}
       }
       return@AsyncFunction appList
+    }
+
+    OnCreate {
+        val context = appContext.reactContext ?: return@OnCreate
+        val filter = IntentFilter("com.shahil.unlink.REQUEST_BREAK")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    this@ScreenTimeModule.sendEvent("onNativeBreakToggle", mapOf("suspended" to true))
+                }
+            }, filter, Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            context.registerReceiver(object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    this@ScreenTimeModule.sendEvent("onNativeBreakToggle", mapOf("suspended" to true))
+                }
+            }, filter)
+        }
     }
   }
 

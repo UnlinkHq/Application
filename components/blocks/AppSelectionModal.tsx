@@ -142,7 +142,7 @@ export const AppSelectionModal = ({
         <BottomSheetWrapper
             visible={visible}
             onClose={onClose}
-            title="SYSTEM_INDEX"
+            title="APP LIST"
             snapPoints={['90%']}
         >
             <View className="flex-1">
@@ -151,7 +151,7 @@ export const AppSelectionModal = ({
                     <Ionicons name="search" size={20} color="rgba(255,255,255,0.4)" />
                     <TextInput
                         className="flex-1 ml-3 text-white font-headline font-black text-sm uppercase"
-                        placeholder="FILTER_IDENTIFIER"
+                        placeholder="search apps..."
                         placeholderTextColor="rgba(255,255,255,0.2)"
                         value={searchQuery}
                         onChangeText={setSearchQuery}
@@ -200,7 +200,7 @@ export const AppSelectionModal = ({
                                 }}
                             >
                                 <Text className="text-black font-headline font-black text-sm uppercase tracking-[0.2em]">
-                                    {selectedApps.length > 0 ? `DEPLOY_TARGETS (${selectedApps.length})` : 'CLOSE_INDEX'}
+                                    {selectedApps.length > 0 ? `SELECT APPS (${selectedApps.length})` : 'CLOSE'}
                                 </Text>
                             </TouchableOpacity>
                         </View>

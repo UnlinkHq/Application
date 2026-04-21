@@ -71,7 +71,6 @@ class UnlinkAccessibilityService : AccessibilityService() {
     private var currentBlockedApps: Set<String> = emptySet()
     private var isSurgicalYoutube = false
     private var isSurgicalInstagram = false
-    private var isIgFiniteEnabled = true
     private var lastForegroundPackage: String? = null
     private var lastBrainrotScrollTime: Long = 0
     private var shortsScrollCount = 0
@@ -105,6 +104,9 @@ class UnlinkAccessibilityService : AccessibilityService() {
     
     // RE_AUTH_TIMER_PROTOCOL
     private var isYtFiniteEnabled = true
+    private var isIgFiniteEnabled = true
+    private var breaksRemaining = 0
+    private var isProcessingBreak = false
 
     private val countdownHandler = Handler(Looper.getMainLooper())
     private val countdownRunnable = object : Runnable {
@@ -137,6 +139,10 @@ class UnlinkAccessibilityService : AccessibilityService() {
         }
     }
 
+    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        return START_STICKY
+    }
+
     private var lastEventTime = 0L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
@@ -167,17 +173,43 @@ class UnlinkAccessibilityService : AccessibilityService() {
             }
         }
 
-        // BRAINROT SCROLL DETECTION (Processed instantly using native event package to bypass overlay interference)
+        // 1. INFALLIBLE FOREGROUND TRACKING
+        // Always trust the active window root over the raw event for core blocking decisions.
+        val pkg = rootInActiveWindow?.packageName?.toString() ?: event.packageName?.toString() ?: return
+
+        // 2. IGNORE SELF TO PREVENT OVERLAY BLINKING
+        if (pkg == packageName) return
+
+        // 2.5 WARDEN_MODE: Prevent bypassing Unlink via Settings/Accessibility
+        val now = System.currentTimeMillis()
+        if (blockExpiryTime > now && !isBlockingSuspended) {
+            if (pkg == "com.android.settings") {
+                if (checkSelfProtection(rootInActiveWindow)) {
+                    Toast.makeText(this, "Warden: Protocol Enforced. Settings locked. ❤️🩹", Toast.LENGTH_SHORT).show()
+                    performGlobalAction(GLOBAL_ACTION_BACK)
+                    return
+                }
+            }
+        }
+
+        // 3. FULL_BLOCK_PRIORITY (The 'Warden' Logic)
+        // If the entire app is blocked, we stop here. No gates, no scroll tracking, no brain rot.
+        if (isBlockActive(pkg)) {
+            hideIntentGate()
+            hideBrainrotMeter()
+            setWallVisibility(true)
+            lastForegroundPackage = pkg
+            return
+        }
+
+        // 4. BRAINROT SCROLL DETECTION (Surgical Logic)
         if (eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
-            val eventPkg = event.packageName?.toString() ?: return
-            val isTargetShorts = eventPkg == "com.google.android.youtube" || eventPkg == "com.instagram.android"
+            val isTargetShorts = pkg == "com.google.android.youtube" || pkg == "com.instagram.android"
             
             if (isTargetShorts) {
                 val className = event.className?.toString() ?: ""
                 val resourceName = event.source?.viewIdResourceName ?: ""
                 
-                // Surgical heuristic: Shorts/Reels containers explicitly use these IDs or ViewPagers
-                // The first scroll gives clear proof. We lock it into 'isCurrentlyInShortsMode'
                 if (resourceName.contains("reel", ignoreCase = true) || 
                     resourceName.contains("short", ignoreCase = true) || 
                     resourceName.contains("clip", ignoreCase = true) ||
@@ -185,16 +217,12 @@ class UnlinkAccessibilityService : AccessibilityService() {
                     isCurrentlyInShortsMode = true
                 }
                                    
-                // Validate subsequent rapid physics-based scrolls using the locked session memory
                 if (isCurrentlyInShortsMode) {
                     val now = System.currentTimeMillis()
-                    // Minimum 2000ms between swipes (average short consumption duration).
-                    // This elegantly prevents native Android double-reporting during kinetic scrolling physics.
                     if (now - lastBrainrotScrollTime > 2000L) {
                         lastBrainrotScrollTime = now
                         live_reels_in_this_binge++
                         
-                        // Live Binge Math
                         val liveBingeMinutes = if (last_target_app_entry_time > 0L) {
                             (now - last_target_app_entry_time) / 60000L
                         } else {
@@ -202,8 +230,6 @@ class UnlinkAccessibilityService : AccessibilityService() {
                         }
                         
                         val bingeMultiplier = if (liveBingeMinutes > 45) 1.8f else 1.0f
-                        
-                        // For a standard short, if bingeMultiplier connects, it adds more rot!
                         val rotDelta = 1.5f * bingeMultiplier
                         
                         updateGlobalRot(rotDelta, true)
@@ -216,30 +242,13 @@ class UnlinkAccessibilityService : AccessibilityService() {
                     }
                 }
             }
-            return // Skip further heavy processing for pure scroll events to save CPU
-        }
-
-        // INFALLIBLE FOREGROUND TRACKING: 
-        // Always trust the active window root over the raw event. This instantly neutralizes 
-        // background-refresh pollution (e.g. YouTube PiP firing fake foreground events).
-        val pkg = rootInActiveWindow?.packageName?.toString() ?: event.packageName?.toString() ?: return
-
-        // IGNORE SELF TO PREVENT OVERLAY BLINKING OR FALSE EXITS
-        if (pkg == packageName) {
             return
         }
 
         val isTarget = pkg == "com.google.android.youtube" || pkg == "com.instagram.android"
         val wasInTarget = lastForegroundPackage == "com.google.android.youtube" || lastForegroundPackage == "com.instagram.android"
 
-        // STRICT CONTEXT ENFORCEMENT: Never show gates or meters outside targets
-        if (!isTarget) {
-            hideIntentGate()
-            hideBrainrotMeter()
-            isCurrentlyInShortsMode = false
-        }
-
-        // EXIT_DETECTION: If we just left a target app
+        // 5. EXIT_DETECTION: If we just left a target app
         if (wasInTarget && !isTarget) {
             val lastPkg = lastForegroundPackage!!
             val exitTime = System.currentTimeMillis()
@@ -251,7 +260,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
             isCurrentlyInShortsMode = false
         }
 
-        // ENTRY_DETECTION: If we just entered a target app from somewhere else
+        // 6. ENTRY_DETECTION: If we just entered a target app from somewhere else
         if (isTarget && pkg != lastForegroundPackage) {
             val prefs = getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
             val lastExit = prefs.getLong("exit_time_$pkg", 0L)
@@ -281,7 +290,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
             return
         }
 
-        // INTENT_GATE_LOGIC
+        // 7. INTENT_GATE_LOGIC
         val isInstagram = pkg == "com.instagram.android"
         val isYoutube = pkg == "com.google.android.youtube"
         
@@ -302,13 +311,6 @@ class UnlinkAccessibilityService : AccessibilityService() {
         }
 
         lastForegroundPackage = pkg
-
-        // FULL_BLOCK_PRIORITY
-        if (isBlockActive(pkg)) {
-            setWallVisibility(true)
-            return
-        }
-
         if (!isNavigatingHome) setWallVisibility(false)
     }
 
@@ -460,6 +462,25 @@ class UnlinkAccessibilityService : AccessibilityService() {
         }
     }
 
+    private fun checkSelfProtection(node: AccessibilityNodeInfo?): Boolean {
+        if (node == null) return false
+        
+        val appName = getString(resources.getIdentifier("app_name", "string", packageName))
+        
+        // Scan for our app name in the window text
+        val nodes = node.findAccessibilityNodeInfosByText(appName)
+        if (nodes != null && nodes.isNotEmpty()) {
+            return true
+        }
+        
+        // Recursive check for children if findByText failed on root
+        for (i in 0 until node.childCount) {
+            if (checkSelfProtection(node.getChild(i))) return true
+        }
+        
+        return false
+    }
+
     // Nudge State
     private var bingeNudgeOverlayView: View? = null
 
@@ -603,6 +624,8 @@ class UnlinkAccessibilityService : AccessibilityService() {
                 globalShortsCount = prefs.getInt("global_shorts_count", 0)
             }
             
+            breaksRemaining = prefs.getInt("breaks_remaining", 0)
+            
         } catch (e: Exception) {}
     }
 
@@ -695,8 +718,51 @@ class UnlinkAccessibilityService : AccessibilityService() {
     private fun updateWallContent() {
         try {
             val myPackageName = getPackageName()
+            val rotEmojiId = resources.getIdentifier("rotEmoji", "id", myPackageName)
+            val rotStatusId = resources.getIdentifier("rotStatusText", "id", myPackageName)
             val messageId = resources.getIdentifier("messageText", "id", myPackageName)
-            if (messageId != 0) overlayView?.findViewById<TextView>(messageId)?.text = currentFocusMessage
+            val subTextId = resources.getIdentifier("coachSubText", "id", myPackageName)
+
+            val overlay = overlayView ?: return
+
+            // 1. BRAIN_ROT_VISUALS
+            val emoji = when {
+                globalBrainrotScore >= 75f -> "🧟‍♂️"
+                globalBrainrotScore >= 50f -> "😵‍💫"
+                globalBrainrotScore >= 25f -> "🧠"
+                else -> "😎"
+            }
+            
+            val formattedScore = String.format(java.util.Locale.US, "%.0f", globalBrainrotScore)
+            overlay.findViewById<TextView>(rotEmojiId)?.text = emoji
+            overlay.findViewById<TextView>(rotStatusId)?.text = "Your Brain is at $formattedScore% Rot"
+
+            // 2. COACH_MESSAGES
+            var mainMsg = "You chose to protect your focus today."
+            var subMsg = "Your brain is already starting to feel clearer ❤️🩹"
+
+            val pkg = rootInActiveWindow?.packageName?.toString() ?: ""
+            val isIg = pkg == "com.instagram.android"
+            val isYt = pkg == "com.google.android.youtube"
+            val isSurgicalApp = (isIg && isSurgicalInstagram) || (isYt && isSurgicalYoutube)
+
+            if (globalBrainrotScore >= 60f) {
+                mainMsg = "You've been scrolling heavily today."
+                subMsg = "This break is saving your brain from further damage."
+            } else if (isCurrentlyInShortsMode && isSurgicalApp) {
+                mainMsg = "Shorts & Reels are locked to protect you."
+                subMsg = "DMs are still open if you need them."
+            }
+
+            overlay.findViewById<TextView>(messageId)?.text = mainMsg
+            overlay.findViewById<TextView>(subTextId)?.text = subMsg
+
+            // 3. BREAK_BUTTON_VISIBILITY
+            val breakBtnId = resources.getIdentifier("takeBreakButton", "id", myPackageName)
+            overlay.findViewById<Button>(breakBtnId)?.apply {
+                visibility = if (breaksRemaining > 0) View.VISIBLE else View.GONE
+            }
+
         } catch (e: Exception) {}
     }
 
@@ -707,8 +773,24 @@ class UnlinkAccessibilityService : AccessibilityService() {
             val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
             val layoutId = resources.getIdentifier("blocking_overlay_full", "layout", myPackageName)
             overlayView = if (layoutId != 0) inflater.inflate(layoutId, null) else createFailsafeView()
+            
+            // Primary Action: Go Home / Continue Focus
             val homeBtnId = resources.getIdentifier("goHomeButton", "id", myPackageName)
             overlayView?.findViewById<Button>(homeBtnId)?.setOnClickListener { goHome() }
+            
+            // Secondary Action: Take Break
+            val breakBtnId = resources.getIdentifier("takeBreakButton", "id", myPackageName)
+            overlayView?.findViewById<Button>(breakBtnId)?.setOnClickListener {
+                requestBreak()
+            }
+
+            // Tertiary Action: Emergency Stop (Friction-based)
+            val stopLinkId = resources.getIdentifier("emergencyStopLink", "id", myPackageName)
+            overlayView?.findViewById<TextView>(stopLinkId)?.setOnClickListener {
+                Toast.makeText(this, "Protocol is strict. End session via Unlink App.", Toast.LENGTH_SHORT).show()
+                vibrate(100)
+            }
+
             val params = WindowManager.LayoutParams(
                 -1, -1, WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or 
@@ -721,6 +803,42 @@ class UnlinkAccessibilityService : AccessibilityService() {
             params.dimAmount = 1.0f
             params.windowAnimations = android.R.style.Animation_InputMethod
             overlayView?.layoutParams = params
+        } catch (e: Exception) {}
+    }
+
+    private fun requestBreak() {
+        if (isProcessingBreak || breaksRemaining <= 0) return
+        
+        try {
+            isProcessingBreak = true
+            val prefs = getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("is_blocking_suspended", true).commit()
+            
+            setWallVisibility(false)
+            isBlockingSuspended = true
+            
+            // Notify UI & System
+            val intent = Intent("com.shahil.unlink.REQUEST_BREAK")
+            intent.setPackage(packageName)
+            sendBroadcast(intent)
+            
+            Toast.makeText(this, "Break started. Use it wisely! ❤️🩹", Toast.LENGTH_SHORT).show()
+            openUnlinkApp()
+            
+            // Unlock guard after a delay to ensure JS has processed the sync
+            visibilityHandler.postDelayed({ isProcessingBreak = false }, 2000L)
+        } catch (e: Exception) {
+            isProcessingBreak = false
+        }
+    }
+
+    private fun openUnlinkApp() {
+        try {
+            val intent = packageManager.getLaunchIntentForPackage(packageName)
+            if (intent != null) {
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                startActivity(intent)
+            }
         } catch (e: Exception) {}
     }
 

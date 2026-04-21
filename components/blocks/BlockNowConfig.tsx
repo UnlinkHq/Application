@@ -380,7 +380,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                             onChangeText={setTitle}
                             placeholder="Deep Focus Session"
                             placeholderTextColor="rgba(255,255,255,0.1)"
-                            className="text-white font-headline font-black text-xl uppercase border-b border-white/20 pb-2 mt-1"
+                            className="text-white font-headline font-black text-xl border-b border-white/20 pb-2 mt-1"
                             selectionColor="white"
                         />
                     </View>
@@ -551,9 +551,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                         <Ionicons name="information-circle-outline" size={14} color="rgba(255,255,255,0.2)" />
                                     </TouchableOpacity>
                                 </View>
-                                <Text className="text-white/10 font-label text-[9px] uppercase tracking-widest">
-                                    {isFocusCoachEnabled ? "PROTOCOL > ACTIVE" : "PROTOCOL > IDLE"}
-                                </Text>
+
                             </View>
 
                             <View className="border border-white/10 bg-black/40 overflow-hidden">
@@ -765,7 +763,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                 >
                     <View className="items-center">
                         <Text className={`font-headline font-black text-lg uppercase tracking-[0.2em] ${hasAppsSelected ? 'text-black' : 'text-white'}`}>
-                            {hasAppsSelected ? 'Initiate Protocol' : 'Select Targets'}
+                            {hasAppsSelected ? 'Add Block' : 'Select Targets'}
                         </Text>
                         {hasAppsSelected && (
                             <Text className="text-black/40 font-label text-[10px] mt-1">Preparing airtight lockdown</Text>
@@ -854,9 +852,9 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                     className="bg-black/95 items-center justify-center px-8 z-50"
                 >
                     <View className="w-full bg-[#0a0a0a] border border-white/20 p-8 rounded-sm items-center">
-                        <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">QR_SIGNATURE_GENERATED</Text>
+                        <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">QR SIGNATURE GENERATED</Text>
                         <Text className="text-[#72fe88] font-label text-[10px] uppercase tracking-widest mb-8 text-center font-bold px-4">
-                            THIS_SIGNATURE_WILL_BE_STORED_IN_YOUR_PHOTO_GALLERY_AUTOMATICALLY
+                            This Signature will be stored in your photo gallery automatically
                         </Text>
 
                         <View className="w-64 h-64 bg-white p-4 mb-4">
@@ -908,14 +906,14 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                             }}
                             className="w-full h-14 bg-white items-center justify-center mb-3"
                         >
-                            <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">I_HAVE_SAVED_THE_SIGNATURE</Text>
+                            <Text className="text-black font-headline font-black text-xs uppercase tracking-widest"> I have saved the signature</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             onPress={() => setIsQrModalVisible(false)}
                             className="w-full h-14 border border-white/20 items-center justify-center"
                         >
-                            <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">ABORT_DEPLOYMENT</Text>
+                            <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">Cancel Deployment</Text>
                         </TouchableOpacity>
                     </View>
                 </Animated.View>

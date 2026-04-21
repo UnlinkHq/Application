@@ -88,6 +88,9 @@ export class FocusStorageService {
             }
 
             ScreenTime.setBlockedApps(hardBlockedApps, "FOCUS_PROTOCOL_ENGAGED", "");
+            
+            const breaksLeft = (session.timedBreaks?.allowedCount || 0) - (session.timedBreaks?.usedCount || 0);
+            ScreenTime.setBreaksRemaining(Math.max(0, breaksLeft));
         }
         
         // 4. For iOS, we rely on the activateShield call or standard family controls
@@ -145,6 +148,11 @@ export class FocusStorageService {
                 accumulatedBreakMs: totalAccumulatedBreakMs,
                 timedBreaks: { ...session.timedBreaks, usedCount } 
             };
+
+            if (Platform.OS === 'android') {
+                const breaksLeft = updatedSession.timedBreaks.allowedCount - updatedSession.timedBreaks.usedCount;
+                ScreenTime.setBreaksRemaining(Math.max(0, breaksLeft));
+            }
             
             await AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(updatedSession));
             
