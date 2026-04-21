@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FF000000">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:padding="32dp">
+
+        <TextView
+            android:id="@+id/deadBrainEmoji"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🧟‍♂️"
+            android:textSize="80sp"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:id="@+id/deadBrainWarningText"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-black"
+            android:gravity="center"
+            android:text="You've rotted your brain too far."
+            android:textColor="#FFFF3333"
+            android:textSize="24sp"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:id="@+id/deadBrainSubtext"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
+            android:text="Your brain is literally dying right now. Shorts and Reels are now strictly locked for your own good. Go outside."
+            android:textColor="#FFAAAAAA"
+            android:textSize="18sp"
+            android:layout_marginBottom="40dp" />
+
+        <Button
+            android:id="@+id/goHomeFromDeadBrainButton"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:backgroundTint="#222222"
+            android:fontFamily="sans-serif-bold"
+            android:text="EXIT AND HEAL"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp" />
+
+    </LinearLayout>
+
+</FrameLayout>
