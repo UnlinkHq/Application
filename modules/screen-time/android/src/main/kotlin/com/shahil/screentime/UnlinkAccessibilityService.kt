@@ -489,7 +489,9 @@ class UnlinkAccessibilityService : AccessibilityService() {
                     bingeNudgeOverlayView = null
                     goHome()
                     updateGlobalRot(-12.0f)
-                    Toast.makeText(this@UnlinkAccessibilityService, "Break taken! Brain is healing ❤️\u200D\uD83E\uDE79 +12%", Toast.LENGTH_SHORT).show()
+                    visibilityHandler.post {
+                        Toast.makeText(applicationContext, "Break taken! Brain is healing ❤️\\u200D\\uD83E\\uDE79 +12%", Toast.LENGTH_SHORT).show()
+                    }
                     last_target_app_entry_time = System.currentTimeMillis() // Reset binge clock
                 }
                 
@@ -911,7 +913,9 @@ class UnlinkAccessibilityService : AccessibilityService() {
                     hideIntentGate()
                     goHome()
                     updateGlobalRot(-10.0f) // Reward for backing out completely
-                    Toast.makeText(this@UnlinkAccessibilityService, "Brain Saved ❤️\u200D\uD83E\uDE79 +10.0%", Toast.LENGTH_SHORT).show()
+                    visibilityHandler.post {
+                        Toast.makeText(applicationContext, "Brain Saved ❤️\u200D\uD83E\uDE79 +10.0%", Toast.LENGTH_SHORT).show()
+                    }
                 }
 
                 windowManager?.addView(gateOverlayView, params)
@@ -953,8 +957,10 @@ class UnlinkAccessibilityService : AccessibilityService() {
     private fun authorizeSession(pkg: String, healingDelta: Float = 0f, message: String = "") {
         if (healingDelta < 0f) {
             updateGlobalRot(healingDelta)
-            val msg = if (message.isNotEmpty()) message else "Brain Healing ❤️\u200D\uD83E\uDE79 ${-healingDelta}%"
-            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+            val msg = if (message.isNotEmpty()) message else "Brain Healing ❤️\\u200D\\uD83E\\uDE79 ${-healingDelta}%"
+            visibilityHandler.post {
+                Toast.makeText(applicationContext, msg, Toast.LENGTH_SHORT).show()
+            }
         }
         authorizedApps.add(pkg)
         gateStatus = GateStatus.AUTHORIZED

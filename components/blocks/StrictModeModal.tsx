@@ -34,7 +34,7 @@ const STRICT_MODES: StrictModeOption[] = [
     {
         id: 'mom_test',
         title: 'Mom Test (Hard)',
-        description: 'Ask a trusted person to verify through WhatsApp.',
+        description: 'Verification code sent to a trusted email.',
         icon: 'account-lock-outline',
         color: '#ffffff'
     },
@@ -69,6 +69,7 @@ export const StrictModeModal = ({
     const [verificationStep, setVerificationStep] = useState<'input' | 'verify'>('input');
     const [setupCode, setSetupCode] = useState('');
     const [enteredSetupCode, setEnteredSetupCode] = useState('');
+    const [isSendingCode, setIsSendingCode] = useState(false);
 
     useEffect(() => {
         if (visible) {
@@ -76,22 +77,51 @@ export const StrictModeModal = ({
         }
     }, [visible, currentMode]);
 
-    const handleSendVerificationCode = () => {
-        if (!emailAddress) {
+    const handleSendVerificationCode = async () => {
+        if (!emailAddress || isSendingCode) {
             alert("INVALID_INPUT: PLEASE_ENTER_VALID_EMAIL");
             return;
         }
 
+        setIsSendingCode(true);
         const code = Math.floor(1000 + Math.random() * 9000).toString();
-        setSetupCode(code);
+        
+        try {
+            const apiKey = 're_N6uTZ7U8_5xDH88K6JuekUqNDGTwrL4pZ';
+            const response = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    from: 'Unlink <auth@getunlink.com>',
+                    to: [emailAddress],
+                    subject: 'MOM TEST: SETUP VERIFICATION CODE',
+                    html: `
+                        <div style="font-family: sans-serif; padding: 20px; color: #000;">
+                            <h2 style="letter-spacing: 2px;">UNLINK_SETUP</h2>
+                            <p>You have been chosen as a Trusted Contact for an Unlink Focus Session.</p>
+                            <p>Use this code to verify your identity:</p>
+                            <h1 style="font-size: 32px; letter-spacing: 10px; margin: 20px 0;">${code}</h1>
+                            <p style="color: #666; font-size: 11px;">If you didn't expect this, please ignore this email.</p>
+                        </div>
+                    `
+                })
+            });
 
-        // Mocking a serverless API call to Cloudflare/Resend
-        console.log(`\n\n[UNLINK MOCK API] Sending Verification Email to: ${emailAddress}\n[UNLINK MOCK API] CODE: ${code}\n\n`);
-
-        // Fake network delay for a realistic premium loading feel
-        setTimeout(() => {
-            setVerificationStep('verify');
-        }, 800);
+            if (response.ok) {
+                setSetupCode(code);
+                setVerificationStep('verify');
+            } else {
+                const err = await response.json();
+                alert(`API_ERROR: ${err.message || 'FAILED_TO_SEND'}`);
+            }
+        } catch (error) {
+            alert("NETWORK_ERROR: CHECK_CONNECTION");
+        } finally {
+            setIsSendingCode(false);
+        }
     };
 
     const handleVerifyCode = () => {
@@ -209,10 +239,13 @@ export const StrictModeModal = ({
                                         />
                                         <TouchableOpacity
                                             onPress={handleSendVerificationCode}
-                                            className="h-12 bg-white items-center justify-center flex-row"
+                                            disabled={isSendingCode}
+                                            className={`h-12 ${isSendingCode ? 'bg-white/20' : 'bg-white'} items-center justify-center flex-row`}
                                         >
                                             <MaterialCommunityIcons name="send" size={14} color="black" style={{ marginRight: 8 }} />
-                                            <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">SEND_VERIFICATION_CODE</Text>
+                                            <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">
+                                                {isSendingCode ? 'SENDING...' : 'SEND_VERIFICATION_CODE'}
+                                            </Text>
                                         </TouchableOpacity>
                                     </View>
                                 ) : !isVerified ? (

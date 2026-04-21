@@ -3,7 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, Platform, AppState, RefreshCont
 import * as Haptics from 'expo-haptics';
 import { useBlocking } from '../../context/BlockingContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { ScreenTimeChart } from '../ScreenTimeChart';
 import { ScreenTimeService } from '../../services/ScreenTimeService';
@@ -11,8 +11,8 @@ import { DailyUsage, MOCK_DATA } from '../../utils/screenTimeData';
 import { DatePickerModal } from '../ui/DatePickerModal';
 import { PermissionBanner } from '../ui/PermissionBanner';
 import { FocusStorageService, BlockSession } from '../../services/FocusStorageService';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { QRUnlockModal } from '../blocks/QRUnlockModal';
+import { MomTestUnlockModal } from '../blocks/MomTestUnlockModal';
 import { useSelection } from '../../context/SelectionContext';
 
 // Optimized Sub-components
@@ -359,6 +359,7 @@ export const HomeScreen = () => {
     }, []);
 
     const [isQrUnlockVisible, setIsQrUnlockVisible] = useState(false);
+    const [isMomTestUnlockVisible, setIsMomTestUnlockVisible] = useState(false);
 
     const handleToggleBreak = async () => {
         const updated = await FocusStorageService.toggleBreak();
@@ -468,6 +469,8 @@ export const HomeScreen = () => {
                                         onStop={() => {
                                             if (activeSession.strictnessConfig.mode === 'qr_code') {
                                                 setIsQrUnlockVisible(true);
+                                            } else if (activeSession.strictnessConfig.mode === 'mom_test') {
+                                                setIsMomTestUnlockVisible(true);
                                             } else {
                                                 handleStopActiveSession();
                                             }
@@ -537,15 +540,26 @@ export const HomeScreen = () => {
                 />
 
                 {activeSession && (
-                    <QRUnlockModal
-                        visible={isQrUnlockVisible}
-                        onClose={() => setIsQrUnlockVisible(false)}
-                        expectedData={activeSession.strictnessConfig.qrCodeData || ''}
-                        onSuccess={() => {
-                            setIsQrUnlockVisible(false);
-                            handleStopActiveSession();
-                        }}
-                    />
+                    <>
+                        <QRUnlockModal
+                            visible={isQrUnlockVisible}
+                            onClose={() => setIsQrUnlockVisible(false)}
+                            expectedData={activeSession.strictnessConfig.qrCodeData || ''}
+                            onSuccess={() => {
+                                setIsQrUnlockVisible(false);
+                                handleStopActiveSession();
+                            }}
+                        />
+                        <MomTestUnlockModal
+                            visible={isMomTestUnlockVisible}
+                            onClose={() => setIsMomTestUnlockVisible(false)}
+                            session={activeSession}
+                            onSuccess={() => {
+                                setIsMomTestUnlockVisible(false);
+                                handleStopActiveSession();
+                            }}
+                        />
+                    </>
                 )}
 
             </View>

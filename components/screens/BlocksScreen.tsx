@@ -3,20 +3,23 @@ import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, AppState }
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import Animated, { 
-    useSharedValue, 
-    useAnimatedStyle, 
-    withRepeat, 
-    withTiming, 
+import Animated, {
+    useSharedValue,
+    useAnimatedStyle,
+    withRepeat,
+    withTiming,
     withSequence,
     interpolate,
+    interpolateColor,
     FadeInDown
 } from 'react-native-reanimated';
 import { FocusStorageService, BlockSession } from '../../services/FocusStorageService';
 import { PermissionBanner } from '../ui/PermissionBanner';
+import { useSelection } from '../../context/SelectionContext';
 
 export const BlocksScreen = () => {
     const navigation = useNavigation<any>();
+    const { openSelection } = useSelection();
     const [activeSession, setActiveSession] = useState<BlockSession | null>(null);
     const [library, setLibrary] = useState<BlockSession[]>([]);
 
@@ -80,17 +83,30 @@ export const BlocksScreen = () => {
             <SafeAreaView className="flex-1 bg-black" edges={['top']}>
                 {/* Header */}
                 <View className="h-16 flex-row items-center justify-between px-6 border-b border-white/10 bg-black">
-                    <View className="flex-row items-center gap-2">
+                    <View className="flex-row items-center gap-2 flex-1">
                         <MaterialIcons name="link-off" size={24} color="white" />
-                        <Text className="font-headline font-black text-2xl tracking-[0.1em] text-white uppercase italic">UNLINK</Text>
+                        <Text
+                            numberOfLines={1}
+                            className="font-headline font-black text-2xl tracking-[0.1em] text-white uppercase italic"
+                        >
+                            UNLINK
+                        </Text>
                     </View>
-                    <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
-                        <MaterialIcons name="settings" size={20} color="white" />
-                    </TouchableOpacity>
+                    <View className="flex-row items-center gap-5">
+                        <TouchableOpacity
+                            onPress={openSelection}
+                            className="w-10 h-10 items-center justify-center bg-white rounded-full"
+                        >
+                            <MaterialIcons name="add" size={24} color="black" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+                            <MaterialIcons name="settings" size={20} color="white" />
+                        </TouchableOpacity>
+                    </View>
                 </View>
 
-                <ScrollView 
-                    className="flex-1" 
+                <ScrollView
+                    className="flex-1"
                     contentContainerStyle={{ paddingBottom: 120, paddingTop: 24 }}
                     showsVerticalScrollIndicator={false}
                 >
@@ -131,6 +147,8 @@ export const BlocksScreen = () => {
                         )}
                     </View>
                 </ScrollView>
+
+
 
                 {/* Session Lock Warning Modal */}
                 {showLockModal && (
@@ -180,7 +198,7 @@ const ActiveBlockCard = ({ session, onStop }: { session: BlockSession, onStop: (
             const now = Date.now();
             const elapsedMins = (now - session.startTime) / (1000 * 60);
             const leftMins = Math.max(0, session.durationMins - elapsedMins);
-            
+
             const h = Math.floor(leftMins / 60);
             const m = Math.floor(leftMins % 60);
             const s = Math.floor((leftMins * 60) % 60);
@@ -215,7 +233,7 @@ const ActiveBlockCard = ({ session, onStop }: { session: BlockSession, onStop: (
 
                 <View className="flex-row items-center mb-8">
                     <View className="w-14 h-14 bg-white/5 border border-white/10 items-center justify-center mr-5">
-                       <MaterialCommunityIcons name="timer-sand" size={32} color="white" />
+                        <MaterialCommunityIcons name="timer-sand" size={32} color="white" />
                     </View>
                     <View>
                         <Text className="text-white font-headline font-black text-2xl uppercase tracking-widest mb-1">
@@ -272,8 +290,8 @@ const LibraryItem = ({ block, index, onPlay, onDelete, onEdit, isActive }: { blo
     }));
 
     const borderStyle = useAnimatedStyle(() => ({
-        borderColor: isActive 
-            ? interpolate(pulse.value, [0.4, 0.9], [0.4, 1.0]) // Higher contrast white pulse
+        borderColor: isActive
+            ? interpolateColor(pulse.value, [0.4, 0.9], ['rgba(255,255,255,0.4)', 'rgba(255,255,255,1.0)'])
             : 'rgba(255,255,255,0.1)',
         borderWidth: isActive ? 2 : 1,
         shadowColor: '#fff',
@@ -291,12 +309,17 @@ const LibraryItem = ({ block, index, onPlay, onDelete, onEdit, isActive }: { blo
                 className={`p-5 ${isActive ? 'bg-white/5' : 'bg-black'}`}
             >
                 <View className="flex-row items-center justify-between mb-4">
-                    <View className="flex-row items-center gap-3">
+                    <View className="flex-row items-center gap-3 flex-1 mr-4">
                         <View className="w-10 h-10 bg-white/5 items-center justify-center">
                             <MaterialCommunityIcons name="shield" size={20} color={isActive ? "#72fe88" : "white"} />
                         </View>
-                        <View>
-                            <Text className={`font-headline font-black text-sm uppercase tracking-widest ${isActive ? 'text-[#72fe88]' : 'text-white'}`}>{block.title}</Text>
+                        <View className="flex-1">
+                            <Text
+                                numberOfLines={1}
+                                className={`font-headline font-black text-sm uppercase tracking-widest ${isActive ? 'text-[#72fe88]' : 'text-white'}`}
+                            >
+                                {block.title}
+                            </Text>
                             <Text className="text-white/30 font-label text-[10px] mt-1">{block.apps.length} Targets • {block.durationMins} Mins</Text>
                         </View>
                     </View>
@@ -327,8 +350,8 @@ const LibraryItem = ({ block, index, onPlay, onDelete, onEdit, isActive }: { blo
                     {block.appIcons?.slice(0, 6).map((icon, idx) => (
                         <Image key={idx} source={{ uri: icon }} className="w-4 h-4 mr-2 opacity-40" />
                     ))}
-                    {block.surgicalFlags?.youtube && <MaterialCommunityIcons name="youtube-subscription" size={12} color="rgba(255,0,0,0.5)" style={{ marginRight: 8 }} />}
-                    {block.surgicalFlags?.instagram && <MaterialCommunityIcons name="instagram" size={12} color="rgba(255,255,255,0.3)" />}
+                    {block.scrollingProtocol.youtube.enabled && <MaterialCommunityIcons name="youtube-subscription" size={12} color="rgba(255,0,0,0.5)" style={{ marginRight: 8 }} />}
+                    {block.scrollingProtocol.instagram.enabled && <MaterialCommunityIcons name="instagram" size={12} color="rgba(255,255,255,0.3)" />}
                 </View>
             </Animated.View>
         </View>

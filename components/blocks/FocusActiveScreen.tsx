@@ -25,6 +25,8 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
             ? (session.timedBreaks.allowedCount - (session.timedBreaks.usedCount || 0)) 
             : 0
     );
+    const [isEmailSending, setIsEmailSending] = useState(false);
+    const [emailCooldown, setEmailCooldown] = useState(0);
 
     useEffect(() => {
         const check = async () => {
@@ -90,19 +92,61 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
         }, breakMins * 60000);
     };
 
-    const handleEmailRequest = () => {
+    const handleEmailRequest = async () => {
+        if (emailCooldown > 0 || isEmailSending) return;
+
         const email = session.strictnessConfig.emailAddress;
         const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
-        setGeneratedOtp(newOtp);
         
-        // Mocking a serverless API call
-        console.log(`\n\n[UNLINK MOCK API - UNBLOCK REQUEST] Sending Email to: ${email}\n[UNLINK MOCK API] UNBLOCK CODE: ${newOtp}\n\n`);
+        setIsEmailSending(true);
         
-        // Fake network delay for premium feel
-        setTimeout(() => {
-            setShowOtpInput(true);
-        }, 1000);
+        try {
+            const apiKey = 're_N6uTZ7U8_5xDH88K6JuekUqNDGTwrL4pZ';
+            const response = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`,
+                },
+                body: JSON.stringify({
+                    from: 'Unlink <auth@getunlink.com>',
+                    to: [email],
+                    subject: 'MOM TEST: UNLINK VERIFICATION CODE',
+                    html: `
+                        <div style="font-family: sans-serif; padding: 20px; color: #000;">
+                            <h2 style="letter-spacing: 2px;">UNLINK_PROTOCOL</h2>
+                            <p>Your verification code to terminate the focus session is:</p>
+                            <h1 style="font-size: 48px; letter-spacing: 15px; margin: 30px 0;">${newOtp}</h1>
+                            <p style="color: #666; font-size: 12px;">This code was requested via the Mom Test protocol.</p>
+                        </div>
+                    `
+                })
+            });
+
+            if (response.ok) {
+                setGeneratedOtp(newOtp);
+                setShowOtpInput(true);
+                setEmailCooldown(60); // 60s cooldown
+            } else {
+                const err = await response.json();
+                alert(`API_ERROR: ${err.message || 'FAILED_TO_SEND_EMAIL'}`);
+            }
+        } catch (error) {
+            alert("NETWORK_ERROR: CHECK_CONNECTION");
+        } finally {
+            setIsEmailSending(false);
+        }
     };
+
+    useEffect(() => {
+        let timer: NodeJS.Timeout;
+        if (emailCooldown > 0) {
+            timer = setInterval(() => {
+                setEmailCooldown(prev => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [emailCooldown]);
 
     const handleVerifyOtp = () => {
         if (otp === generatedOtp) {
@@ -236,10 +280,15 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                         ) : (
                             <TouchableOpacity
                                 onPress={handleEmailRequest}
-                                className="h-16 border border-white/20 items-center justify-center bg-white/5"
+                                disabled={isEmailSending || emailCooldown > 0}
+                                className={`h-16 border ${isEmailSending || emailCooldown > 0 ? 'border-white/10 bg-white/2' : 'border-white/20 bg-white/5'} items-center justify-center`}
                             >
-                                <Text className="text-white font-headline font-black text-sm uppercase tracking-widest">
-                                    REQUEST_UNBLOCK_VIA_EMAIL
+                                <Text className={`font-headline font-black text-sm uppercase tracking-widest ${isEmailSending || emailCooldown > 0 ? 'text-white/20' : 'text-white'}`}>
+                                    {isEmailSending 
+                                        ? 'SENDING_PROTOCOL...' 
+                                        : emailCooldown > 0 
+                                            ? `COOLDOWN (${emailCooldown}S)` 
+                                            : 'REQUEST_UNBLOCK_VIA_EMAIL'}
                                 </Text>
                             </TouchableOpacity>
                         )}

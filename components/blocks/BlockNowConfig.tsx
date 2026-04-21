@@ -330,7 +330,10 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                 return;
             }
 
-            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${generatedQrData}`;
+            const logoUrl = 'https://raw.githubusercontent.com/expo/expo/main/templates/expo-template-blank/assets/icon.png'; // TODO: Replace with official Unlink logo
+            const encodedQrData = encodeURIComponent(generatedQrData);
+            const encodedLogo = encodeURIComponent(logoUrl);
+            const qrUrl = `https://quickchart.io/qr?text=${encodedQrData}&size=500&centerImageUrl=${encodedLogo}&margin=2`;
             const fileUri = `${FileSystem.cacheDirectory}unlink_qr_${Date.now()}.png`;
 
             const downloadRes = await FileSystem.downloadAsync(qrUrl, fileUri);
@@ -859,7 +862,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                         <View className="w-64 h-64 bg-white p-4 mb-4">
                             {generatedQrData && (
                                 <Image
-                                    source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${generatedQrData}` }}
+                                    source={{ uri: `https://quickchart.io/qr?text=${encodeURIComponent(generatedQrData)}&size=250&centerImageUrl=${encodeURIComponent('https://raw.githubusercontent.com/expo/expo/main/templates/expo-template-blank/assets/icon.png')}&margin=2` }}
                                     className="w-full h-full"
                                 />
                             )}
