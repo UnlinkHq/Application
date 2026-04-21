@@ -20,7 +20,7 @@ export interface BlockSession {
     durationMins: number;
     apps: string[];
     appIcons?: string[];
-    
+
     scrollingProtocol: {
         enabled: boolean;
         youtube: ScrollingAppConfig;
@@ -47,20 +47,20 @@ export interface BlockSession {
 
 export class FocusStorageService {
     // --- Active Session Management ---
-    
+
     static async startSession(rawSession: any): Promise<void> {
         console.log('--- [STORAGE_ENGINE] DEPLOYING_PROTOCOL ---');
-        
+
         // 1. Instantly migrate/harden the session so there's no missing data
         const session = FocusStorageService.migrateSession(rawSession);
-        
+
         // 2. Save locally as active
         await AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(session));
-        
+
         // 3. Transmit to Native Layer (Android)
         if (Platform.OS === 'android') {
             ScreenTime.setBlockingSuspended(false);
-            
+
             // Send config BEFORE blocks so the background service is ready
             ScreenTime.setSurgicalConfig({
                 youtube: session.scrollingProtocol.youtube.enabled,
@@ -76,9 +76,9 @@ export class FocusStorageService {
             });
             ScreenTime.setUninstallProtection(session.strictnessConfig?.isUninstallProtected ?? false);
             ScreenTime.setSessionDuration(session.durationMins || 0);
-            
+
             let hardBlockedApps = session.apps || [];
-            
+
             // Exclude apps from hard blocking if their surgical (scrolling) protocol is enabled
             if (session.scrollingProtocol?.youtube?.enabled) {
                 hardBlockedApps = hardBlockedApps.filter((app: string) => app !== 'com.google.android.youtube');
@@ -88,11 +88,11 @@ export class FocusStorageService {
             }
 
             ScreenTime.setBlockedApps(hardBlockedApps, "FOCUS_PROTOCOL_ENGAGED", "");
-            
+
             const breaksLeft = (session.timedBreaks?.allowedCount || 0) - (session.timedBreaks?.usedCount || 0);
             ScreenTime.setBreaksRemaining(Math.max(0, breaksLeft));
         }
-        
+
         // 4. For iOS, we rely on the activateShield call or standard family controls
         if (Platform.OS === 'ios') {
             ScreenTime.activateShield();
@@ -101,7 +101,7 @@ export class FocusStorageService {
 
     static async stopSession(): Promise<void> {
         await AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
-        
+
         if (Platform.OS === 'android') {
             ScreenTime.setBlockingSuspended(false);
             ScreenTime.stopBlockingService();
@@ -115,73 +115,95 @@ export class FocusStorageService {
         try {
             const session = await FocusStorageService.getActiveSession();
             if (!session || !session.timedBreaks.enabled) return;
-
-            const isOnBreak = !session.isOnBreak;
-            const usedCount = isOnBreak ? (session.timedBreaks.usedCount || 0) + 1 : (session.timedBreaks.usedCount || 0);
-
-            if (isOnBreak && (session.timedBreaks.allowedCount - (session.timedBreaks.usedCount || 0) <= 0)) {
-                return; // No breaks left
-            }
-
-            if (Platform.OS === 'android') {
-                ScreenTime.setBlockingSuspended(isOnBreak);
-            }
-
-            let newBreakStartTime = session.breakStartTime;
-            let totalAccumulatedBreakMs = session.accumulatedBreakMs || 0;
-
-            if (isOnBreak) {
-                // STARTING BREAK: Record the exact moment the pause initiated
-                newBreakStartTime = Date.now();
-            } else if (session.breakStartTime) {
-                // ENDING BREAK: Add this break's duration to the total session pause time
-                const latestBreakDuration = Date.now() - session.breakStartTime;
-                totalAccumulatedBreakMs += latestBreakDuration;
-                newBreakStartTime = undefined;
-                console.log(`--- [CUMULATIVE_PAUSE] TOTAL_REST_TIME: ${Math.round(totalAccumulatedBreakMs/1000)}s ---`);
-            }
-
-            const updatedSession: BlockSession = { 
-                ...session, 
-                isOnBreak, 
-                breakStartTime: newBreakStartTime,
-                accumulatedBreakMs: totalAccumulatedBreakMs,
-                timedBreaks: { ...session.timedBreaks, usedCount } 
-            };
-
-            if (Platform.OS === 'android') {
-                const breaksLeft = updatedSession.timedBreaks.allowedCount - updatedSession.timedBreaks.usedCount;
-                ScreenTime.setBreaksRemaining(Math.max(0, breaksLeft));
-            }
-            
-            await AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(updatedSession));
-            
-            return updatedSession;
+            return await FocusStorageService.applyToggleBreak(session);
         } catch (error) {
             console.error('FocusStorageService: Error toggling break:', error);
         }
     }
 
+    private static async applyToggleBreak(session: BlockSession): Promise<BlockSession | undefined> {
+        const isOnBreak = !session.isOnBreak;
+        const usedCount = isOnBreak ? (session.timedBreaks.usedCount || 0) + 1 : (session.timedBreaks.usedCount || 0);
+
+        if (isOnBreak && (session.timedBreaks.allowedCount - (session.timedBreaks.usedCount || 0) <= 0)) {
+            return; // No breaks left
+        }
+
+        let newBreakStartTime = session.breakStartTime;
+        let totalAccumulatedBreakMs = session.accumulatedBreakMs || 0;
+
+        if (isOnBreak) {
+            newBreakStartTime = Date.now();
+        } else if (session.breakStartTime) {
+            const latestBreakDuration = Date.now() - session.breakStartTime;
+            totalAccumulatedBreakMs += latestBreakDuration;
+            newBreakStartTime = undefined;
+        }
+
+        if (Platform.OS === 'android') {
+            ScreenTime.setBlockingSuspended(isOnBreak);
+            // TRIGGER_RESYNC: When re-locking, push the apps and refreshed expiry back to native explicitly
+            if (!isOnBreak) {
+                let hardBlockedApps = session.apps || [];
+                if (session.scrollingProtocol?.youtube?.enabled) hardBlockedApps = hardBlockedApps.filter(app => app !== 'com.google.android.youtube');
+                if (session.scrollingProtocol?.instagram?.enabled) hardBlockedApps = hardBlockedApps.filter(app => app !== 'com.instagram.android');
+
+                ScreenTime.setBlockedApps(hardBlockedApps, "FOCUS_PROTOCOL_ENGAGED", "");
+
+                // CRITICAL: Push adjusted deadline to native so it doesn't auto-unlock early
+                const adjustedExpiry = session.startTime + (session.durationMins * 60 * 1000) + totalAccumulatedBreakMs;
+                ScreenTime.setBlockExpiryTime(adjustedExpiry);
+            }
+        }
+
+        const updatedSession: BlockSession = {
+            ...session,
+            isOnBreak,
+            breakStartTime: newBreakStartTime,
+            accumulatedBreakMs: totalAccumulatedBreakMs,
+            timedBreaks: { ...session.timedBreaks, usedCount }
+        };
+
+        if (Platform.OS === 'android') {
+            const breaksLeft = updatedSession.timedBreaks.allowedCount - updatedSession.timedBreaks.usedCount;
+            ScreenTime.setBreaksRemaining(Math.max(0, breaksLeft));
+        }
+
+        await AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(updatedSession));
+        return updatedSession;
+    }
+
     static async getActiveSession(): Promise<BlockSession | null> {
         const data = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
         if (!data) return null;
-        
+
         try {
             const sessionData = JSON.parse(data);
             const session = FocusStorageService.migrateSession(sessionData);
-            
+
             // Time-Aware Validation: If the focus budget is exhausted, terminate the session
             if (!session.isOnBreak) {
                 const totalEffectivePause = session.accumulatedBreakMs || 0;
                 const activeElapsedMs = Date.now() - session.startTime - totalEffectivePause;
                 const activeElapsedMins = activeElapsedMs / (1000 * 60);
-                
+
                 if (activeElapsedMins >= session.durationMins) {
                     await FocusStorageService.stopSession();
                     return null;
                 }
+            } else if (session.isOnBreak && session.breakStartTime) {
+                // AUTO_EXPIRY_CHECK: If break duration is exceeded, re-engage the block automatically
+                const breakDurationMs = (session.timedBreaks?.durationMins || 0) * 60 * 1000;
+                const breakElapsed = Date.now() - session.breakStartTime;
+
+                if (breakElapsed >= breakDurationMs) {
+                    console.log('--- [AUTO_LOCK] BREAK_EXPIRED_PROTOCOL_RE_ENFORCED ---');
+                    // RESOLVE_RECURSION: Use internal method to avoid infinite loop
+                    const locked = await FocusStorageService.applyToggleBreak(session);
+                    return locked || null;
+                }
             }
-            
+
             return session;
         } catch (e) {
             return null;
@@ -200,13 +222,13 @@ export class FocusStorageService {
     static async saveBlock(block: BlockSession): Promise<void> {
         const library = await this.getLibraryBlocks();
         const exists = library.findIndex(b => b.id === block.id);
-        
+
         if (exists >= 0) {
             library[exists] = block;
         } else {
             library.push(block);
         }
-        
+
         await AsyncStorage.setItem(LIBRARY_BLOCKS_KEY, JSON.stringify(library));
     }
 
@@ -221,7 +243,7 @@ export class FocusStorageService {
         // while also providing default fallbacks everywhere
         const oldFlags = session.surgicalFlags || {};
         const oldConfig = oldFlags.config || {};
-        
+
         const sp = session.scrollingProtocol || {};
         const yt = sp.youtube || {};
         const ig = sp.instagram || {};

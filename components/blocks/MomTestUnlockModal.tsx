@@ -124,10 +124,25 @@ export const MomTestUnlockModal = ({
                         </TouchableOpacity>
                     </View>
 
-                    <Text className="text-white/40 font-label text-[10px] uppercase leading-5 mb-8">
+                    <Text className="text-white/40 font-label text-[10px] leading-5 mb-2">
                         To terminate this session, we have sent a verification code to the trusted contact:
-                        <Text className="text-white font-bold"> {session.strictnessConfig.emailAddress}</Text>
                     </Text>
+                    <Text className="text-white font-bold mb-4">{session.strictnessConfig.emailAddress}</Text>
+
+                    <View className="bg-white/5 p-4 border-l-2 border-[#72fe88] mb-8">
+                        <View className="flex-row items-center gap-2 mb-1">
+                            <Ionicons name="information-circle" size={14} color="#72fe88" />
+                            <Text className="text-[#72fe88] font-bold text-[10px] uppercase tracking-widest">Protocol Guidance</Text>
+                        </View>
+                        <Text className="text-white/40 font-label text-[9px] leading-4 uppercase">
+                            Verification codes are sent via official channels. If not received within 60s, please check the <Text className="text-white">SPAM/JUNK</Text> folder or verify the recipient's spelling.
+                        </Text>
+                    </View>
+
+                    <View className="flex-row items-center gap-2 mb-6 opacity-40">
+                        <Ionicons name="logo-whatsapp" size={14} color="white" />
+                        <Text className="text-white font-label text-[8px] uppercase tracking-[0.2em]">WhatsApp Sync: Upcoming Feature</Text>
+                    </View>
 
                     {!showOtpInput ? (
                         <TouchableOpacity

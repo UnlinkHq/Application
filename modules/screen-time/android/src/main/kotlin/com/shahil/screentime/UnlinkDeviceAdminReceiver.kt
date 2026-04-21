@@ -4,6 +4,7 @@ import android.app.admin.DeviceAdminReceiver
 import android.content.Context
 import android.content.Intent
 import android.util.Log
+import android.widget.Toast
 
 class UnlinkDeviceAdminReceiver : DeviceAdminReceiver() {
     override fun onEnabled(context: Context, intent: Intent) {
@@ -21,6 +22,7 @@ class UnlinkDeviceAdminReceiver : DeviceAdminReceiver() {
         val isProtected = prefs.getBoolean("is_uninstall_protected", false)
         
         return if (isProtected) {
+            Toast.makeText(context, "UNLINK: Uninstall Protection is ACTIVE! 🛡️", Toast.LENGTH_LONG).show()
             "CRITICAL: PROTOCOL_ACTIVE. UNINSTALL_PROTECTION_IS_ENFORCED. DISABLE_NOT_ALLOWED."
         } else {
             "Disabling this will allow Unlink to be uninstalled."

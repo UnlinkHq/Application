@@ -249,6 +249,19 @@ class ScreenTimeModule : Module() {
       return@Function null
     }
 
+    Function("setBlockExpiryTime") { timestamp: Double ->
+      appContext.reactContext?.let { context ->
+        val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        prefs.edit().putLong("block_expiry_time", timestamp.toLong()).commit()
+        try {
+            UnlinkAccessibilityService.instance?.refreshServiceConfig()
+        } catch (e: Exception) {
+            Log.e("ScreenTimeModule", "Error refreshing config: ${e.message}")
+        }
+      }
+      return@Function null
+    }
+
     Function("setBlockingSuspended") { suspended: Boolean ->
       appContext.reactContext?.let { context ->
         val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
@@ -257,8 +270,12 @@ class ScreenTimeModule : Module() {
             commit()
         }
         
-        // 1. DIRECT_MEMORY_LINK: Instant sync if service is running
-        UnlinkAccessibilityService.instance?.setSuspendedState(suspended)
+        try {
+            // 1. DIRECT_MEMORY_LINK: Instant sync if service is running
+            UnlinkAccessibilityService.instance?.setSuspendedState(suspended)
+        } catch (e: Exception) {
+            Log.e("ScreenTimeModule", "Error setting suspended state: ${e.message}")
+        }
         
         // 2. BROADCAST_FALLBACK: Redundant sync for safety
         val intent = Intent("com.shahil.unlink.SYNC_LIST")

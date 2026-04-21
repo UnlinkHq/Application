@@ -299,9 +299,21 @@ export const StrictModeModal = ({
                     )}
 
                     {selectedMode === 'money' && (
-                        <Animated.View entering={FadeInDown} className="mb-8 items-center py-10 border border-white/10 bg-white/[0.02] border-dashed">
-                            <MaterialCommunityIcons name="lock-clock" size={32} color="rgba(255,255,255,0.2)" />
-                            <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-widest mt-4">PROTOCOLS_COMING_SOON</Text>
+                        <Animated.View entering={FadeInDown} className="mb-8">
+                            <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-4">CASH_STAKES_CONFIGURATION</Text>
+                            <View className="bg-white/5 border border-white/10 p-10 items-center border-dashed">
+                                <View className="w-16 h-16 bg-white/5 items-center justify-center rounded-full mb-6">
+                                    <MaterialCommunityIcons name="clock-fast" size={32} color="rgba(255,255,255,0.2)" />
+                                </View>
+                                <Text className="text-white font-headline font-black text-xs uppercase mb-2">Protocol Under Development</Text>
+                                <Text className="text-white/40 font-label text-[10px] text-center leading-4 max-w-[240px]">
+                                    Direct financial stakes for focus protocol violations will be available in V2.0. 
+                                    <Text className="text-white"> Stake. Loss. Focus.</Text>
+                                </Text>
+                                <View className="mt-8 px-4 py-2 bg-white/5 border border-white/20">
+                                    <Text className="text-[#72fe88] font-headline font-black text-[10px] uppercase tracking-widest">EXPECTED_LAUNCH: Q3 2026</Text>
+                                </View>
+                            </View>
                         </Animated.View>
                     )}
 

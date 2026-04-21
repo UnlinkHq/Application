@@ -41,24 +41,42 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
         load();
     }, []);
 
+    const [isOnBreak, setIsOnBreak] = useState(session.isOnBreak || false);
+    const [breakTimeLeft, setBreakTimeLeft] = useState<number>(0);
+
+    const refreshSession = useCallback(async () => {
+        const active = await FocusStorageService.getActiveSession();
+        if (!active) {
+            onEnd();
+            return;
+        }
+
+        // Sync main countdown
+        const totalEffectivePause = active.accumulatedBreakMs || 0;
+        const activeElapsedMs = Date.now() - active.startTime - totalEffectivePause;
+        const activeElapsedMins = activeElapsedMs / (1000 * 60);
+        setTimeLeft(Math.max(0, active.durationMins - activeElapsedMins));
+
+        // Sync break status
+        setIsOnBreak(active.isOnBreak || false);
+        if (active.isOnBreak && active.breakStartTime) {
+            const breakElapsedMs = Date.now() - active.breakStartTime;
+            const breakDurationMs = (active.timedBreaks?.durationMins || 0) * 60 * 1000;
+            setBreakTimeLeft(Math.max(0, (breakDurationMs - breakElapsedMs) / 1000));
+        }
+
+        setBreaksLeft(
+            active.timedBreaks?.enabled 
+                ? (active.timedBreaks.allowedCount - (active.timedBreaks.usedCount || 0)) 
+                : 0
+        );
+    }, [onEnd]);
+
     useEffect(() => {
-        const timer = setInterval(() => {
-            const now = Date.now();
-            const elapsed = (now - session.startTime) / (1000 * 60);
-            const remaining = Math.max(0, session.durationMins - elapsed);
-            setTimeLeft(remaining);
-            
-            if (remaining <= 0) {
-                handleStop(true);
-            } else {
-                // ABSOLUTE ZERO: Live sync to the native black wall
-                const formatted = formatTime(remaining);
-                const msg = metrics ? MetricsEngine.getMessage(metrics) : 'FOCUS_PROTOCOL_ENGAGED';
-                ScreenTime.setBlockedApps(session.apps, msg, formatted);
-            }
-        }, 1000);
+        const timer = setInterval(refreshSession, 1000);
+        refreshSession();
         return () => clearInterval(timer);
-    }, [session]);
+    }, [refreshSession]);
 
     const handleStop = async (isAuto = false) => {
         await FocusStorageService.stopSession();
@@ -71,25 +89,21 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
     };
 
     const handleTimedBreak = async () => {
-        if (breaksLeft <= 0) return;
+        if (breaksLeft <= 0 || isOnBreak) return;
         
-        // 1. Update session state locally and persist
-        const updatedSession = { ...session };
-        updatedSession.timedBreaks.usedCount = (updatedSession.timedBreaks.usedCount || 0) + 1;
-        await FocusStorageService.startSession(updatedSession);
-        
-        // 2. Take a break logic: Stop blocking for X minutes
-        const breakMins = session.timedBreaks?.durationMins || 5;
-        setBreaksLeft(prev => prev - 1);
-        
-        // 3. Sync to native and show the "Break Screen"
-        await ScreenTime.setBlockedApps([], "BREAK_PROTOCOL_ACTIVE", "REST_PERIOD");
-        
-        setTimeout(async () => {
-            // Re-engage after duration
-            const msg = metrics ? MetricsEngine.getMessage(metrics) : 'FOCUS_PROTOCOL_ENGAGED';
-            ScreenTime.setBlockedApps(session.apps, msg, formatTime(timeLeft));
-        }, breakMins * 60000);
+        const updated = await FocusStorageService.toggleBreak();
+        if (updated) {
+            refreshSession();
+            await ScreenTime.setBlockedApps([], "BREAK_PROTOCOL_ACTIVE", "REST_PERIOD");
+        }
+    };
+
+    const handleEndBreak = async () => {
+        if (!isOnBreak) return;
+        const updated = await FocusStorageService.toggleBreak();
+        if (updated) {
+            refreshSession();
+        }
     };
 
     const handleEmailRequest = async () => {
@@ -169,7 +183,13 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
         const h = Math.floor(mins / 60);
         const m = Math.floor(mins % 60);
         const s = Math.floor((mins * 60) % 60);
-        return `${h > 0 ? h + ':' : ''}${m < 10 && h > 0 ? '0' + m : m}:${s < 10 ? '0' : ''}${s}`;
+        return `${h > 0 ? h + ':' : ''}${h > 0 && m < 10 ? '0' + m : m}:${s < 10 ? '0' : ''}${s}`;
+    };
+
+    const formatSeconds = (totalSecs: number) => {
+        const m = Math.floor(totalSecs / 60);
+        const s = Math.floor(totalSecs % 60);
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
 
     return (
@@ -179,18 +199,18 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                 className="flex-1 items-center justify-center px-8"
             >
                 <View className="items-center mb-12">
-                    <Ionicons name="shield-checkmark" size={60} color="white" />
-                    <Text className="text-white/40 font-headline font-black text-xs uppercase tracking-[0.4em] mt-4">
-                        FOCUS_PROTOCOL_ENGAGED
+                    <Ionicons name={isOnBreak ? "cafe" : "shield-checkmark"} size={60} color={isOnBreak ? "#3b82f6" : "white"} />
+                    <Text className={`font-headline font-black text-xs uppercase tracking-[0.4em] mt-4 ${isOnBreak ? 'text-blue-500' : 'text-white/40'}`}>
+                        {isOnBreak ? 'BREAK_PROTOCOL_ACTIVE' : 'FOCUS_PROTOCOL_ENGAGED'}
                     </Text>
                 </View>
 
                 <View className="items-center mb-16">
-                    <Text className="text-white font-headline font-black text-7xl tracking-tighter">
-                        {formatTime(timeLeft)}
+                    <Text className={`font-headline font-black tracking-tighter ${isOnBreak ? 'text-blue-500 text-5xl' : 'text-white text-7xl'}`}>
+                        {isOnBreak ? formatSeconds(breakTimeLeft) : formatTime(timeLeft)}
                     </Text>
                     <Text className="text-white/20 font-label text-[10px] uppercase tracking-widest mt-2">
-                        REMAINING_RESTRICTION_PERIOD
+                        {isOnBreak ? 'TIME_UNTIL_RE_ENFORCEMENT' : 'REMAINING_RESTRICTION_PERIOD'}
                     </Text>
                 </View>
 
@@ -237,13 +257,16 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
             </Animated.View>
 
             <View className="px-6 pb-8 gap-4">
-                {session.timedBreaks?.enabled && breaksLeft > 0 && (
+                {session.timedBreaks?.enabled && (
                     <TouchableOpacity
-                        onPress={handleTimedBreak}
-                        className="h-16 border border-blue-500/30 items-center justify-center bg-blue-500/10"
+                        onPress={isOnBreak ? handleEndBreak : handleTimedBreak}
+                        disabled={!isOnBreak && breaksLeft <= 0}
+                        className={`h-16 border items-center justify-center ${isOnBreak ? 'border-white/20 bg-white/5' : 'border-blue-500/30 bg-blue-500/10'} ${!isOnBreak && breaksLeft <= 0 ? 'opacity-20' : 'opacity-100'}`}
                     >
-                        <Text className="text-blue-500 font-headline font-black text-sm uppercase tracking-widest">
-                            {`TAKE_BREAK (${breaksLeft}_REMAINING)`}
+                        <Text className={`font-headline font-black text-sm uppercase tracking-widest ${isOnBreak ? 'text-white' : 'text-blue-500'}`}>
+                            {isOnBreak 
+                                ? 'END_BREAK_NOW' 
+                                : `TAKE_BREAK (${breaksLeft}_REMAINING)`}
                         </Text>
                     </TouchableOpacity>
                 )}

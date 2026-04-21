@@ -134,8 +134,13 @@ class UnlinkAccessibilityService : AccessibilityService() {
             refreshServiceConfig()
         } else {
             isBlockingSuspended = suspended
-            if (isBlockingSuspended) setWallVisibility(false)
-            else performSecurityCheck()
+            if (isBlockingSuspended) {
+                setWallVisibility(false)
+                hideIntentGate()
+            } else {
+                // AGGRESSIVE_RE_ENGAGE: Use handleUniversalBlockScan for the 'fast way' feel
+                handleUniversalBlockScan()
+            }
         }
     }
 
@@ -203,7 +208,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
         }
 
         // 4. BRAINROT SCROLL DETECTION (Surgical Logic)
-        if (eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
+        if (eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED && !isBlockingSuspended) {
             val isTargetShorts = pkg == "com.google.android.youtube" || pkg == "com.instagram.android"
             
             if (isTargetShorts) {
@@ -211,9 +216,12 @@ class UnlinkAccessibilityService : AccessibilityService() {
                 val resourceName = event.source?.viewIdResourceName ?: ""
                 
                 if (resourceName.contains("reel", ignoreCase = true) || 
+                    resourceName.contains("reels", ignoreCase = true) ||
                     resourceName.contains("short", ignoreCase = true) || 
                     resourceName.contains("clip", ignoreCase = true) ||
-                    className.contains("ViewPager")) {
+                    resourceName.contains("clips", ignoreCase = true) ||
+                    className.contains("ViewPager") ||
+                    className.contains("RecyclerView")) {
                     isCurrentlyInShortsMode = true
                 }
                                    
@@ -294,7 +302,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
         val isInstagram = pkg == "com.instagram.android"
         val isYoutube = pkg == "com.google.android.youtube"
         
-        if (isInstagram || isYoutube) {
+        if ((isInstagram || isYoutube) && !isBlockingSuspended) {
             val surgicalEnabled = (isInstagram && isSurgicalInstagram) || (isYoutube && isSurgicalYoutube)
             
             if (surgicalEnabled) {
@@ -307,6 +315,10 @@ class UnlinkAccessibilityService : AccessibilityService() {
                 } else {
                     setWallVisibility(false) // Authorized or Gate Off
                 }
+            } else if (isBlockActive(pkg)) {
+                setWallVisibility(true) // Hard block enforced
+                lastForegroundPackage = pkg
+                return
             }
         }
 
@@ -359,28 +371,32 @@ class UnlinkAccessibilityService : AccessibilityService() {
     }
 
     fun refreshServiceConfig() {
-        refreshFromDiskInternal()
-        
-        val targetPackages = mutableSetOf<String>()
-        targetPackages.addAll(currentBlockedApps)
-        targetPackages.add("com.google.android.youtube")
-        targetPackages.add("com.instagram.android")
-        
-        // PROACTIVE_SCAN: Monitor launcher and SystemUI for zero-latency blocking
-        targetPackages.add(getLauncherPackageName())
-        targetPackages.add("com.android.systemui")
+        try {
+            refreshFromDiskInternal()
+            
+            val info = serviceInfo
+            if (info == null) {
+                Log.w("UnlinkAccessibility", "refreshServiceConfig: serviceInfo is null, skipping update")
+                return
+            }
 
-        val info = serviceInfo
-        if (info != null) {
             info.eventTypes = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
                               AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED or
                               AccessibilityEvent.TYPE_VIEW_SCROLLED
             info.packageNames = null // GLOBAL TRACKING FOR EXIT DETECTION
-            serviceInfo = info // THIS APPLIES THE CHANGES TO ANDROID SYSTEM
+            
+            // DEFENSIVE_UPDATE: Some devices crash here if the service is in a transient state
+            try {
+                serviceInfo = info 
+            } catch (e: Exception) {
+                Log.e("UnlinkAccessibility", "Failed to apply serviceInfo: ${e.message}")
+            }
+            
+            // Immediate check
+            performSecurityCheck()
+        } catch (e: Exception) {
+            Log.e("UnlinkAccessibility", "Error in refreshServiceConfig: ${e.message}")
         }
-        
-        // Immediate check
-        performSecurityCheck()
     }
 
     private fun getLauncherPackageName(): String {
@@ -595,8 +611,8 @@ class UnlinkAccessibilityService : AccessibilityService() {
             cachedIsBlockingSuspended = prefs.getBoolean("is_blocking_suspended", false)
             isBlockingSuspended = prefs.getBoolean("is_blocking_suspended", false)
             
-            isSurgicalYoutube = prefs.getBoolean("surgical_youtube", false)
-            isSurgicalInstagram = prefs.getBoolean("surgical_instagram", false)
+            isSurgicalYoutube = try { prefs.getBoolean("surgical_youtube", false) } catch (e: Exception) { false }
+            isSurgicalInstagram = try { prefs.getBoolean("surgical_instagram", false) } catch (e: Exception) { false }
             
             // Load Granular Coach Config
             isYtGateEnabled = prefs.getBoolean("coach_yt_gate", true)
@@ -624,9 +640,11 @@ class UnlinkAccessibilityService : AccessibilityService() {
                 globalShortsCount = prefs.getInt("global_shorts_count", 0)
             }
             
-            breaksRemaining = prefs.getInt("breaks_remaining", 0)
+            breaksRemaining = try { prefs.getInt("breaks_remaining", 0) } catch (e: Exception) { 0 }
             
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            Log.e("UnlinkProduction", "RECOVERY_MODE: Sanitizing preference types after version mismatch", e)
+        }
     }
 
     private fun performSecurityCheck() {
@@ -655,12 +673,15 @@ class UnlinkAccessibilityService : AccessibilityService() {
             // 2. Intent Gate Check
             val isTargetApp = pkg == "com.google.android.youtube" || pkg == "com.instagram.android"
             if (isTargetApp) {
-                if (!authorizedApps.contains(pkg)) {
-                    showIntentGate(pkg)
-                } else {
-                    setWallVisibility(false)
+                val isSurgical = if (pkg == "com.google.android.youtube") isSurgicalYoutube else isSurgicalInstagram
+                if (isSurgical) {
+                    if (!authorizedApps.contains(pkg)) {
+                        showIntentGate(pkg)
+                    } else {
+                        setWallVisibility(false)
+                    }
+                    return
                 }
-                return
             }
 
             if (!isNavigatingHome) setWallVisibility(false)
@@ -823,7 +844,8 @@ class UnlinkAccessibilityService : AccessibilityService() {
             sendBroadcast(intent)
             
             Toast.makeText(this, "Break started. Use it wisely! ❤️🩹", Toast.LENGTH_SHORT).show()
-            openUnlinkApp()
+            // Removed automatic Unlink launch to keep user in their current app (YouTube/Insta) during break
+            // openUnlinkApp()
             
             // Unlock guard after a delay to ensure JS has processed the sync
             visibilityHandler.postDelayed({ isProcessingBreak = false }, 2000L)

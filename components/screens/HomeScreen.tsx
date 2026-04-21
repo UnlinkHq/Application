@@ -32,10 +32,36 @@ const ActiveProtocolStatus = ({
     onEmergencyStop: () => void,
     onToggleBreak: () => void
 }) => {
-    const referenceTime = session.isOnBreak && session.breakStartTime ? session.breakStartTime : Date.now();
+    const [now, setNow] = useState(Date.now());
+
+    useEffect(() => {
+        const t = setInterval(() => setNow(Date.now()), 1000);
+        return () => clearInterval(t);
+    }, []);
+
+    const formatTime = (totalMs: number) => {
+        const totalSecs = Math.floor(totalMs / 1000);
+        const h = Math.floor(totalSecs / 3600);
+        const m = Math.floor((totalSecs % 3600) / 60);
+        const s = totalSecs % 60;
+        return `${h > 0 ? h + ':' : ''}${h > 0 && m < 10 ? '0' + m : m}:${s < 10 ? '0' : ''}${s}`;
+    };
+
+    const referenceTime = session.isOnBreak && session.breakStartTime ? session.breakStartTime : now;
     const totalPauseMs = session.accumulatedBreakMs || 0;
-    const elapsed = Math.floor((referenceTime - session.startTime - totalPauseMs) / (1000 * 60));
-    const remaining = Math.max(0, session.durationMins - elapsed);
+    
+    // Elapsed since start
+    const elapsedMs = Math.max(0, referenceTime - session.startTime - totalPauseMs);
+    
+    // Remaining in session
+    const totalDurationMs = session.durationMins * 60 * 1000;
+    const remainingMs = Math.max(0, totalDurationMs - elapsedMs);
+
+    // Break remaining (if active)
+    const breakDurationMs = (session.timedBreaks?.durationMins || 0) * 60 * 1000;
+    const breakElapsedMs = session.isOnBreak && session.breakStartTime ? now - session.breakStartTime : 0;
+    const breakRemainingMs = Math.max(0, breakDurationMs - breakElapsedMs);
+
     const isOnBreak = !!session.isOnBreak;
 
     const breaksLeft = session.timedBreaks.enabled
@@ -49,7 +75,7 @@ const ActiveProtocolStatus = ({
                 <View className="flex-row items-center gap-2">
                     <View className={`w-2 h-2 rounded-full ${isOnBreak ? 'bg-[#72fe88]' : 'bg-white'} ${!isOnBreak ? 'animate-pulse' : ''}`} />
                     <Text className={`font-headline font-black text-[10px] uppercase tracking-[0.15em] ${isOnBreak ? 'text-[#72fe88]' : 'text-white'}`}>
-                        {isOnBreak ? `Break Active (${session.timedBreaks.durationMins}m)` : 'Protocol Engaged'}
+                        {isOnBreak ? `Break Active (${formatTime(breakRemainingMs)})` : 'Protocol Engaged'}
                     </Text>
                 </View>
                 <View className="px-2 py-0.5 border border-white/20">
@@ -99,13 +125,13 @@ const ActiveProtocolStatus = ({
             <View className="flex-row mb-5 py-4 border-y border-white/10">
                 <View className="flex-1">
                     <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Session Elapsed</Text>
-                    <Text className="text-white font-headline font-black text-xl">{elapsed}m</Text>
+                    <Text className="text-white font-headline font-black text-xl">{formatTime(elapsedMs)}</Text>
                 </View>
                 <View className="w-[1px] bg-white/10 mx-3" />
                 <View className="flex-1">
                     <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Time to Target</Text>
-                    <Text className={`font-headline font-black text-xl ${remaining < 5 && !isOnBreak ? 'text-red-500' : 'text-white'}`}>
-                        {remaining}m
+                    <Text className={`font-headline font-black text-xl ${remainingMs < 300000 && !isOnBreak ? 'text-red-500' : 'text-white'}`}>
+                        {formatTime(remainingMs)}
                     </Text>
                 </View>
                 <View className="w-[1px] bg-white/10 mx-3" />

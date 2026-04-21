@@ -42,6 +42,7 @@ interface ScreenTimeModuleInterface {
     getAppIcon(packageName: string): Promise<string>;
     stopBlockingService(): void;
     getGlobalBrainrot(): Promise<{score: number, date: string, shortsCount: number}>;
+    setBlockExpiryTime(timestamp: number): void;
 
     // iOS Shield functions
     activateShield(): void;
@@ -94,7 +95,8 @@ try {
         getGlobalBrainrot: async () => ({ score: 0, date: '', shortsCount: 0 }),
         activateShield: () => { },
         deactivateShield: () => { },
-        getSelectionCount: () => 0
+        getSelectionCount: () => 0,
+        setBlockExpiryTime: () => { }
     };
 }
 
@@ -169,6 +171,10 @@ export function setSessionData(startTime: number, durationMins: number): void {
 
 export function setBreaksRemaining(count: number): void {
     ScreenTimeModule.setBreaksRemaining(count);
+}
+
+export function setBlockExpiryTime(timestamp: number): void {
+    ScreenTimeModule.setBlockExpiryTime(timestamp);
 }
 
 export async function getAppIcon(packageName: string): Promise<string> {
