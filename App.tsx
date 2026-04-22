@@ -120,7 +120,7 @@ export default function App() {
       try {
         const hasLaunched = await AsyncStorage.getItem('hasLaunched');
         const onboarded = hasLaunched === 'true';
-        setIsFirstLaunch(!onboarded);
+        setIsFirstLaunch(true); // FORCE_ONBOARDING_FOR_DEV: Reset to '!onboarded' for production
         
         const session = await FocusStorageService.getActiveSession();
         setActiveSession(session);

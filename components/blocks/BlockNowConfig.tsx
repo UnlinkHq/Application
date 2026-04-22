@@ -766,7 +766,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                                             A personalized coach that learns your friction points and automatically adjusts blocks based on your cognitive load.
                                         </Text>
                                         <View className="flex-row items-center gap-2 mt-3">
-                                            <View className="w-1.5 h-1.5 rounded-full bg-[#7851ff] animate-pulse" />
+                                            <View key="ai-dev-dot" className="w-1.5 h-1.5 rounded-full bg-[#7851ff] animate-pulse" />
                                             <Text className="text-[#7851ff] font-label text-[9px] font-black uppercase tracking-widest">DEVELOPMENT_IN_PROGRESS</Text>
                                         </View>
                                     </View>

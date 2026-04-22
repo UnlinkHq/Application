@@ -102,6 +102,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
     private var currentFocusMessage = "QUICK_BREATH"
     private var currentTimeRemaining = ""
     private var blockExpiryTime: Long = 0L
+    private var blockRemainingAtSuspension: Long = 0L
     private var isNavigatingHome = false
     private var isBlockingSuspended = false
     
@@ -133,14 +134,30 @@ class UnlinkAccessibilityService : AccessibilityService() {
     }
 
     fun setSuspendedState(suspended: Boolean?) {
+        val prefs = getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
         if (suspended == null) {
             refreshServiceConfig()
         } else {
+            val wasSuspended = isBlockingSuspended
             isBlockingSuspended = suspended
-            if (isBlockingSuspended) {
+            
+            if (isBlockingSuspended && !wasSuspended) {
+                // START_BREAK: Capture remaining time
+                blockRemainingAtSuspension = java.lang.Math.max(0L, blockExpiryTime - System.currentTimeMillis())
+                prefs.edit().putLong("block_remaining_ms", blockRemainingAtSuspension).commit()
+                
                 setWallVisibility(false)
                 hideIntentGate()
-            } else {
+                Log.d("UnlinkTimer", "Break Started. Session paused at $blockRemainingAtSuspension ms remaining")
+            } else if (!isBlockingSuspended && wasSuspended) {
+                // END_BREAK: Restore session with shifted expiry
+                val savedRemaining = prefs.getLong("block_remaining_ms", 0L)
+                if (savedRemaining > 0L) {
+                    blockExpiryTime = System.currentTimeMillis() + savedRemaining
+                    prefs.edit().putLong("block_expiry_time", blockExpiryTime).commit()
+                    Log.d("UnlinkTimer", "Break Ended. Session resumed with new expiry: $blockExpiryTime")
+                }
+                
                 // AGGRESSIVE_RE_ENGAGE: Use handleUniversalBlockScan for the 'fast way' feel
                 handleUniversalBlockScan()
             }
@@ -634,6 +651,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
             currentFocusMessage = prefs.getString("focus_message", "QUICK_BREATH") ?: "QUICK_BREATH"
             currentTimeRemaining = prefs.getString("time_remaining", "00:00") ?: "00:00"
             blockExpiryTime = prefs.getLong("block_expiry_time", 0L)
+            blockRemainingAtSuspension = prefs.getLong("block_remaining_ms", 0L)
             cachedIsBlockingSuspended = prefs.getBoolean("is_blocking_suspended", false)
             isBlockingSuspended = prefs.getBoolean("is_blocking_suspended", false)
             
@@ -885,9 +903,14 @@ class UnlinkAccessibilityService : AccessibilityService() {
         if (isProcessingBreak || breaksRemaining <= 0) return
         
         try {
-            isProcessingBreak = true
+            // TIMER_PAUSE: Capture remaining time immediately
+            blockRemainingAtSuspension = java.lang.Math.max(0L, blockExpiryTime - System.currentTimeMillis())
             val prefs = getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
-            prefs.edit().putBoolean("is_blocking_suspended", true).commit()
+            prefs.edit().run {
+                putBoolean("is_blocking_suspended", true)
+                putLong("block_remaining_ms", blockRemainingAtSuspension)
+                commit()
+            }
             
             setWallVisibility(false)
             isBlockingSuspended = true
@@ -897,7 +920,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
             intent.setPackage(packageName)
             sendBroadcast(intent)
             
-            Toast.makeText(this, "Break started. Use it wisely! ❤️🩹", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Break started. Use it wisely! ❤️\u200D\uD83E\uDE79", Toast.LENGTH_SHORT).show()
             // Removed automatic Unlink launch to keep user in their current app (YouTube/Insta) during break
             // openUnlinkApp()
             
@@ -937,14 +960,21 @@ class UnlinkAccessibilityService : AccessibilityService() {
 
     private fun updateOverlayTimer() {
         val currentTime = System.currentTimeMillis()
-        val remaining = blockExpiryTime - currentTime
-        if (remaining <= 0) {
+        
+        // TIMER_PAUSE_LOGIC: If suspended, use the captured remaining time
+        val remaining = if (isBlockingSuspended) {
+            blockRemainingAtSuspension
+        } else {
+            blockExpiryTime - currentTime
+        }
+
+        if (remaining <= 0 && !isBlockingSuspended) {
             currentTimeRemaining = "00:00"
             if (blockExpiryTime > 0L) teardownAllBlocks()
             return
         }
         
-        val totalSeconds = remaining / 1000
+        val totalSeconds = java.lang.Math.max(0L, remaining / 1000)
         val mins = totalSeconds / 60
         val secs = totalSeconds % 60
         currentTimeRemaining = String.format("%02d:%02d", mins, secs)

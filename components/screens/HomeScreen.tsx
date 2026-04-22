@@ -76,7 +76,11 @@ const ActiveProtocolStatus = ({
             {/* Context Header */}
             <View className="flex-row items-center justify-between mb-4">
                 <View className="flex-row items-center gap-2">
-                    <View className={`w-2 h-2 rounded-full ${isOnBreak ? 'bg-[#72fe88]' : 'bg-white'} ${!isOnBreak ? 'animate-pulse' : ''}`} />
+                    {isOnBreak ? (
+                        <View key="dot-break" className="w-2 h-2 rounded-full bg-[#72fe88]" />
+                    ) : (
+                        <View key="dot-active" className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                    )}
                     <Text className={`font-headline font-black text-[10px] uppercase tracking-[0.15em] ${isOnBreak ? 'text-[#72fe88]' : 'text-white'}`}>
                         {isOnBreak ? `Break Active (${formatTime(breakRemainingMs)})` : 'Protocol Engaged'}
                     </Text>
@@ -522,7 +526,7 @@ export const HomeScreen = () => {
 
                         <View className="w-[1px] h-4 bg-white/20 mx-4" />
 
-                        <View className="flex-row items-center gap-2">
+                        <View className="flex-row items-center gap-2 px-3 py-1 bg-white/5 border border-white/10">
                             <MaterialCommunityIcons name="gesture-swipe-up" size={14} color="#919191" />
                             <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">{globalShortsCount}</Text>
                         </View>

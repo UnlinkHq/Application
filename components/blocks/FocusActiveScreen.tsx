@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, TextInput, StyleSheet } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
@@ -21,8 +21,8 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
     const [generatedOtp, setGeneratedOtp] = useState<string | null>(null);
     const [showOtpInput, setShowOtpInput] = useState(false);
     const [breaksLeft, setBreaksLeft] = useState(
-        session.timedBreaks?.enabled 
-            ? (session.timedBreaks.allowedCount - (session.timedBreaks.usedCount || 0)) 
+        session.timedBreaks?.enabled
+            ? (session.timedBreaks.allowedCount - (session.timedBreaks.usedCount || 0))
             : 0
     );
     const [isEmailSending, setIsEmailSending] = useState(false);
@@ -66,8 +66,8 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
         }
 
         setBreaksLeft(
-            active.timedBreaks?.enabled 
-                ? (active.timedBreaks.allowedCount - (active.timedBreaks.usedCount || 0)) 
+            active.timedBreaks?.enabled
+                ? (active.timedBreaks.allowedCount - (active.timedBreaks.usedCount || 0))
                 : 0
         );
     }, [onEnd]);
@@ -90,7 +90,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
 
     const handleTimedBreak = async () => {
         if (breaksLeft <= 0 || isOnBreak) return;
-        
+
         const updated = await FocusStorageService.toggleBreak();
         if (updated) {
             refreshSession();
@@ -111,9 +111,9 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
 
         const email = session.strictnessConfig.emailAddress;
         const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
-        
+
         setIsEmailSending(true);
-        
+
         try {
             const apiKey = 're_N6uTZ7U8_5xDH88K6JuekUqNDGTwrL4pZ';
             const response = await fetch('https://api.resend.com/emails', {
@@ -194,7 +194,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
 
     return (
         <SafeAreaView className="flex-1 bg-black">
-            <Animated.View 
+            <Animated.View
                 entering={FadeIn.duration(800)}
                 className="flex-1 items-center justify-center px-8"
             >
@@ -214,7 +214,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                     </Text>
                 </View>
 
-                <Animated.View 
+                <Animated.View
                     entering={FadeInDown.delay(400).duration(800)}
                     className="w-full bg-white/5 p-6 border border-white/10 rounded-2xl items-center"
                 >
@@ -236,7 +236,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
 
                 {/* Permission Warning if Enforcement might fail */}
                 {!hasOverlay && (
-                    <Animated.View 
+                    <Animated.View
                         entering={FadeIn.delay(800)}
                         className="mt-8 bg-red-900/20 border border-red-500/30 p-4 rounded-xl items-center w-full"
                     >
@@ -246,7 +246,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                         <Text className="text-white/60 font-body text-[10px] text-center mb-4">
                             Unlink cannot physically block other apps without 'Display over other apps' permission.
                         </Text>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={() => ScreenTime.requestOverlayPermission()}
                             className="bg-red-500 px-4 py-2 rounded-sm"
                         >
@@ -264,8 +264,8 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                         className={`h-16 border items-center justify-center ${isOnBreak ? 'border-white/20 bg-white/5' : 'border-blue-500/30 bg-blue-500/10'} ${!isOnBreak && breaksLeft <= 0 ? 'opacity-20' : 'opacity-100'}`}
                     >
                         <Text className={`font-headline font-black text-sm uppercase tracking-widest ${isOnBreak ? 'text-white' : 'text-blue-500'}`}>
-                            {isOnBreak 
-                                ? 'END_BREAK_NOW' 
+                            {isOnBreak
+                                ? 'END_BREAK_NOW'
                                 : `TAKE_BREAK (${breaksLeft}_REMAINING)`}
                         </Text>
                     </TouchableOpacity>
@@ -293,7 +293,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                                     maxLength={4}
                                     className="flex-1 h-16 bg-white/10 border border-white/20 px-6 text-white font-headline font-black text-2xl text-center"
                                 />
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     onPress={handleVerifyOtp}
                                     className="w-20 bg-white items-center justify-center"
                                 >
@@ -307,10 +307,10 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                                 className={`h-16 border ${isEmailSending || emailCooldown > 0 ? 'border-white/10 bg-white/2' : 'border-white/20 bg-white/5'} items-center justify-center`}
                             >
                                 <Text className={`font-headline font-black text-sm uppercase tracking-widest ${isEmailSending || emailCooldown > 0 ? 'text-white/20' : 'text-white'}`}>
-                                    {isEmailSending 
-                                        ? 'SENDING_PROTOCOL...' 
-                                        : emailCooldown > 0 
-                                            ? `COOLDOWN (${emailCooldown}S)` 
+                                    {isEmailSending
+                                        ? 'SENDING_PROTOCOL...'
+                                        : emailCooldown > 0
+                                            ? `COOLDOWN (${emailCooldown}S)`
                                             : 'REQUEST_UNBLOCK_VIA_EMAIL'}
                                 </Text>
                             </TouchableOpacity>
@@ -327,7 +327,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                         </Text>
                     </TouchableOpacity>
                 )}
-                
+
                 <Text className="text-white/20 font-label text-[8px] text-center uppercase tracking-widest">
                     BYPASSING_WILL_IMPACT_YOUR_WEEKLY_CONSISTENCY_METRICS
                 </Text>
@@ -345,7 +345,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                     >
                         <View className="flex-1 items-center justify-center">
                             <View className="w-64 h-64 border-2 border-white/50 border-dashed" />
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => setIsScanning(false)}
                                 className="mt-20 bg-white px-8 py-4"
                             >

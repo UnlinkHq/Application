@@ -138,6 +138,11 @@ export const StrictModeModal = ({
             return;
         }
 
+        if (selectedMode === 'money') {
+            alert("PROTOCOL_UNDER_DEVELOPMENT: This mode will be available in V2.0.");
+            return;
+        }
+
         onConfirm(selectedMode, {
             emailAddress,
             isVerified
@@ -328,8 +333,9 @@ export const StrictModeModal = ({
                     onPress={handleConfirm}
                     disabled={isConfirmDisabled}
                 >
-                    <Text className={`font-headline font-black text-lg uppercase tracking-[0.2em] ${isConfirmDisabled ? 'text-white/20' : 'text-black'}`}>
-                        {selectedMode === 'mom_test' && !isVerified ? 'VERIFICATION_REQUIRED' : 'Select Protocol'}
+                    <Text className={`font-headline font-black text-lg uppercase tracking-[0.2em] ${isConfirmDisabled || selectedMode === 'money' ? 'text-white/20' : 'text-black'}`}>
+                        {selectedMode === 'mom_test' && !isVerified ? 'VERIFICATION_REQUIRED' : 
+                         selectedMode === 'money' ? 'UNDER_DEVELOPMENT' : 'Select Protocol'}
                     </Text>
                 </TouchableOpacity>
             </View>

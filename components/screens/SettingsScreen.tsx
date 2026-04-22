@@ -122,12 +122,60 @@ export const SettingsScreen = () => {
                     <SettingsItem icon="visibility-off" label="Exclude from Screen Time" onPress={() => {}} isLast />
                 </View>
 
-                {/* Socials */}
-                <SectionHeader title="Follow Our Socials" />
+                {/* Socials & Journey */}
+                <SectionHeader title="Founder's Journey" />
+                <View className="border border-[#72fe88]/20 bg-[#72fe88]/5 p-6 mb-8 border-dashed">
+                    <Text className="text-white font-headline font-black text-xs uppercase tracking-widest mb-3">Startup Mission</Text>
+                    <Text className="text-white/60 font-label text-[10px] leading-5 mb-4 italic">
+                        "Unlink is a labor of love to help us reclaim our focus. We are building this journey together—if you want to see the hard work behind the scenes, join our social channels."
+                    </Text>
+                    <View className="flex-row gap-4">
+                        <TouchableOpacity activeOpacity={0.7} className="flex-row items-center gap-2">
+                            <MaterialCommunityIcons name="telegram" size={16} color="white" />
+                            <Text className="text-white font-label text-[10px] uppercase underline tracking-tighter">@shahileeee</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity activeOpacity={0.7} className="flex-row items-center gap-2">
+                            <MaterialCommunityIcons name="instagram" size={16} color="white" />
+                            <Text className="text-white font-label text-[10px] uppercase underline tracking-tighter">_shahilee</Text>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
+                <SectionHeader title="Direct Support" />
                 <View className="mb-12">
-                    <SettingsItem icon="share" label="Xiaohongshu" onPress={() => {}} />
-                    <SettingsItem icon="close" label="X" onPress={() => {}} />
-                    <SettingsItem icon="forum" label="Reddit" onPress={() => {}} isLast />
+                    <SettingsItem 
+                        icon="message" 
+                        label="Message me on Telegram" 
+                        onPress={() => {
+                            import('react-native').then(({ Alert, Linking }) => {
+                                Alert.alert(
+                                    "FOUNDER_SUPPORT",
+                                    "I respond fast! Usually within a few hours. Message me for any bugs, feedback, or just to say hi @shahileeee",
+                                    [
+                                        { text: "LATER", style: "cancel" },
+                                        { text: "OPEN_TELEGRAM", onPress: () => Linking.openURL('https://t.me/shahileeee') }
+                                    ]
+                                );
+                            });
+                        }} 
+                    />
+                    <SettingsItem 
+                        icon="delete-outline" 
+                        label="I want to Uninstall / Issues" 
+                        isLast 
+                        onPress={() => {
+                            import('react-native').then(({ Alert, Linking }) => {
+                                Alert.alert(
+                                    "WAIT_BEFORE_YOU_GO!",
+                                    "Is there something wrong? I'm working hard on this startup journey and would love to fix any issues you have personally. Message me on Telegram @shahileeee and I'll respond fast!",
+                                    [
+                                        { text: "NEVERMIND", style: "cancel" },
+                                        { text: "HELP_ME_DIRECTLY", onPress: () => Linking.openURL('https://t.me/shahileeee') }
+                                    ]
+                                );
+                            });
+                        }}
+                    />
                 </View>
 
                 {/* Gateways */}
