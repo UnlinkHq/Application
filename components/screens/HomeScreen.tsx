@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Platform, AppState, RefreshControl, Image, InteractionManager } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Platform, AppState, RefreshControl, Image, InteractionManager, Animated } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { useBlocking } from '../../context/BlockingContext';
@@ -15,6 +15,9 @@ import { FocusStorageService, BlockSession } from '../../services/FocusStorageSe
 import { QRUnlockModal } from '../blocks/QRUnlockModal';
 import { MomTestUnlockModal } from '../blocks/MomTestUnlockModal';
 import { useSelection } from '../../context/SelectionContext';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ConfettiCelebration } from '../ui/ConfettiCelebration';
+import { LiveBrain } from '../ui/LiveBrain';
 
 // Optimized Sub-components
 import { DateStrip } from '../home/DateStrip';
@@ -218,9 +221,37 @@ export const HomeScreen = () => {
     const [brainrotScore, setBrainrotScore] = useState<number>(0);
     const [globalShortsCount, setGlobalShortsCount] = useState<number>(0);
 
+    const [showConfetti, setShowConfetti] = useState(false);
+    const [activeFeedback, setActiveFeedback] = useState<{type: string, message: string} | null>(null);
+    const [feedbackVisible, setFeedbackVisible] = useState(false);
+
     useEffect(() => {
         const checkActiveSession = async () => {
             const session = await FocusStorageService.getActiveSession();
+            
+            // UNIFIED_FEEDBACK_ENGINE: Detect completion, penalties, or breaks
+            const feedbackTag = await AsyncStorage.getItem('@unlink_gamification_feedback');
+            if (feedbackTag) {
+                const data = JSON.parse(feedbackTag);
+                const now = Date.now();
+                // Ensure we only show fresh events (last 15s)
+                if (now - data.timestamp < 15000) {
+                    setActiveFeedback(data);
+                    setFeedbackVisible(true);
+                    if (data.triggerConfetti) {
+                        setShowConfetti(true);
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    } else {
+                        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                    }
+                    
+                    await AsyncStorage.removeItem('@unlink_gamification_feedback');
+                    
+                    // Hide feedback after 6-8 seconds
+                    setTimeout(() => setFeedbackVisible(false), 8000);
+                }
+            }
+
             setActiveSession(session);
         };
 
@@ -454,6 +485,27 @@ export const HomeScreen = () => {
                 {/* Engine Health Banner */}
                 <PermissionBanner />
 
+                {/* Gamification Feedback Banner */}
+                {feedbackVisible && activeFeedback && (
+                    <Animated.View 
+                        className={`py-2 px-4 flex-row items-center justify-center gap-2 ${
+                            activeFeedback.type === 'SUCCESS' ? 'bg-[#72fe88]' : 
+                            activeFeedback.type === 'PENALTY' ? 'bg-red-500' : 'bg-orange-500'
+                        }`}
+                    >
+                        <MaterialCommunityIcons 
+                            name={activeFeedback.type === 'SUCCESS' ? 'brain' : 'alert-circle'} 
+                            size={12} 
+                            color={activeFeedback.type === 'SUCCESS' ? 'black' : 'white'} 
+                        />
+                        <Text className={`font-headline font-black text-[9px] uppercase tracking-widest ${
+                            activeFeedback.type === 'SUCCESS' ? 'text-black' : 'text-white'
+                        }`}>
+                            {activeFeedback.message}
+                        </Text>
+                    </Animated.View>
+                )}
+
                 {/* Header - Optical Instrument Branding */}
                 <View className="h-20 flex-row items-center px-4 border-b border-white/5 bg-black">
                     {/* Left: Branding */}
@@ -462,10 +514,10 @@ export const HomeScreen = () => {
                     </View>
 
                     {/* Center: Status Pill */}
-                    <View className="flex-row items-center bg-[#0d0d0d] px-4 py-2 border border-white/10 rounded-sm">
-                        <View className="flex-row items-center gap-2">
-                            <Text className="text-xl">{brainrotScore > 80 ? "🧟‍♂️" : (brainrotScore > 60 ? "😵‍💫" : (brainrotScore > 40 ? "😐" : (brainrotScore > 20 ? "🙂" : "😎")))}</Text>
-                            <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">{brainrotScore.toFixed(1)}%</Text>
+                    <View className="flex-row items-center bg-[#0d0d0d] px-3 py-1.5 border border-white/10 rounded-sm">
+                        <View className="flex-row items-center gap-4">
+                            <LiveBrain score={brainrotScore} size={40} subtle={true} />
+                            <Text className="text-white font-headline font-black text-[11px] uppercase tracking-widest">{brainrotScore.toFixed(0)}%</Text>
                         </View>
 
                         <View className="w-[1px] h-4 bg-white/20 mx-4" />
@@ -625,6 +677,10 @@ export const HomeScreen = () => {
                             }}
                         />
                     </>
+                )}
+
+                {showConfetti && (
+                    <ConfettiCelebration onFinish={() => setShowConfetti(false)} />
                 )}
 
             </View>

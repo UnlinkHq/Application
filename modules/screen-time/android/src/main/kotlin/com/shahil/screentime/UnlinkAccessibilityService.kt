@@ -33,6 +33,9 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
+import android.animation.ObjectAnimator
+import android.animation.ValueAnimator
+import android.view.animation.AccelerateDecelerateInterpolator
 import androidx.core.app.NotificationCompat
 import kotlin.math.abs
 
@@ -215,6 +218,17 @@ class UnlinkAccessibilityService : AccessibilityService() {
                 val className = event.className?.toString() ?: ""
                 val resourceName = event.source?.viewIdResourceName ?: ""
                 
+                // USER_SENSITIVITY_TUNING: Ignore DMs and messages specifically
+                val isDM = resourceName.contains("direct", ignoreCase = true) || 
+                           resourceName.contains("message", ignoreCase = true) ||
+                           resourceName.contains("chat", ignoreCase = true) ||
+                           resourceName.contains("thread", ignoreCase = true)
+
+                if (isDM) {
+                    Log.d("BrainrotGlobal", "Skipping brainrot update - user is in DM/Chat zone.")
+                    return
+                }
+
                 if (resourceName.contains("reel", ignoreCase = true) || 
                     resourceName.contains("reels", ignoreCase = true) ||
                     resourceName.contains("short", ignoreCase = true) || 
@@ -231,6 +245,12 @@ class UnlinkAccessibilityService : AccessibilityService() {
                         lastBrainrotScrollTime = now
                         live_reels_in_this_binge++
                         
+                        // THRESHOLD_PROTOCOL: Only start rotting after 5 scrolls/reels
+                        if (live_reels_in_this_binge <= 5) {
+                            Log.d("BrainrotGlobal", "Grace period: Scroll $live_reels_in_this_binge / 5")
+                            return
+                        }
+
                         val liveBingeMinutes = if (last_target_app_entry_time > 0L) {
                             (now - last_target_app_entry_time) / 60000L
                         } else {
@@ -562,11 +582,17 @@ class UnlinkAccessibilityService : AccessibilityService() {
                 
                 deadBrainOverlayView = inflater.inflate(layoutId, null)
                 
-                // Inflate texts dynamically
-                val formattedScore = String.format(java.util.Locale.US, "%.1f", globalBrainrotScore)
+                val mascotId = resources.getIdentifier("deadBrainMascot", "id", packageName)
+                if (mascotId != 0) {
+                    val mascotView = deadBrainOverlayView?.findViewById<ImageView>(mascotId)
+                    mascotView?.setImageResource(getBrainrotDrawable(globalBrainrotScore))
+                    animateMascot(mascotView)
+                }
+                
                 val statusTextId = resources.getIdentifier("deadBrainWarningText", "id", packageName)
                 if (statusTextId != 0) {
-                    deadBrainOverlayView?.findViewById<TextView>(statusTextId)?.text = "Your brain is at $formattedScore% rot 🧟\u200D♂️"
+                    val formattedScore = String.format(java.util.Locale.US, "%.1f", globalBrainrotScore)
+                    deadBrainOverlayView?.findViewById<TextView>(statusTextId)?.text = "Your brain is at $formattedScore% rot"
                 }
                 
                 val btnId = resources.getIdentifier("goHomeFromDeadBrainButton", "id", packageName)
@@ -736,6 +762,30 @@ class UnlinkAccessibilityService : AccessibilityService() {
         } catch (e: Exception) {}
     }
 
+    private fun getBrainrotDrawable(score: Float): Int {
+        val myPackageName = getPackageName()
+        val stageIndex = when {
+            score >= 86f -> 7
+            score >= 71f -> 6
+            score >= 57f -> 5
+            score >= 43f -> 4
+            score >= 29f -> 3
+            score >= 15f -> 2
+            else -> 1
+        }
+        return resources.getIdentifier("stage_$stageIndex", "drawable", myPackageName)
+    }
+
+    private fun animateMascot(view: View?) {
+        if (view == null) return
+        val animator = ObjectAnimator.ofFloat(view, "translationY", -15f, 15f)
+        animator.duration = 2500
+        animator.repeatMode = ValueAnimator.REVERSE
+        animator.repeatCount = ValueAnimator.INFINITE
+        animator.interpolator = AccelerateDecelerateInterpolator()
+        animator.start()
+    }
+
     private fun updateWallContent() {
         try {
             val myPackageName = getPackageName()
@@ -747,15 +797,19 @@ class UnlinkAccessibilityService : AccessibilityService() {
             val overlay = overlayView ?: return
 
             // 1. BRAIN_ROT_VISUALS
-            val emoji = when {
-                globalBrainrotScore >= 75f -> "🧟‍♂️"
-                globalBrainrotScore >= 50f -> "😵‍💫"
-                globalBrainrotScore >= 25f -> "🧠"
-                else -> "😎"
+            val drawableRes = getBrainrotDrawable(globalBrainrotScore)
+            
+            // Try both IDs as different layouts use different names
+            val mascotId1 = resources.getIdentifier("rotMascot", "id", myPackageName)
+            val mascotId2 = resources.getIdentifier("gateBrainMascot", "id", myPackageName)
+            
+            val mascotView = overlay.findViewById<ImageView>(if (mascotId1 != 0) mascotId1 else mascotId2)
+            if (mascotView != null) {
+                mascotView.setImageResource(drawableRes)
+                animateMascot(mascotView)
             }
             
             val formattedScore = String.format(java.util.Locale.US, "%.0f", globalBrainrotScore)
-            overlay.findViewById<TextView>(rotEmojiId)?.text = emoji
             overlay.findViewById<TextView>(rotStatusId)?.text = "Your Brain is at $formattedScore% Rot"
 
             // 2. COACH_MESSAGES
@@ -1144,41 +1198,37 @@ class UnlinkAccessibilityService : AccessibilityService() {
                     windowManager?.addView(brainrotOverlayView, params)
                 }
 
-                // Update UI based on scroll count
                 val containerId = resources.getIdentifier("brainrotContainer", "id", packageName)
-                val emojiId = resources.getIdentifier("brainrotEmoji", "id", packageName)
+                val mascotId = resources.getIdentifier("brainrotMascot", "id", packageName)
                 val countId = resources.getIdentifier("brainrotCount", "id", packageName)
                 
                 val view = brainrotOverlayView ?: return@post
                 val container = view.findViewById<View>(containerId)
-                val emojiTv = view.findViewById<TextView>(emojiId)
+                val mascotIv = view.findViewById<ImageView>(mascotId)
                 val countTv = view.findViewById<TextView>(countId)
                 
-                countTv?.text = globalShortsCount.toString()
+                countTv?.text = String.format(java.util.Locale.US, "%.0f%%", globalBrainrotScore)
+                mascotIv?.setImageResource(getBrainrotDrawable(globalBrainrotScore))
+                animateMascot(mascotIv)
                 
                 when {
                     globalBrainrotScore > 80f -> {
-                        emojiTv?.text = "🧟♂️"
                         val bgDrawable = container?.background as? android.graphics.drawable.GradientDrawable
                         bgDrawable?.setColor(Color.parseColor("#CCAA0000")) // Severe Red
                     }
                     globalBrainrotScore > 60f -> {
-                        emojiTv?.text = "😵💫"
                         val bgDrawable = container?.background as? android.graphics.drawable.GradientDrawable
                         bgDrawable?.setColor(Color.parseColor("#CCAA3300")) // Hot Orange
                     }
                     globalBrainrotScore > 40f -> {
-                        emojiTv?.text = "😐"
                         val bgDrawable = container?.background as? android.graphics.drawable.GradientDrawable
                         bgDrawable?.setColor(Color.parseColor("#CCAA7700")) // Medium Yellow
                     }
                     globalBrainrotScore > 20f -> {
-                        emojiTv?.text = "🙂"
                         val bgDrawable = container?.background as? android.graphics.drawable.GradientDrawable
                         bgDrawable?.setColor(Color.parseColor("#CC55AA00")) // Light Green
                     }
                     else -> {
-                        emojiTv?.text = "😎"
                         val bgDrawable = container?.background as? android.graphics.drawable.GradientDrawable
                         bgDrawable?.setColor(Color.parseColor("#99000000")) // Healthy Dark
                     }

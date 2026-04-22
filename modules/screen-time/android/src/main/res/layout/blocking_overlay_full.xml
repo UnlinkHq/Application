@@ -18,12 +18,12 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <TextView
-            android:id="@+id/rotEmoji"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🧟‍♂️"
-            android:textSize="48sp" />
+        <ImageView
+            android:id="@+id/rotMascot"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@drawable/stage_1"
+            android:scaleType="centerInside" />
 
         <TextView
             android:id="@+id/rotStatusText"

@@ -160,6 +160,31 @@ class ScreenTimeModule : Module() {
         return@AsyncFunction mapOf("score" to score, "date" to date, "shortsCount" to shorts)
     }
 
+    Function("updateGlobalBrainrot") { delta: Double ->
+        appContext.reactContext?.let { context ->
+            val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+            val currentScore = prefs.getFloat("global_brainrot_score", 0f)
+            val newScore = (currentScore + delta).toFloat().coerceIn(0f, 100f)
+            
+            prefs.edit().putFloat("global_brainrot_score", newScore).apply()
+            
+            // Sync with accessibility service if running
+            UnlinkAccessibilityService.instance?.refreshServiceConfig()
+        }
+    }
+
+    Function("setGlobalBrainrot") { score: Double ->
+        appContext.reactContext?.let { context ->
+            val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+            val newScore = score.toFloat().coerceIn(0f, 100f)
+            
+            prefs.edit().putFloat("global_brainrot_score", newScore).apply()
+            
+            // Sync with accessibility service if running
+            UnlinkAccessibilityService.instance?.refreshServiceConfig()
+        }
+    }
+
     Function("isBatteryOptimizationExempted") {
         val context = appContext.reactContext ?: return@Function true
         val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager

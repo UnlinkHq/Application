@@ -99,7 +99,48 @@ export class FocusStorageService {
         }
     }
 
-    static async stopSession(): Promise<void> {
+    static async stopSession(wasCompleted: boolean = false): Promise<void> {
+        const sessionData = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
+        if (sessionData) {
+            try {
+                const session = JSON.parse(sessionData);
+                
+                if (wasCompleted) {
+                    // REWARD_LOGIC: Calculate brain health boost
+                    const durationMins = session.durationMins || 0;
+                    const isSurgical = session.scrollingProtocol?.youtube?.enabled || session.scrollingProtocol?.instagram?.enabled;
+                    const baseReward = -(durationMins / 10); 
+                    const finalReward = isSurgical ? baseReward * 2 : baseReward;
+
+                    console.log(`--- [REWARD_ENGINE] SESSION_COMPLETED: ${finalReward}% brain improvement ---`);
+                    ScreenTime.updateGlobalBrainrot(finalReward);
+                    
+                    // Unified Feedback
+                    await AsyncStorage.setItem('@unlink_gamification_feedback', JSON.stringify({
+                        type: 'SUCCESS',
+                        message: `Focus Protocol Complete! Brain Rot Improved ${Math.abs(finalReward).toFixed(1)}%`,
+                        reward: finalReward,
+                        triggerConfetti: true,
+                        timestamp: Date.now()
+                    }));
+                } else {
+                    // PENALTY_LOGIC: Manual stop penalty
+                    const penalty = 3.0;
+                    console.log(`--- [PENALTY_ENGINE] SESSION_ABORTED: +${penalty}% brain rot ---`);
+                    ScreenTime.updateGlobalBrainrot(penalty);
+
+                    // Unified Feedback
+                    await AsyncStorage.setItem('@unlink_gamification_feedback', JSON.stringify({
+                        type: 'WARNING',
+                        message: `Protocol Aborted. Brain Rot Increased +${penalty.toFixed(1)}%`,
+                        timestamp: Date.now()
+                    }));
+                }
+            } catch (e) {
+                console.error('Error handling session stop gamification:', e);
+            }
+        }
+
         await AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
 
         if (Platform.OS === 'android') {
@@ -134,6 +175,17 @@ export class FocusStorageService {
 
         if (isOnBreak) {
             newBreakStartTime = Date.now();
+            
+            // PENALTY_LOGIC: Slight brainrot increase for taking a break
+            ScreenTime.updateGlobalBrainrot(2.0); // +2% rot penalty
+            console.log('--- [PENALTY_ENGINE] BREAK_TAKEN: +2.0% brain rot ---');
+
+            // Feedback for Break
+            await AsyncStorage.setItem('@unlink_gamification_feedback', JSON.stringify({
+                type: 'PENALTY',
+                message: `Break Taken. Brain Rot Increased +2.0%`,
+                timestamp: Date.now()
+            }));
         } else if (session.breakStartTime) {
             const latestBreakDuration = Date.now() - session.breakStartTime;
             totalAccumulatedBreakMs += latestBreakDuration;
@@ -188,7 +240,7 @@ export class FocusStorageService {
                 const activeElapsedMins = activeElapsedMs / (1000 * 60);
 
                 if (activeElapsedMins >= session.durationMins) {
-                    await FocusStorageService.stopSession();
+                    await FocusStorageService.stopSession(true); // MARK_AS_COMPLETED
                     return null;
                 }
             } else if (session.isOnBreak && session.breakStartTime) {

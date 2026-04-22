@@ -43,6 +43,8 @@ interface ScreenTimeModuleInterface {
     stopBlockingService(): void;
     getGlobalBrainrot(): Promise<{score: number, date: string, shortsCount: number}>;
     setBlockExpiryTime(timestamp: number): void;
+    updateGlobalBrainrot(delta: number): void;
+    setGlobalBrainrot(score: number): void;
 
     // iOS Shield functions
     activateShield(): void;
@@ -96,7 +98,9 @@ try {
         activateShield: () => { },
         deactivateShield: () => { },
         getSelectionCount: () => 0,
-        setBlockExpiryTime: () => { }
+        setBlockExpiryTime: () => { },
+        updateGlobalBrainrot: () => { },
+        setGlobalBrainrot: () => { }
     };
 }
 
@@ -232,6 +236,14 @@ export async function getGlobalBrainrot(): Promise<{score: number, date: string,
     } catch (e) {
         return {score: 0, date: '', shortsCount: 0};
     }
+}
+
+export function updateGlobalBrainrot(delta: number): void {
+    ScreenTimeModule.updateGlobalBrainrot(delta);
+}
+
+export function setGlobalBrainrot(score: number): void {
+    ScreenTimeModule.setGlobalBrainrot(score);
 }
 
 // Event Handling

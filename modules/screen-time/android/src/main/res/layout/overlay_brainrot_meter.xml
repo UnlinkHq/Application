@@ -17,12 +17,12 @@
         android:gravity="center_vertical"
         android:elevation="6dp">
 
-        <TextView
-            android:id="@+id/brainrotEmoji"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="🧠"
-            android:textSize="20sp" />
+        <ImageView
+            android:id="@+id/brainrotMascot"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:src="@drawable/stage_1"
+            android:scaleType="centerInside" />
 
         <TextView
             android:id="@+id/brainrotCount"
