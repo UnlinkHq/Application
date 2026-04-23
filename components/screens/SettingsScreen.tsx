@@ -1,12 +1,49 @@
-import { View, Text, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Switch, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useBlocking } from '../../context/BlockingContext';
-import { Ionicons } from '@expo/vector-icons';
-
-import { MaterialIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { BrandLogo } from '../ui/BrandLogo';
+import { FocusStorageService, BlockSession } from '../../services/FocusStorageService';
+import { isAdminActive, requestAdmin, deactivateAdmin } from '../../modules/screen-time';
 
 export const SettingsScreen = () => {
+    const navigation = useNavigation();
     const { isStrict, setStrict } = useBlocking();
+    const [activeSession, setActiveSession] = useState<BlockSession | null>(null);
+    const [isUninstallProtected, setIsUninstallProtected] = useState(false);
+
+    useFocusEffect(
+        useCallback(() => {
+            const checkStatus = async () => {
+                const session = await FocusStorageService.getActiveSession();
+                setActiveSession(session);
+                
+                if (Platform.OS === 'android') {
+                    setIsUninstallProtected(isAdminActive());
+                }
+            };
+            checkStatus();
+        }, [])
+    );
+
+    const isSessionLocking = activeSession?.strictnessConfig?.isUninstallProtected === true;
+
+    const handleToggleUninstall = () => {
+        if (isSessionLocking) return;
+
+        if (Platform.OS === 'android') {
+            if (isUninstallProtected) {
+                deactivateAdmin();
+                setIsUninstallProtected(false);
+            } else {
+                requestAdmin();
+                // We don't set local state to true yet, 
+                // the focus effect will pick it up when the user returns
+            }
+        }
+    };
 
     const SectionHeader = ({ title }: { title: string }) => (
         <View className="flex-row items-center gap-2 mb-6">
@@ -15,10 +52,10 @@ export const SettingsScreen = () => {
         </View>
     );
 
-    const SettingsItem = ({ icon, label, rightElement, onPress, isLast = false }: { 
-        icon: string, label: string, rightElement?: React.ReactNode, onPress?: () => void, isLast?: boolean 
+    const SettingsItem = ({ icon, label, rightElement, onPress, isLast = false }: {
+        icon: string, label: string, rightElement?: React.ReactNode, onPress?: () => void, isLast?: boolean
     }) => (
-        <TouchableOpacity 
+        <TouchableOpacity
             activeOpacity={0.7}
             onPress={onPress}
             className={`flex-row items-center justify-between p-6 border-white/10 ${!isLast ? 'border-b' : ''} border-x border-t last:border-b`}
@@ -39,9 +76,11 @@ export const SettingsScreen = () => {
         <SafeAreaView className="flex-1 bg-black" edges={['top']}>
             {/* Header */}
             <View className="h-16 flex-row items-center justify-between px-6 border-b border-white/10 bg-black">
-                <View className="flex-row items-center gap-2">
-                    <MaterialIcons name="link-off" size={24} color="white" />
-                    <Text className="font-headline font-black text-2xl tracking-[0.2em] text-white uppercase">UNLINK</Text>
+                <View className="flex-row items-center gap-4">
+                    <TouchableOpacity onPress={() => navigation.goBack()} className="p-1 -ml-2">
+                        <Ionicons name="close" size={28} color="white" />
+                    </TouchableOpacity>
+                    <BrandLogo width={90} height={28} />
                 </View>
                 <View className="flex-row items-center gap-4">
                     <MaterialIcons name="sensors" size={24} color="white" />
@@ -51,75 +90,47 @@ export const SettingsScreen = () => {
                 </View>
             </View>
 
-            <ScrollView 
-                className="flex-1 px-6" 
+            <ScrollView
+                className="flex-1 px-6"
                 contentContainerStyle={{ paddingTop: 32, paddingBottom: 240 }}
             >
-                {/* Premium Banner */}
-                <View className="border border-white p-8 mb-12 relative overflow-hidden">
-                    <View className="flex-row justify-between items-start mb-6">
-                        <View>
-                            <Text className="font-label text-[10px] tracking-widest text-zinc-500 uppercase mb-2">SYSTEM STATUS: RESTRICTED</Text>
-                            <Text className="font-headline font-black text-4xl tracking-widest uppercase text-white">UNLOCK PRO</Text>
-                        </View>
-                        <MaterialIcons name="workspace-premium" size={24} color="rgba(255,255,255,0.2)" />
-                    </View>
-                    <Text className="text-zinc-500 font-label text-[10px] mb-6">
-                        Deep-focus protocols // Biometric unlinking // Encrypted data export
-                    </Text>
-                    <TouchableOpacity className="bg-white py-4 items-center">
-                        <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">CLAIM MEMBERSHIP</Text>
-                    </TouchableOpacity>
-                </View>
 
-                {/* Diagnostics */}
-                <SectionHeader title="System Diagnostics" />
-                <View className="flex-row gap-4 mb-12">
-                    <View className="flex-1 border border-white/20 p-6 h-32 justify-between">
-                        <Text className="font-label text-[10px] uppercase tracking-[0.2em] text-zinc-500">Journey</Text>
-                        <View>
-                            <View className="flex-row items-baseline gap-2">
-                                <Text className="font-headline font-black text-4xl text-white">12</Text>
-                                <Text className="font-label text-[10px] text-zinc-400 uppercase tracking-widest">Days</Text>
-                            </View>
-                            <View className="mt-2 h-0.5 bg-zinc-900 w-full">
-                                <View className="h-full bg-white w-2/5" />
-                            </View>
-                        </View>
-                    </View>
-                    <View className="flex-1 border border-white/20 p-6 h-32 justify-between">
-                        <Text className="font-label text-[10px] uppercase tracking-[0.2em] text-zinc-500">Mindfulness</Text>
-                        <View>
-                            <View className="flex-row items-baseline gap-2">
-                                <Text className="font-headline font-black text-4xl text-white">84</Text>
-                                <Text className="font-label text-[10px] text-zinc-400 uppercase tracking-widest">Breaks</Text>
-                            </View>
-                            <View className="mt-2 h-0.5 bg-zinc-900 w-full">
-                                <View className="h-full bg-white w-3/4" />
-                            </View>
-                        </View>
-                    </View>
-                </View>
 
                 {/* Parameters */}
                 <SectionHeader title="General Parameters" />
                 <View className="mb-12">
-                    <TouchableOpacity 
-                        onPress={() => setStrict(!isStrict)}
+                    <TouchableOpacity
+                        onPress={handleToggleUninstall}
                         activeOpacity={0.7}
-                        className="flex-row items-center justify-between p-6 border border-white/20 border-b-0"
+                        className={`flex-row items-center justify-between p-6 border border-white/20 border-b-0 ${isSessionLocking ? 'opacity-50' : ''}`}
                     >
                         <View className="flex-row items-center gap-4">
                             <MaterialIcons name="security" size={20} color="white" />
-                            <Text className="font-label text-sm uppercase tracking-widest text-white">Strict mode</Text>
+                            <View>
+                                <Text className="font-label text-sm uppercase tracking-widest text-white">Prevent Uninstall</Text>
+                                {isSessionLocking && (
+                                    <View className="flex-row items-center mt-1">
+                                         <MaterialIcons name="lock" size={10} color="#72fe88" />
+                                         <Text className="text-[#72fe88] font-label text-[8px] uppercase ml-1">LOCKED_BY_ACTIVE_SESSION</Text>
+                                    </View>
+                                )}
+                            </View>
                         </View>
-                        <View className={`w-12 h-6 border border-white flex justify-center px-1 ${isStrict ? 'items-end' : 'items-start'}`}>
-                            <View className="w-4 h-4 bg-white" />
+                        <View className={`w-12 h-6 border ${isSessionLocking ? 'border-[#72fe88]' : 'border-white'} flex justify-center px-1 ${isUninstallProtected || isSessionLocking ? 'items-end' : 'items-start'}`}>
+                            <View className={`w-4 h-4 ${isUninstallProtected || isSessionLocking ? 'bg-[#72fe88]' : 'bg-white'}`} />
                         </View>
                     </TouchableOpacity>
-                    <SettingsItem icon="branding-watermark" label="Customize Block Screen" onPress={() => {}} />
-                    <SettingsItem icon="timer" label="Rule Edit Cooldown" rightElement={<Text className="font-label text-[10px] text-zinc-500 uppercase">24H</Text>} onPress={() => {}} />
-                    <SettingsItem icon="visibility-off" label="Exclude from Screen Time" onPress={() => {}} isLast />
+                    <SettingsItem 
+                        icon="branding-watermark" 
+                        label="Customize Block Screen" 
+                        rightElement={
+                            <View className="bg-blue-500/10 px-1.5 py-0.5 border border-blue-500/20">
+                                <Text className="text-blue-500 font-label text-[8px] font-black tracking-widest">BETA</Text>
+                            </View>
+                        }
+                        onPress={() => { }} 
+                        isLast 
+                    />
                 </View>
 
                 {/* Socials & Journey */}
@@ -130,12 +141,26 @@ export const SettingsScreen = () => {
                         "Unlink is a labor of love to help us reclaim our focus. We are building this journey together—if you want to see the hard work behind the scenes, join our social channels."
                     </Text>
                     <View className="flex-row gap-4">
-                        <TouchableOpacity activeOpacity={0.7} className="flex-row items-center gap-2">
-                            <MaterialCommunityIcons name="telegram" size={16} color="white" />
+                        <TouchableOpacity 
+                            activeOpacity={0.7} 
+                            className="flex-row items-center gap-2 p-2"
+                            onPress={() => {
+                                console.log('Opening Telegram...');
+                                Linking.openURL('https://t.me/shahileeee').catch(err => console.error("Couldn't load page", err));
+                            }}
+                        >
+                            <FontAwesome5 name="telegram-plane" size={18} color="white" />
                             <Text className="text-white font-label text-[10px] uppercase underline tracking-tighter">@shahileeee</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity activeOpacity={0.7} className="flex-row items-center gap-2">
-                            <MaterialCommunityIcons name="instagram" size={16} color="white" />
+                        <TouchableOpacity 
+                            activeOpacity={0.7} 
+                            className="flex-row items-center gap-2 p-2"
+                            onPress={() => {
+                                console.log('Opening Instagram...');
+                                Linking.openURL('https://instagram.com/_shahilee').catch(err => console.error("Couldn't load page", err));
+                            }}
+                        >
+                            <FontAwesome5 name="instagram" size={18} color="white" />
                             <Text className="text-white font-label text-[10px] uppercase underline tracking-tighter">_shahilee</Text>
                         </TouchableOpacity>
                     </View>
@@ -143,9 +168,9 @@ export const SettingsScreen = () => {
 
                 <SectionHeader title="Direct Support" />
                 <View className="mb-12">
-                    <SettingsItem 
-                        icon="message" 
-                        label="Message me on Telegram" 
+                    <SettingsItem
+                        icon="message"
+                        label="Message me on Telegram"
                         onPress={() => {
                             import('react-native').then(({ Alert, Linking }) => {
                                 Alert.alert(
@@ -157,12 +182,12 @@ export const SettingsScreen = () => {
                                     ]
                                 );
                             });
-                        }} 
+                        }}
                     />
-                    <SettingsItem 
-                        icon="delete-outline" 
-                        label="I want to Uninstall / Issues" 
-                        isLast 
+                    <SettingsItem
+                        icon="delete-outline"
+                        label="I want to Uninstall / Issues"
+                        isLast
                         onPress={() => {
                             import('react-native').then(({ Alert, Linking }) => {
                                 Alert.alert(
@@ -179,13 +204,13 @@ export const SettingsScreen = () => {
                 </View>
 
                 {/* Gateways */}
-                
+
                 {/* Version Footer */}
                 <View className="pt-12 pb-8 items-center gap-6">
                     <MaterialIcons name="sensors" size={32} color="rgba(255,255,255,0.2)" />
                     <View className="items-center">
                         <Text className="font-label text-[10px] uppercase tracking-[0.4em] text-white">Unlink  v-0.1 beta</Text>
-                     
+
                     </View>
                 </View>
             </ScrollView>

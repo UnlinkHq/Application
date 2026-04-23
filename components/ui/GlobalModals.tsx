@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { View, Text } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useSelection } from '../../context/SelectionContext';
@@ -10,7 +10,7 @@ import { TouchableOpacity } from 'react-native-gesture-handler';
 
 import { BlockNowConfig } from '../blocks/BlockNowConfig';
 
-export const GlobalModals = React.memo(() => {
+export const GlobalModals = memo(() => {
     const {
         isSelectionVisible,
         closeSelection,
@@ -21,10 +21,7 @@ export const GlobalModals = React.memo(() => {
 
     const handleSelectRule = (id: string) => {
         closeSelection();
-
-        setTimeout(() => {
-            setActiveConfigId(id as any);
-        }, 300);
+        setActiveConfigId(id as any);
     };
 
     const renderActiveConfig = () => {

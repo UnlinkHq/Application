@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "my-expo-app",
-    "slug": "my-expo-app",
+    "name": "Unlink",
+    "slug": "unlink",
     "version": "1.0.0",
     "web": {
       "favicon": "./assets/favicon.png"
@@ -11,30 +11,34 @@
     },
     "plugins": [],
     "orientation": "portrait",
-    "icon": "./assets/logo_unlink.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "splash": {
-      "image": "./assets/logo_unlink.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
     "assetBundlePatterns": [
       "**/*"
     ],
+    "backgroundColor": "#000000",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.shahil.myexpoapp"
+      "bundleIdentifier": "com.unlink",
+      "backgroundColor": "#000000"
     },
     "android": {
+      "backgroundColor": "#000000",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/logo_unlink.png",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
       "permissions": [
         "android.permission.PACKAGE_USAGE_STATS",
-        "android.permission.QUERY_ALL_PACKAGES"
+        "android.permission.QUERY_ALL_PACKAGES",
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
       ],
-      "package": "com.shahil.myexpoapp",
+      "package": "com.unlink",
       "navigationBar": {
         "backgroundColor": "#000000",
         "barStyle": "light-content"

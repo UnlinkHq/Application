@@ -61,22 +61,42 @@ export const BlocksScreen = () => {
     }, [refreshData]);
 
     const handleStop = async () => {
-        await FocusStorageService.stopSession();
-        refreshData();
+        const previousSession = activeSession;
+        setActiveSession(null); // Optimistic update
+        try {
+            await FocusStorageService.stopSession();
+            refreshData();
+        } catch (error) {
+            setActiveSession(previousSession); // Rollback on error
+            console.error('Failed to stop session:', error);
+        }
     };
 
     const handlePlay = async (block: BlockSession) => {
         const session = { ...block, startTime: Date.now() };
+        const previousSession = activeSession;
+        setActiveSession(session); // Optimistic update
+        
         console.log('--- [DEBUG] INITIATING_FOCUS_SESSION ---');
-        console.log(JSON.stringify(session, null, 2));
-        console.log('-----------------------------------------');
-        await FocusStorageService.startSession(session);
-        refreshData();
+        try {
+            await FocusStorageService.startSession(session);
+            refreshData();
+        } catch (error) {
+            setActiveSession(previousSession); // Rollback
+            console.error('Failed to start session:', error);
+        }
     };
 
     const handleDelete = async (id: string) => {
-        await FocusStorageService.deleteBlock(id);
-        refreshData();
+        const previousLibrary = library;
+        setLibrary(prev => prev.filter(b => b.id !== id)); // Optimistic update
+        try {
+            await FocusStorageService.deleteBlock(id);
+            refreshData();
+        } catch (error) {
+            setLibrary(previousLibrary); // Rollback
+            console.error('Failed to delete block:', error);
+        }
     };
 
     const [showLockModal, setShowLockModal] = useState(false);
@@ -334,9 +354,6 @@ const LibraryItem = ({ block, index, onPlay, onDelete, onEdit, isActive }: { blo
                     <View className="flex-row items-center gap-4">
                         {!isActive && (
                             <>
-                                <TouchableOpacity onPress={() => onEdit?.(block)} className="p-2">
-                                    <MaterialIcons name="edit" size={18} color="rgba(255,255,255,0.4)" />
-                                </TouchableOpacity>
                                 <TouchableOpacity onPress={onDelete} className="p-2">
                                     <MaterialIcons name="delete-outline" size={18} color="rgba(255,255,255,0.2)" />
                                 </TouchableOpacity>

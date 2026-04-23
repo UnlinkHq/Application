@@ -40,6 +40,7 @@ import { FocusActiveScreen } from './components/blocks/FocusActiveScreen';
 import { AgreementScreen } from './components/screens/AgreementScreen';
 import { IntentGateScreen } from './components/screens/IntentGateScreen';
 import { addNativeBreakListener } from './modules/screen-time';
+import { PremiumSplash } from './components/ui/PremiumSplash';
 import './global.css';
 
 // Build 0.81.5 has fixed safeAreaView but dependencies might still use it
@@ -120,7 +121,7 @@ export default function App() {
       try {
         const hasLaunched = await AsyncStorage.getItem('hasLaunched');
         const onboarded = hasLaunched === 'true';
-        setIsFirstLaunch(true); // FORCE_ONBOARDING_FOR_DEV: Reset to '!onboarded' for production
+        setIsFirstLaunch(!onboarded); 
         
         const session = await FocusStorageService.getActiveSession();
         setActiveSession(session);
@@ -153,12 +154,16 @@ export default function App() {
     };
   }, []);
 
-  if (!fontsLoaded || isFirstLaunch === null) {
-      return (
-          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
-              <ActivityIndicator size="large" color="#fff" />
-          </View>
-      );
+  const [minSplashReady, setMinSplashReady] = useState(false);
+
+  useEffect(() => {
+    // Ensure the splash is visible for at least 2.5 seconds for branding impact
+    const timer = setTimeout(() => setMinSplashReady(true), 2500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!fontsLoaded || isFirstLaunch === null || !minSplashReady) {
+      return <PremiumSplash />;
   }
 
   const completeOnboarding = async () => {

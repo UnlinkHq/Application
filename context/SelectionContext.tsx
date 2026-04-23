@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useCallback, useMemo, ReactNode } from 'react';
 
 type ConfigId = 'usage' | 'schedule' | 'block_now' | null;
 
@@ -29,7 +29,7 @@ export const SelectionProvider = ({ children }: { children: ReactNode }) => {
         setActiveConfigId(null);
     }, []);
 
-    const value = React.useMemo(() => ({
+    const value = useMemo(() => ({
         isSelectionVisible,
         activeConfigId,
         openSelection,

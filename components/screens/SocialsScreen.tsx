@@ -3,16 +3,17 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Platfo
 import { WebView } from 'react-native-webview';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { BrandLogo } from '../ui/BrandLogo';
 import { useNavigation } from '@react-navigation/native';
 
-export const InstagramSandbox = ({ 
-  vipList, 
+export const InstagramSandbox = ({
+  vipList,
   onComplete,
   onClose
-}: { 
-  vipList: string[], 
+}: {
+  vipList: string[],
   onComplete: () => void,
-  onClose: () => void 
+  onClose: () => void
 }) => {
   const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -83,7 +84,7 @@ export const InstagramSandbox = ({
 
   const handleNavStateChange = (newNavState: any) => {
     const { url, loading } = newNavState;
-    
+
     // Clear loading spinner when navigation technically finishes 
     if (!loading) {
       setIsLoading(false);
@@ -97,7 +98,7 @@ export const InstagramSandbox = ({
       // Instagram often shows this splash screen if not logged in.
       // We can check if the URL still contains the story but the DOM shows login prompts.
       // Alternatively, we can inject JS to check if the user is logged in.
-      
+
       webViewRef.current?.injectJavaScript(`
         (function() {
           var loginBtn = document.querySelector('a[href*="/accounts/login"]');
@@ -115,7 +116,7 @@ export const InstagramSandbox = ({
       setIsLoggingIn(false);
       setIsLoading(true);
       if (webViewRef.current) {
-         webViewRef.current.injectJavaScript(`window.location.href = '${currentVipUrl}'; true;`);
+        webViewRef.current.injectJavaScript(`window.location.href = '${currentVipUrl}'; true;`);
       }
     }
   };
@@ -201,10 +202,10 @@ const sandboxStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerText: { 
-    color: '#fff', 
-    fontSize: 15, 
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace', 
+  headerText: {
+    color: '#fff',
+    fontSize: 15,
+    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
     fontWeight: '700',
     letterSpacing: -0.5
   },
@@ -237,93 +238,92 @@ const sandboxStyles = StyleSheet.create({
 });
 
 export const SocialsScreen = () => {
-    const navigation = useNavigation<any>();
-    const [showSandbox, setShowSandbox] = useState(false);
-    
-    // Mock data for the gateway list
-    const gateways = [
-        { id: 'instagram', name: 'Instagram', status: 'UNFILTERED ACCESS', icon: 'logo-instagram', color: '#ffb4aa', library: 'Ionicons' },
-    ];
+  const navigation = useNavigation<any>();
+  const [showSandbox, setShowSandbox] = useState(false);
 
-    if (showSandbox) {
-        return (
-            <InstagramSandbox 
-                vipList={['@naval', '@sama', '@jack', '@elonmusk']} 
-                onComplete={() => setShowSandbox(false)} 
-                onClose={() => setShowSandbox(false)} 
-            />
-        );
-    }
+  // Mock data for the gateway list
+  const gateways = [
+    { id: 'instagram', name: 'Instagram', status: 'UNFILTERED ACCESS', icon: 'logo-instagram', color: '#ffb4aa', library: 'Ionicons' },
+  ];
 
+  if (showSandbox) {
     return (
-        <SafeAreaView className="flex-1 bg-black" edges={['top']}>
-            <View className="flex-1">
-                {/* TopAppBar */}
-                <View className="h-16 flex-row items-center justify-between px-6 border-b border-white/10 bg-black">
-                    <View className="flex-row items-center gap-2">
-                        <MaterialIcons name="sensors" size={24} color="white" />
-                        <Text className="font-headline font-black text-2xl tracking-[0.2em] text-white">UNLINK</Text>
-                    </View>
-                    <View className="flex-row items-center gap-4">
-                        <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
-                            <MaterialIcons name="settings" size={20} color="white" />
-                        </TouchableOpacity>
-                        <TouchableOpacity className="p-1">
-                            <MaterialIcons name="person" size={24} color="white" />
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                <ScrollView 
-                    className="flex-1 px-6" 
-                    contentContainerStyle={{ paddingTop: 32, paddingBottom: 240 }}
-                >
-                    {/* Header Section */}
-                    <View className="mb-12">
-                        <View className="flex-row items-end justify-between mb-4">
-                            <Text className="font-headline text-4xl tracking-widest leading-[1] text-white uppercase">
-                                DISTRACTION{"\n"}GATEWAYS
-                            </Text>
-                            <View className="w-6 h-[1px] bg-white/40 mb-2" style={{ transform: [{ rotate: '-45deg' }] }} />
-                        </View>
-                        <Text className="font-label text-[10px] text-white/40">
-                            Be a part of something bigger
-                        </Text>
-                    </View>
-
-                    {/* Socials List */}
-                    <View className="space-y-4">
-                        {gateways.map((gate) => (
-                            <TouchableOpacity 
-                                key={gate.id}
-                                activeOpacity={0.8}
-                                onPress={() => gate.id === 'instagram' ? setShowSandbox(true) : null}
-                                className="flex-row items-center justify-between p-6 bg-[#1b1b1b] border-l-2 border-transparent"
-                            >
-                                <View className="flex-row items-center gap-6">
-                                    <View className="w-12 h-12 bg-black items-center justify-center border border-white/10">
-                                        {gate.icon === 'logo-instagram' ? (
-                                            <Ionicons name="logo-instagram" size={24} color="white" />
-                                        ) : (
-                                            <MaterialIcons name={gate.icon as any} size={24} color="white" />
-                                        )}
-                                    </View>
-                                    <View>
-                                        <Text className="font-headline font-bold text-lg uppercase tracking-tight text-white">{gate.name}</Text>
-                                        <Text className="font-label text-[10px] tracking-[0.15em]" style={{ color: gate.color }}>
-                                            {gate.status}
-                                        </Text>
-                                    </View>
-                                </View>
-                                <MaterialIcons name="more-vert" size={24} color="#5d5f5f" />
-                            </TouchableOpacity>
-                        ))}
-                    </View>
-
-                 
-
-                </ScrollView>
-            </View>
-        </SafeAreaView>
+      <InstagramSandbox
+        vipList={['@naval', '@sama', '@jack', '@elonmusk']}
+        onComplete={() => setShowSandbox(false)}
+        onClose={() => setShowSandbox(false)}
+      />
     );
+  }
+
+  return (
+    <SafeAreaView className="flex-1 bg-black" edges={['top']}>
+      <View className="flex-1">
+        {/* TopAppBar */}
+        <View className="h-16 flex-row items-center justify-between px-6 border-b border-white/10 bg-black">
+          <View className="flex-row items-center gap-2">
+            <BrandLogo width={90} height={28} />
+          </View>
+          <View className="flex-row items-center gap-4">
+            <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+              <MaterialIcons name="settings" size={20} color="white" />
+            </TouchableOpacity>
+            <TouchableOpacity className="p-1">
+              <MaterialIcons name="person" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <ScrollView
+          className="flex-1 px-6"
+          contentContainerStyle={{ paddingTop: 32, paddingBottom: 240 }}
+        >
+          {/* Header Section */}
+          <View className="mb-12">
+            <View className="flex-row items-end justify-between mb-4">
+              <Text className="font-headline text-4xl tracking-widest leading-[1] text-white uppercase">
+                DISTRACTION{"\n"}GATEWAYS
+              </Text>
+              <View className="w-6 h-[1px] bg-white/40 mb-2" style={{ transform: [{ rotate: '-45deg' }] }} />
+            </View>
+            <Text className="font-label text-[10px] text-white/40">
+              Be a part of something bigger
+            </Text>
+          </View>
+
+          {/* Socials List */}
+          <View className="space-y-4">
+            {gateways.map((gate) => (
+              <TouchableOpacity
+                key={gate.id}
+                activeOpacity={0.8}
+                onPress={() => gate.id === 'instagram' ? setShowSandbox(true) : null}
+                className="flex-row items-center justify-between p-6 bg-[#1b1b1b] border-l-2 border-transparent"
+              >
+                <View className="flex-row items-center gap-6">
+                  <View className="w-12 h-12 bg-black items-center justify-center border border-white/10">
+                    {gate.icon === 'logo-instagram' ? (
+                      <Ionicons name="logo-instagram" size={24} color="white" />
+                    ) : (
+                      <MaterialIcons name={gate.icon as any} size={24} color="white" />
+                    )}
+                  </View>
+                  <View>
+                    <Text className="font-headline font-bold text-lg uppercase tracking-tight text-white">{gate.name}</Text>
+                    <Text className="font-label text-[10px] tracking-[0.15em]" style={{ color: gate.color }}>
+                      {gate.status}
+                    </Text>
+                  </View>
+                </View>
+                <MaterialIcons name="more-vert" size={24} color="#5d5f5f" />
+              </TouchableOpacity>
+            ))}
+          </View>
+
+
+
+        </ScrollView>
+      </View>
+    </SafeAreaView>
+  );
 };

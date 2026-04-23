@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BrandLogo } from '../../ui/BrandLogo';
 
 interface OnboardingHeaderProps {
   currentStep: number;
@@ -9,11 +10,11 @@ interface OnboardingHeaderProps {
   showBack?: boolean;
 }
 
-export const OnboardingHeader: React.FC<OnboardingHeaderProps> = ({ 
-  currentStep, 
-  totalSteps, 
-  onBack, 
-  showBack = true 
+export const OnboardingHeader: React.FC<OnboardingHeaderProps> = ({
+  currentStep,
+  totalSteps,
+  onBack,
+  showBack = true
 }) => {
   const { width } = Dimensions.get('window');
   const progress = (currentStep + 1) / totalSteps;
@@ -32,7 +33,7 @@ export const OnboardingHeader: React.FC<OnboardingHeaderProps> = ({
 
         {/* Center Text */}
         <View className="flex-[2] items-center">
-          <Text className="text-xl font-black tracking-widest text-white font-headline uppercase">UNLINK</Text>
+          <BrandLogo width={80} height={24} />
         </View>
 
         {/* Right Label */}
@@ -43,9 +44,9 @@ export const OnboardingHeader: React.FC<OnboardingHeaderProps> = ({
 
       {/* Sleek Progress Bar integrated as the bottom border */}
       <View className="w-full h-[1px] bg-white/10 relative">
-        <View 
-          className="absolute left-0 top-0 bottom-0 bg-white" 
-          style={{ width: `${progress * 100}%` }} 
+        <View
+          className="absolute left-0 top-0 bottom-0 bg-white"
+          style={{ width: `${progress * 100}%` }}
         />
       </View>
     </View>

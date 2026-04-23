@@ -58,7 +58,7 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
       })
       .filter(app => app.duration > 60)
       .sort((a, b) => b.duration - a.duration)
-      .slice(0, 5);
+      .slice(0, 3);
 
     setTotalDailySeconds(totalDuration);
     setTopApps(processedApps);
@@ -179,30 +179,30 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
         </View>
 
         {/* Summary Tonal Layer */}
-        <View className="mb-[150px] bg-[#0e0e0e] border border-white/10 p-6 flex-row items-center space-x-6">
-            <View className="w-16 mr-3 h-16 border border-white flex justify-center items-center">
-                <MaterialIcons name="broken-image" size={32} color="white" />
+        <View className="mb-24 bg-[#0e0e0e] border border-white/10 p-6 flex-row items-center">
+            <View className="w-12 h-12 border border-white flex justify-center items-center mr-4">
+                <MaterialIcons name="analytics" size={24} color="white" />
             </View>
             <View className="flex-1">
                 <Text className="text-white/40 font-body text-[10px] leading-relaxed">
                     You are currently spending <Text className="font-headline font-black text-white">{totalHours} hours</Text> daily behind the glass.
-                    Unlink will reclaim <Text className="font-headline font-black text-[#72fe88]">{reclaimedHours} hours</Text> for your physical reality.
+                    Unlink will reclaim <Text className="font-headline font-black text-[#72fe88]">{reclaimedHours} hours</Text> for your reality.
                 </Text>
             </View>
         </View>
       </ScrollView>
 
       {/* Footer / Action Area */}
-      <View className="absolute bottom-6 left-6 right-6 z-50 pt-4">
+      <View className="absolute bottom-8 left-6 right-6 z-50">
           <TouchableOpacity 
               onPress={onNext}
-              activeOpacity={0.8}
-              className="w-full bg-white flex-row items-center justify-center py-6 border border-white active:scale-[0.98] transition-transform shadow-2xl rounded-none relative"
+              activeOpacity={0.9}
+              className="w-full bg-white flex-row items-center justify-center py-6 shadow-2xl active:scale-[0.98]"
           >
-              <Text className="text-black font-headline font-black text-2xl tracking-widest relative mr-2">
+              <Text className="text-black font-headline font-black text-lg tracking-widest uppercase">
                   CONTINUE
               </Text>
-              <MaterialIcons name="arrow-forward" size={24} color="black" />
+              <MaterialIcons name="arrow-forward" size={20} color="black" style={{ marginLeft: 8 }} />
           </TouchableOpacity>
       </View>
     </View>

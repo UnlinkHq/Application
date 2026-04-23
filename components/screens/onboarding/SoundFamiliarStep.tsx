@@ -67,11 +67,11 @@ export const SoundFamiliarStep: React.FC<SoundFamiliarStepProps> = ({ onNext }) 
                     {opt.text}
                   </Text>
                 </View>
-                {isSelected && (
-                  <View className="absolute top-4 right-4">
+                <View className="w-6 items-end justify-center">
+                  {isSelected && (
                      <Ionicons name="checkmark-circle" size={18} color="#72fe88" />
-                  </View>
-                )}
+                  )}
+                </View>
               </TouchableOpacity>
             );
           })}

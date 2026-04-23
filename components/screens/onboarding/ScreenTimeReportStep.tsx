@@ -93,98 +93,77 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
 
   return (
     <View className="flex-1 bg-black pt-16 px-6 relative">
-      <View className="flex-1 mb-24">
+      <View className="flex-1 mb-32">
         {/* Header Section */}
-        <View className="mb-10">
-            <View className="flex-row items-baseline space-x-2 mb-1">
-                <Text className="text-[10px] font-label font-black uppercase tracking-widest text-[#ffb4aa]">04</Text>
-                <View className="h-[1px] w-8 bg-white/10 self-center" />
+        <View className="mb-8">
+            <View className="flex-row items-baseline space-x-2 mb-2">
+                <Text className="text-[10px] font-headline font-black uppercase tracking-[0.3em] text-white/40">ANALYTICS // STAGE 04</Text>
             </View>
-            <Text className="text-4xl font-headline font-black tracking-widest uppercase mb-2 text-white">YOUR ACTUAL SCREEN TIME</Text>
-            <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest">{headerSubLabel}</Text>
+            <Text className="text-3xl font-headline font-black tracking-widest uppercase mb-2 text-white">YOUR ACTUAL{'\n'}SCREEN TIME</Text>
+            <Text className="text-white/20 font-label text-[10px] uppercase tracking-widest">{headerSubLabel}</Text>
         </View>
 
         {/* Main Display Data */}
-        <View className="mb-8 flex-col items-start z-10">
+        <View className="mb-10 flex-col items-start z-10">
             <View className="flex-row items-baseline">
-                <Text className="text-7xl md:text-8xl font-headline font-black tracking-widest text-white uppercase">{headerValue}</Text>
+                <Text className="text-7xl font-headline font-black tracking-widest text-white uppercase">{headerValue}</Text>
             </View>
             
-            {/* Warning Badge */}
+            {/* Warning Badge - Sophisticated Warning */}
             {todaySeconds > recommendedLimit && (
-              <View className="mt-4 flex-row space-x-4">
-                  <View className="flex-row items-center space-x-2 py-1.5 px-3 bg-[#2a2a2a]">
-                      <MaterialIcons name="warning" size={14} color="#ffb4aa" />
-                      <Text className="font-label text-[10px] uppercase tracking-widest text-white/40 font-black">LATENCY DETECTED</Text>
-                  </View>
+              <View className="mt-6 flex-row items-center border border-[#ffb4aa]/20 bg-[#ffb4aa]/5 px-4 py-2">
+                  <MaterialIcons name="warning" size={14} color="#ffb4aa" />
+                  <Text className="font-headline font-black text-[10px] uppercase tracking-[0.2em] text-[#ffb4aa] ml-3">LATENCY DETECTED</Text>
               </View>
             )}
         </View>
 
-        {/* View Toggle */}
-        <View className="mb-4 self-center w-full max-w-xs z-20">
-            <View className="flex-row border border-white/10 p-1">
+        {/* View Toggle - Modular Segmented Control */}
+        <View className="mb-10 w-full z-20">
+            <View className="flex-row border border-white/10 p-1 bg-white/5">
                 <TouchableOpacity
                   onPress={() => setViewMode('Day')}
-                  className={`flex-1 py-3 items-center justify-center ${viewMode === 'Day' ? 'bg-white' : ''}`}
+                  className={`flex-1 py-4 items-center justify-center ${viewMode === 'Day' ? 'bg-white' : ''}`}
                 >
-                  <Text className={`text-[10px] font-label font-black uppercase tracking-widest ${viewMode === 'Day' ? 'text-black' : 'text-white/40'}`}>DAY</Text>
+                  <Text className={`text-[10px] font-headline font-black uppercase tracking-widest ${viewMode === 'Day' ? 'text-black' : 'text-white/40'}`}>DAY_VIEW</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setViewMode('Week')}
-                  className={`flex-1 py-3 items-center justify-center ${viewMode === 'Week' ? 'bg-white' : ''}`}
+                  className={`flex-1 py-4 items-center justify-center ${viewMode === 'Week' ? 'bg-white' : ''}`}
                 >
-                  <Text className={`text-[10px] font-label font-black uppercase tracking-widest ${viewMode === 'Week' ? 'text-black' : 'text-white/40'}`}>WEEK</Text>
+                  <Text className={`text-[10px] font-headline font-black uppercase tracking-widest ${viewMode === 'Week' ? 'text-black' : 'text-white/40'}`}>WEEK_VIEW</Text>
                 </TouchableOpacity>
             </View>
         </View>
 
         {/* Minimalism Instrument Chart */}
-        <View className="flex-[1] flex-col mt-4 w-full pt-4">
-            <View className="flex-1 w-full flex-row items-end justify-between relative pb-[20px]">
+        <View className="flex-1 flex-col mt-4 w-full">
+            <View className="flex-1 w-full flex-row items-end justify-between relative pb-[30px]">
                 {/* Chart Background Indicators */}
-                <View className="absolute inset-0 flex-col justify-between pointer-events-none pb-[20px]">
-                    
+                <View className="absolute inset-0 flex-col justify-between pointer-events-none pb-[30px]">
                     <View className="border-t border-white/5 w-full absolute top-0" />
-                    <Text className="absolute top-0 right-0 text-[10px] font-label text-white/40 -translate-y-[12px] bg-black px-1 uppercase">{Math.ceil(chartMaxSeconds/3600)}H</Text>
+                    <Text className="absolute top-0 right-0 text-[8px] font-label text-white/20 -translate-y-[12px] bg-black px-1 uppercase">{Math.ceil(chartMaxSeconds/3600)}H</Text>
 
-                    <View className="border-t border-white/20 w-full absolute" style={{ top: `${(1 - (recommendedLimit / chartMaxSeconds)) * 100}%` }} />
-                    <Text className="absolute right-0 bg-black px-1 text-[10px] font-label text-white/40 tracking-widest -translate-y-[12px] uppercase" style={{ top: `${(1 - (recommendedLimit / chartMaxSeconds)) * 100}%` }}>GOAL {screenTimeGoal}H</Text>
+                    <View className="border-t border-[#ffb4aa]/40 w-full absolute border-dashed" style={{ top: `${(1 - (recommendedLimit / chartMaxSeconds)) * 100}%` }} />
+                    <Text className="absolute right-0 bg-black px-1 text-[9px] font-headline font-black text-[#ffb4aa] tracking-widest -translate-y-[12px] uppercase" style={{ top: `${(1 - (recommendedLimit / chartMaxSeconds)) * 100}%` }}>GOAL {screenTimeGoal}H</Text>
 
-                    <View className="border-t border-white/5 w-full absolute bottom-[20px]" />
-                    <Text className="absolute bottom-[20px] right-0 text-[10px] font-label text-[#e2e2e2]/50 translate-y-[2px] bg-black px-1">0H</Text>
+                    <View className="border-t border-white/5 w-full absolute bottom-[30px]" />
                 </View>
 
                 {/* Chart Bars */}
-                <View className="flex-1 h-full flex-row items-end justify-between pr-14 z-10 w-full">
+                <View className="flex-1 h-full flex-row items-end justify-between z-10 w-full px-2">
                     {weekData.map((d, index) => {
                       const isExcessive = d.duration > recommendedLimit;
                       const heightPercent = Math.max(2, (d.duration / chartMaxSeconds) * 100);
                       const isToday = index === weekData.length - 1;
-                      
-                      // Highlight logic: in Day mode, highlight only today. In Week mode, highlight all if excessive, or normal.
                       const isActiveBar = viewMode === 'Week' || isToday;
-                      const barColor = !isActiveBar ? 'bg-[#c6c6c6]/10' : (isExcessive ? 'bg-[#ffb4aa]' : 'bg-[#c6c6c6]/60');
-                      const textColor = !isActiveBar ? 'text-[#e2e2e2]/20' : (isExcessive ? 'text-[#ffb4aa] font-bold' : 'text-[#e2e2e2]/60');
+                      const barColor = !isActiveBar ? 'bg-white/5' : (isExcessive ? 'bg-[#ffb4aa]' : 'bg-white');
+                      const textColor = !isActiveBar ? 'text-white/10' : (isExcessive ? 'text-[#ffb4aa]' : 'text-white/60');
 
                       return (
-                        <View key={index} className="flex-col items-center group w-8 h-full justify-end">
-                            <View className="w-full flex-col justify-end items-center mb-1">
-                                {isExcessive && isToday && (
-                                  <Text 
-                                    className={`absolute -top-5 text-[9px] font-label font-bold ${viewMode === 'Week' ? 'text-[#ffb4aa]' : 'text-white'}`}
-                                    style={{ width: 44, textAlign: 'center' }}
-                                    numberOfLines={1}
-                                  >
-                                      {formatDuration(d.duration).replace(' ', '')}
-                                  </Text>
-                                )}
-                                <View
-                                  className={`w-2 transition-all ${barColor}`}
-                                  style={{ height: `${heightPercent}%` }}
-                                />
-                            </View>
-                            <Text className={`mt-2 text-[10px] font-label ${textColor}`}>
+                        <View key={index} className="flex-col items-center w-8 h-full justify-end">
+                            <View className={`w-1.5 rounded-full ${barColor}`} style={{ height: `${heightPercent}%` }} />
+                            <Text className={`mt-4 text-[10px] font-headline font-black ${textColor}`}>
                                 {d.day[0]}
                             </Text>
                         </View>
@@ -195,17 +174,17 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
         </View>
       </View>
 
-      {/* Fixed Action Button */}
-      <View className="absolute bottom-6 left-6 right-6 z-50 bg-black pt-4">
+      {/* Fixed Action Button - Premium Footer */}
+      <View className="absolute bottom-8 left-6 right-6 z-50 pt-4">
           <TouchableOpacity 
               onPress={onNext}
-              activeOpacity={0.8}
-              className="w-full  bg-white active:scale-[0.98] transition-transform flex-row items-center justify-center space-x-2 rounded-none"
+              activeOpacity={0.9}
+              className="w-full bg-white flex-row items-center justify-center py-6 active:scale-[0.98]"
           >
-              <Text className="text-black font-headline font-black tracking-widest uppercase text-sm">
+              <Text className="text-black font-headline font-black tracking-[0.2em] uppercase text-lg">
                   CONTINUE
               </Text>
-              <MaterialIcons name="arrow-forward" size={16} color="black" />
+              <MaterialIcons name="arrow-forward" size={20} color="black" style={{ marginLeft: 8 }} />
           </TouchableOpacity>
       </View>
     </View>

@@ -6,7 +6,7 @@
     Full manifest not shown — only the Unlink-specific additions.
 -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.unlink.app">
+    package="com.unlink">
 
     <!-- ── Permissions ─────────────────────────────────────────────────────── -->
 
