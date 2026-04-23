@@ -57,10 +57,19 @@ export const UnifiedPermissionStep: React.FC<UnifiedPermissionStepProps> = ({ on
         };
     }, []);
 
+    const [batteryClickCount, setBatteryClickCount] = useState(0);
     const handleAllowUsage = () => ScreenTimeModule.requestUsageStatsPermission();
     const handleAllowBackground = () => ScreenTimeModule.requestAccessibilityPermission();
     const handleAllowOverlay = () => ScreenTimeModule.requestOverlayPermission();
-    const handleAllowBattery = () => ScreenTimeModule.requestBatteryOptimizationExemption();
+    const handleAllowBattery = () => {
+        if (batteryClickCount === 0) {
+            ScreenTimeModule.requestBatteryOptimizationExemption();
+        } else {
+            // Fallback for devices where the direct prompt doesn't work well
+            ScreenTimeModule.openBatteryOptimizationSettings();
+        }
+        setBatteryClickCount(prev => prev + 1);
+    };
 
     const allGranted = permissions.usage && permissions.background && permissions.overlay && permissions.battery;
 
@@ -126,12 +135,24 @@ export const UnifiedPermissionStep: React.FC<UnifiedPermissionStepProps> = ({ on
                         isGranted={permissions.overlay}
                         onPress={handleAllowOverlay}
                     />
-                    <PermissionItem 
-                        title="BATTERY OPTIMIZATION"
-                        description="Allows the engine to stay active and vigilant in the background."
-                        isGranted={permissions.battery}
-                        onPress={handleAllowBattery}
-                    />
+                    <View>
+                        <PermissionItem 
+                            title="BATTERY OPTIMIZATION"
+                            description="Allows the engine to stay active and vigilant in the background."
+                            isGranted={permissions.battery}
+                            onPress={handleAllowBattery}
+                        />
+                        {!permissions.battery && batteryClickCount > 0 && (
+                            <TouchableOpacity 
+                                onPress={() => ScreenTimeModule.openAppInfoSettings()}
+                                className="mt-2 self-start"
+                            >
+                                <Text className="text-white/30 font-label text-[9px] uppercase tracking-widest border-b border-white/10">
+                                    Still not working? Open App Info &gt; Battery &gt; Unrestricted
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                    </View>
                 </View>
 
                 {/* Why Section */}

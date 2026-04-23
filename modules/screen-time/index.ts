@@ -22,6 +22,7 @@ interface ScreenTimeModuleInterface {
     // Persistence Functions
     isBatteryOptimizationExempted(): Promise<boolean>;
     requestBatteryOptimizationExemption(): void;
+    openBatteryOptimizationSettings(): void;
     getEngineHealth(): Promise<{
         overlay: boolean;
         accessibility: boolean;
@@ -77,6 +78,7 @@ try {
         openAppInfoSettings: async () => { },
         isBatteryOptimizationExempted: async () => false,
         requestBatteryOptimizationExemption: () => { },
+        openBatteryOptimizationSettings: () => { },
         getEngineHealth: async () => ({
             overlay: false,
             accessibility: false,
@@ -215,6 +217,10 @@ export async function isBatteryOptimizationExempted(): Promise<boolean> {
 
 export function requestBatteryOptimizationExemption(): void {
     ScreenTimeModule.requestBatteryOptimizationExemption();
+}
+
+export function openBatteryOptimizationSettings(): void {
+    ScreenTimeModule.openBatteryOptimizationSettings();
 }
 
 export async function openAppInfoSettings(): Promise<void> {
