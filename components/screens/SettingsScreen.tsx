@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Switch, Linking, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Switch, Linking, Platform, AppState, AppStateStatus } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useBlocking } from '../../context/BlockingContext';
@@ -7,6 +7,7 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome5 } from '@
 import { BrandLogo } from '../ui/BrandLogo';
 import { FocusStorageService, BlockSession } from '../../services/FocusStorageService';
 import { isAdminActive, requestAdmin, deactivateAdmin } from '../../modules/screen-time';
+import * as Haptics from 'expo-haptics';
 
 export const SettingsScreen = () => {
     const navigation = useNavigation();
@@ -14,33 +15,47 @@ export const SettingsScreen = () => {
     const [activeSession, setActiveSession] = useState<BlockSession | null>(null);
     const [isUninstallProtected, setIsUninstallProtected] = useState(false);
 
+    const checkStatus = useCallback(async () => {
+        const session = await FocusStorageService.getActiveSession();
+        setActiveSession(session);
+        
+        if (Platform.OS === 'android') {
+            const active = isAdminActive();
+            setIsUninstallProtected(active);
+        }
+    }, []);
+
     useFocusEffect(
         useCallback(() => {
-            const checkStatus = async () => {
-                const session = await FocusStorageService.getActiveSession();
-                setActiveSession(session);
-                
-                if (Platform.OS === 'android') {
-                    setIsUninstallProtected(isAdminActive());
-                }
-            };
             checkStatus();
-        }, [])
+            
+            const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+                if (nextAppState === 'active') {
+                    checkStatus();
+                }
+            });
+            
+            return () => subscription.remove();
+        }, [checkStatus])
     );
 
     const isSessionLocking = activeSession?.strictnessConfig?.isUninstallProtected === true;
 
-    const handleToggleUninstall = () => {
-        if (isSessionLocking) return;
+    const handleToggleUninstall = async () => {
+        if (isSessionLocking) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            return;
+        }
 
         if (Platform.OS === 'android') {
             if (isUninstallProtected) {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 deactivateAdmin();
                 setIsUninstallProtected(false);
             } else {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
                 requestAdmin();
-                // We don't set local state to true yet, 
-                // the focus effect will pick it up when the user returns
+                // State will be synced via AppState/Focus listener when user returns
             }
         }
     };

@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Image, Dimensions, StyleSheet, Platform, AppState, AppStateStatus, Modal, ScrollView, Switch } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Image, Dimensions, StyleSheet, Platform, AppState, AppStateStatus, Modal, ScrollView, Switch, Alert, Linking } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
+import QRCode from 'react-native-qrcode-svg';
 import Animated, {
     useSharedValue,
     useAnimatedStyle,
@@ -31,8 +32,10 @@ import {
     deactivateShield,
     FamilyPickerView,
     getEngineHealth,
-    requestAccessibilityPermission
+    requestAccessibilityPermission,
+    openAppInfoSettings
 } from '../../modules/screen-time';
+import { PermissionBanner } from '../ui/PermissionBanner';
 import { ModernToggle } from '../ui/ModernToggle';
 import { FocusStorageService } from '../../services/FocusStorageService';
 
@@ -319,41 +322,57 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
         await finalizeSession(session);
     };
 
+    const qrRef = React.useRef<any>();
+
     const finalizeSession = async (session: any) => {
         // Change: Save to library instead of starting immediately
         await FocusStorageService.saveBlock(session);
+        // SIGNAL: Trigger an instant refresh in the main list
+        Platform.OS !== 'web' && require('react-native').DeviceEventEmitter.emit('UNLINK_REFRESH_DATA');
         onBack();
     };
 
-    const handleSaveQR = async () => {
-        if (!generatedQrData) return;
-
+    const handleSaveQR = useCallback(async () => {
+        if (!generatedQrData) return null;
         setIsQrSaving(true);
         try {
-            const { status } = await MediaLibrary.requestPermissionsAsync();
+            let { status } = await MediaLibrary.requestPermissionsAsync(true);
             if (status !== 'granted') {
-                alert("PERMISSION_REQUIRED: GALLERY_ACCESS_IS_NEEDED_TO_SAVE_YOUR_QR_SIGNATURE");
                 setIsQrSaving(false);
-                return;
+                return null;
             }
-
-            const logoUrl = 'https://raw.githubusercontent.com/expo/expo/main/templates/expo-template-blank/assets/icon.png'; // TODO: Replace with official Unlink logo
-            const encodedQrData = encodeURIComponent(generatedQrData);
-            const encodedLogo = encodeURIComponent(logoUrl);
-            const qrUrl = `https://quickchart.io/qr?text=${encodedQrData}&size=500&centerImageUrl=${encodedLogo}&margin=2`;
-            const fileUri = `${FileSystem.cacheDirectory}unlink_qr_${Date.now()}.png`;
-
-            const downloadRes = await FileSystem.downloadAsync(qrUrl, fileUri);
-            await MediaLibrary.saveToLibraryAsync(downloadRes.uri);
-
-            setIsQrSaved(true);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } catch (error) {
+            return await proceedWithLocalSave();
+        } catch (error: any) {
             console.error('Failed to save QR:', error);
-            alert("UPLOAD_ERROR: FAILED_TO_CONSERVE_QR_SIGNATURE");
-        } finally {
             setIsQrSaving(false);
+            return null;
         }
+    }, [generatedQrData]);
+
+    const proceedWithLocalSave = async (): Promise<string | null> => {
+        if (!qrRef.current) return null;
+
+        return new Promise<string | null>((resolve, reject) => {
+            qrRef.current.toDataURL(async (data: string) => {
+                try {
+                    const fileUri = `${FileSystem.cacheDirectory}unlink_qr_${Date.now()}.png`;
+                    await FileSystem.writeAsStringAsync(fileUri, data, {
+                        encoding: 'base64',
+                    });
+
+                    const asset = await MediaLibrary.createAssetAsync(fileUri);
+
+                    setIsQrSaved(true);
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    setIsQrSaving(false);
+                    resolve(asset.id);
+                } catch (err) {
+                    console.error('Failed to write QR file:', err);
+                    setIsQrSaving(false);
+                    reject(err);
+                }
+            });
+        });
     };
 
     const hasAppsSelected = Platform.OS === 'ios' ? nativeIosCount > 0 : selectedApps.length > 0;
@@ -831,7 +850,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                     </View>
                 </View>
             </Modal>
-            
+
             {/* Accessibility Disclosure Modal (Play Store Compliance) */}
             <Modal
                 visible={showAccessibilityDisclosure}
@@ -843,11 +862,11 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                         <View className="w-16 h-16 border border-white/10 items-center justify-center mb-8">
                             <Ionicons name="eye-outline" size={32} color="white" />
                         </View>
-                        
+
                         <Text className="text-white font-headline font-black text-2xl uppercase tracking-[0.2em] mb-4">
                             Surgical_Shield
                         </Text>
-                        
+
                         <Text className="text-white/60 font-label text-[11px] leading-5 mb-8">
                             Unlink uses the <Text className="text-white font-bold">Accessibility Service API</Text> to provide surgical shielding for YouTube and Instagram.
                             {"\n\n"}
@@ -860,13 +879,13 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                         </Text>
 
                         <View className="flex-row gap-4">
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => setShowAccessibilityDisclosure(false)}
                                 className="flex-1 h-14 border border-white/10 items-center justify-center"
                             >
                                 <Text className="text-white font-headline font-black text-[10px] uppercase tracking-widest">DECLINE</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 onPress={() => {
                                     setShowAccessibilityDisclosure(false);
                                     requestAccessibilityPermission();
@@ -923,39 +942,37 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                     className="bg-black/95 items-center justify-center px-8 z-50"
                 >
                     <View className="w-full bg-[#0a0a0a] border border-white/20 p-8 rounded-sm items-center">
-                        <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">QR SIGNATURE GENERATED</Text>
-                        <Text className="text-[#72fe88] font-label text-[10px] uppercase tracking-widest mb-8 text-center font-bold px-4">
-                            This Signature will be stored in your photo gallery automatically
-                        </Text>
+                        <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">SIGNATURE_READY</Text>
 
-                        <View className="w-64 h-64 bg-white p-4 mb-4">
+                        <View className="flex-row items-center justify-center mb-6">
+                            <Text className="text-[#72fe88] font-label text-[10px] uppercase tracking-widest text-center font-bold mr-2">
+                                AUTOMATIC GALLERY STORAGE ACTIVE
+                            </Text>
+                            <TouchableOpacity onPress={() => Alert.alert(
+                                "CLEANUP_PROTOCOL",
+                                "1. SIGNATURE IS SAVED AUTOMATICALLY TO YOUR GALLERY.\n2. WHEN YOU DELETE THE BLOCK, UNLINK WILL PURGE THE MATCHING SIGNATURE AUTOMATICALLY."
+                            )}>
+                                <Ionicons name="information-circle-outline" size={14} color="#72fe88" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View className="w-64 h-64 bg-white p-4 mb-6 items-center justify-center">
                             {generatedQrData && (
-                                <Image
-                                    source={{ uri: `https://quickchart.io/qr?text=${encodeURIComponent(generatedQrData)}&size=250&centerImageUrl=${encodeURIComponent('https://raw.githubusercontent.com/expo/expo/main/templates/expo-template-blank/assets/icon.png')}&margin=2` }}
-                                    className="w-full h-full"
+                                <QRCode
+                                    value={generatedQrData}
+                                    size={220}
+                                    color="black"
+                                    backgroundColor="white"
+                                    logo={require('../../assets/icon.png')}
+                                    logoSize={50}
+                                    logoBackgroundColor="white"
+                                    logoBorderRadius={10}
+                                    getRef={(c) => (qrRef.current = c)}
                                 />
                             )}
                         </View>
 
-                        {isQrSaved ? (
-                            <View className="flex-row items-center gap-2 mb-8 bg-[#72fe88]/10 px-3 py-2 border border-[#72fe88]/20">
-                                <MaterialIcons name="check-circle" size={14} color="#72fe88" />
-                                <Text className="text-[#72fe88] font-label text-[10px] uppercase tracking-widest font-bold">SIGNATURE_SAVED_TO_GALLERY</Text>
-                            </View>
-                        ) : (
-                            <TouchableOpacity
-                                onPress={handleSaveQR}
-                                disabled={isQrSaving}
-                                className="mb-8 flex-row items-center gap-2"
-                            >
-                                <MaterialIcons name="file-download" size={16} color="white" />
-                                <Text className="text-white font-label text-[10px] uppercase tracking-widest border-b border-white/20 pb-0.5">
-                                    {isQrSaving ? 'SAVING_SIGNATURE...' : 'SAVE_TO_GALLERY'}
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-
-                        <View className="bg-white/5 border border-white/10 p-4 mb-6 flex-row items-center">
+                        <View className="bg-white/5 border border-white/10 p-4 mb-8 flex-row items-center">
                             <Ionicons name="warning-outline" size={18} color="#FFD700" style={{ marginRight: 12 }} />
                             <Text className="flex-1 text-white/80 font-label text-[10px] uppercase tracking-wider leading-4">
                                 IF THE QR IS LOST, YOU CAN'T STOP THE SESSION.{"\n"}
@@ -965,26 +982,41 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
 
                         <TouchableOpacity
                             onPress={async () => {
-                                // Ensure it's saved to gallery before continuing
-                                if (!isQrSaved) {
-                                    await handleSaveQR();
+                                setIsQrSaving(true);
+                                try {
+                                    // 1. Await the Save and get the ID
+                                    const assetId = await handleSaveQR(); 
+                                    
+                                    // 2. Construct the session with the actual assetId
+                                    const sessionToSave = {
+                                        ...pendingSession,
+                                        strictnessConfig: {
+                                            ...pendingSession.strictnessConfig,
+                                            assetId: assetId
+                                        }
+                                    };
+
+                                    // 3. Save to database
+                                    await finalizeSession(sessionToSave);
+                                    setIsQrModalVisible(false);
+                                } catch (e) {
+                                    console.error("Deploy failure:", e);
+                                    setIsQrSaving(false);
                                 }
-                                setIsQrModalVisible(false);
-                                // Small delay to ensure interaction finishes and storage persists
-                                setTimeout(() => {
-                                    finalizeSession(pendingSession);
-                                }, 100);
                             }}
                             className="w-full h-14 bg-white items-center justify-center mb-3"
+                            disabled={isQrSaving}
                         >
-                            <Text className="text-black font-headline font-black text-xs uppercase tracking-widest"> I have saved the signature</Text>
+                            <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">
+                                {isQrSaving ? 'SAVING QR CODE TO GALLERY...' : 'CONFIRM DEPLOYMENT'}
+                            </Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             onPress={() => setIsQrModalVisible(false)}
-                            className="w-full h-14 border border-white/20 items-center justify-center"
+                            className="w-full h-14 border border-white/20 items-center justify-center opacity-50"
                         >
-                            <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">Cancel Deployment</Text>
+                            <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">CANCEL SIGNATURE</Text>
                         </TouchableOpacity>
                     </View>
                 </Animated.View>

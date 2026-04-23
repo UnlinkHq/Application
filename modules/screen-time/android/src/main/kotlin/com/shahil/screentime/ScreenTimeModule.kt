@@ -330,13 +330,20 @@ class ScreenTimeModule : Module() {
     Function("requestAdmin") {
       val activity = appContext.currentActivity
       val context = appContext.reactContext
-      if (activity != null && context != null) {
+      if (context != null) {
         try {
           val adminComponent = ComponentName(context.packageName, "com.shahil.screentime.UnlinkDeviceAdminReceiver")
-          val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN)
-          intent.putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
-          intent.putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Enabling this prevents Unlink from being uninstalled.")
-          activity.startActivity(intent)
+          val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
+            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Enabling this prevents Unlink from being uninstalled.")
+          }
+          
+          if (activity != null) {
+            activity.startActivity(intent)
+          } else {
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(intent)
+          }
         } catch (e: Exception) {
           Log.e("UnlinkAdmin", "Failed to start admin activity", e)
         }

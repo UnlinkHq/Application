@@ -205,10 +205,13 @@ class UnlinkAccessibilityService : AccessibilityService() {
         // 2. IGNORE SELF TO PREVENT OVERLAY BLINKING
         if (pkg == packageName) return
 
-        // 2.5 WARDEN_MODE: Prevent bypassing Unlink via Settings/Accessibility
+        // 2.5 WARDEN_MODE: Prevent bypassing Unlink via Settings/Accessibility/PackageInstaller
         val now = System.currentTimeMillis()
         if (blockExpiryTime > now && !isBlockingSuspended) {
-            if (pkg == "com.android.settings") {
+            val isSettings = pkg == "com.android.settings"
+            val isPackageInstaller = pkg.contains("packageinstaller", ignoreCase = true)
+            
+            if (isSettings || isPackageInstaller) {
                 if (checkSelfProtection(rootInActiveWindow)) {
                     Toast.makeText(this, "Warden: Protocol Enforced. Settings locked. ❤️🩹", Toast.LENGTH_SHORT).show()
                     performGlobalAction(GLOBAL_ACTION_BACK)

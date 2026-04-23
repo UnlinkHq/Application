@@ -2,4 +2,5 @@
 <resources>
     <string name="accessibility_service_label">Unlink App Blocker</string>
     <string name="accessibility_service_description">Unlink uses accessibility services to identify and block addictive loops in YouTube and Instagram. This allows you to stay focused on your deep work sessions.</string>
+    <string name="device_admin_description">Enabling this prevents Unlink from being uninstalled during focus sessions.</string>
 </resources>

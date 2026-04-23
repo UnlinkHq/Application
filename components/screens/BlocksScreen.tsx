@@ -14,6 +14,7 @@ import Animated, {
     interpolateColor,
     FadeInDown
 } from 'react-native-reanimated';
+import * as MediaLibrary from 'expo-media-library';
 import { FocusStorageService, BlockSession } from '../../services/FocusStorageService';
 import { PermissionBanner } from '../ui/PermissionBanner';
 import { useSelection } from '../../context/SelectionContext';
@@ -57,7 +58,13 @@ export const BlocksScreen = () => {
         const sub = AppState.addEventListener('change', (state) => {
             if (state === 'active') refreshData();
         });
-        return () => sub.remove();
+        // LIGHNING_REFRESH: Listen for internal app signals to refresh instantly
+        const refreshSub = require('react-native').DeviceEventEmitter.addListener('UNLINK_REFRESH_DATA', refreshData);
+        
+        return () => {
+            sub.remove();
+            refreshSub.remove();
+        };
     }, [refreshData]);
 
     const handleStop = async () => {
@@ -88,10 +95,24 @@ export const BlocksScreen = () => {
     };
 
     const handleDelete = async (id: string) => {
+        const block = library.find(b => b.id === id);
+        const assetId = (block?.strictnessConfig as any)?.assetId;
+
         const previousLibrary = library;
         setLibrary(prev => prev.filter(b => b.id !== id)); // Optimistic update
         try {
             await FocusStorageService.deleteBlock(id);
+            
+            // Clean up the QR signature from the gallery
+            if (assetId) {
+                try {
+                    await MediaLibrary.deleteAssetsAsync([assetId]);
+                } catch (assetError) {
+                    console.error('Failed to delete asset:', assetError);
+                    // Silently fail if user denies deletion or asset is already gone
+                }
+            }
+            
             refreshData();
         } catch (error) {
             setLibrary(previousLibrary); // Rollback
