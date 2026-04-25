@@ -11,7 +11,7 @@ interface SelectionContextType {
     closeConfig: () => void;
 }
 
-const SelectionContext = createContext<SelectionContextType | undefined>(undefined);
+export const SelectionContext = createContext<SelectionContextType | undefined>(undefined);
 
 export const SelectionProvider = ({ children }: { children: ReactNode }) => {
     const [isSelectionVisible, setIsSelectionVisible] = useState(false);

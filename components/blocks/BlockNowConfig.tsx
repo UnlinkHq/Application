@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Image, Dimensions, StyleSheet, Platform, AppState, AppStateStatus, Modal, ScrollView, Switch, Alert, Linking } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Image, Dimensions, StyleSheet, Platform, AppState, AppStateStatus, Modal, ScrollView, Switch, Alert, Linking, DeviceEventEmitter } from 'react-native';
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as MediaLibrary from 'expo-media-library';
@@ -37,6 +37,9 @@ import {
 } from '../../modules/screen-time';
 import { PermissionBanner } from '../ui/PermissionBanner';
 import { ModernToggle } from '../ui/ModernToggle';
+import { ConfigRow } from '../ui/ConfigRow';
+import { SignatureDeploymentModal } from './SignatureDeploymentModal';
+import SignatureService from '../../services/SignatureService';
 import { FocusStorageService } from '../../services/FocusStorageService';
 
 const { width } = Dimensions.get('window');
@@ -201,8 +204,6 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
     const [generatedQrData, setGeneratedQrData] = useState<string | null>(null);
     const [pendingSession, setPendingSession] = useState<any>(null);
     const [isAdminModalVisible, setIsAdminModalVisible] = useState(false);
-    const [isQrSaving, setIsQrSaving] = useState(false);
-    const [isQrSaved, setIsQrSaved] = useState(false);
     const [nativeIosCount, setNativeIosCount] = useState(0);
     const [hasAccessibility, setHasAccessibility] = useState(true);
     const [showAccessibilityDisclosure, setShowAccessibilityDisclosure] = useState(false);
@@ -274,11 +275,10 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
             return;
         }
 
-        const qrData = strictMode === 'qr_code' ? `UNLINK_${Date.now()}_${Math.random().toString(36).substring(7)}` : undefined;
-
-        const session = {
+        const sessionPayload = {
             id: Math.random().toString(36).substring(7),
             title: title || "ALLOW_FOCUS_SESSION",
+            type: 'block_now' as const,
             durationMins: duration,
             apps: selectedApps.map(a => a.id),
             appIcons: selectedApps.map(a => a.icon),
@@ -299,9 +299,11 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
             },
             strictnessConfig: {
                 mode: strictMode,
-                emailAddress: strictConfig?.emailAddress,
-                qrCodeData: qrData,
-                isUninstallProtected: blockUninstall
+                isUninstallProtected: blockUninstall,
+                allowTimedBreaks,
+                breakLimit: breakTimes,
+                breakDurationMins: breakDuration,
+                ...strictConfig
             },
             timedBreaks: {
                 enabled: allowTimedBreaks,
@@ -313,67 +315,29 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
         };
 
         if (strictMode === 'qr_code') {
-            setGeneratedQrData(qrData!);
-            setPendingSession(session);
+            const qrData = `UNLINK_SESSION_${Date.now()}`;
+            setGeneratedQrData(qrData);
+            setPendingSession(sessionPayload);
             setIsQrModalVisible(true);
             return;
         }
 
-        await finalizeSession(session);
+        await finalizeSession(sessionPayload);
     };
 
-    const qrRef = React.useRef<any>();
-
-    const finalizeSession = async (session: any) => {
-        // Change: Save to library instead of starting immediately
-        await FocusStorageService.saveBlock(session);
-        // SIGNAL: Trigger an instant refresh in the main list
-        Platform.OS !== 'web' && require('react-native').DeviceEventEmitter.emit('UNLINK_REFRESH_DATA');
-        onBack();
-    };
-
-    const handleSaveQR = useCallback(async () => {
-        if (!generatedQrData) return null;
-        setIsQrSaving(true);
+    const finalizeSession = async (sessionPayload: any) => {        // --- STORE_TEMPLATE_LAYER ---
         try {
-            let { status } = await MediaLibrary.requestPermissionsAsync(true);
-            if (status !== 'granted') {
-                setIsQrSaving(false);
-                return null;
-            }
-            return await proceedWithLocalSave();
-        } catch (error: any) {
-            console.error('Failed to save QR:', error);
-            setIsQrSaving(false);
-            return null;
+            await FocusStorageService.saveBlock(sessionPayload);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+            // Return to dashboard
+            DeviceEventEmitter.emit('UNLINK REFRESH DATA');
+            onBack();
+        } catch (e) {
+            console.error('Template Storage Failure:', e);
         }
-    }, [generatedQrData]);
-
-    const proceedWithLocalSave = async (): Promise<string | null> => {
-        if (!qrRef.current) return null;
-
-        return new Promise<string | null>((resolve, reject) => {
-            qrRef.current.toDataURL(async (data: string) => {
-                try {
-                    const fileUri = `${FileSystem.cacheDirectory}unlink_qr_${Date.now()}.png`;
-                    await FileSystem.writeAsStringAsync(fileUri, data, {
-                        encoding: 'base64',
-                    });
-
-                    const asset = await MediaLibrary.createAssetAsync(fileUri);
-
-                    setIsQrSaved(true);
-                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    setIsQrSaving(false);
-                    resolve(asset.id);
-                } catch (err) {
-                    console.error('Failed to write QR file:', err);
-                    setIsQrSaving(false);
-                    reject(err);
-                }
-            });
-        });
     };
+
 
     const hasAppsSelected = Platform.OS === 'ios' ? nativeIosCount > 0 : selectedApps.length > 0;
 
@@ -415,111 +379,22 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
 
                     <View className="gap-2.5 mt-2">
                         {/* Box 1: Target Apps */}
-                        <TouchableOpacity
-                            activeOpacity={0.7}
-                            onPress={() => Platform.OS === 'ios' ? setIsFamilyPickerVisible(true) : setIsAppSelectionVisible(true)}
-                            className={`border p-4 ${hasAppsSelected ? 'bg-white/5 border-white' : 'bg-black border-white/10'}`}
-                            style={{
-                                shadowColor: '#fff',
-                                shadowOffset: { width: 0, height: 2 },
-                                shadowOpacity: hasAppsSelected ? 0.05 : 0,
-                                shadowRadius: 10,
-                                elevation: hasAppsSelected ? 2 : 0
-                            }}
-                        >
-                            <View className="flex-row justify-between items-center mb-3">
-                                <Text className="text-white font-headline font-black text-[10px] uppercase tracking-widest">TARGETS</Text>
-                                <Ionicons name="apps-outline" size={14} color="white" />
-                            </View>
-                            <View className="flex-row items-center">
-                                {hasAppsSelected ? (
-                                    <View className="flex-row flex-1 items-center">
-                                        {Platform.OS === 'android' ? (
-                                            <View className="flex-row">
-                                                {selectedApps.slice(0, 4).map((app, index) => (
-                                                    <Image
-                                                        key={app.id}
-                                                        source={{ uri: app.icon }}
-                                                        style={{ marginLeft: index === 0 ? 0 : -14 }}
-                                                        className="w-9 h-9 bg-black border-2 border-black"
-                                                    />
-                                                ))}
-                                                {selectedApps.length > 4 && (
-                                                    <View className="ml-2 bg-white/10 px-2 py-1">
-                                                        <Text className="text-white font-label text-[10px] uppercase">+{selectedApps.length - 4}</Text>
-                                                    </View>
-                                                )}
-                                            </View>
-                                        ) : (
-                                            <View className="flex-row items-center">
-                                                <View className="w-8 h-8 rounded bg-white/10 items-center justify-center border border-white/20">
-                                                    <Ionicons name="shield-outline" size={14} color="white" />
-                                                </View>
-                                                <Text className="text-white font-headline font-black text-xs uppercase ml-3 tracking-tight">
-                                                    SYSTEM_RESTRICTION_ACTIVE
-                                                </Text>
-                                            </View>
-                                        )}
-                                        <Text className="text-white/40 font-label text-[9px] uppercase ml-auto">
-                                            {Platform.OS === 'ios' ? nativeIosCount : selectedApps.length} APPS
-                                        </Text>
-                                    </View>
-                                ) : (
-                                    <View className="flex-row items-center">
-                                        <Ionicons name="add-circle-outline" size={18} color="rgba(255,255,255,0.1)" />
-                                        <Text className="text-white/20 font-label text-[10px] uppercase italic ml-2">NO_TARGETS_DEFINED</Text>
-                                    </View>
-                                )}
-                            </View>
-                        </TouchableOpacity>
+                        <View className="border border-white/10 bg-white/5">
+                            <ConfigRow
+                                title="TARGETS"
+                                icon="apps-outline"
+                                iconLibrary="Ionicons"
+                                onPress={() => Platform.OS === 'ios' ? setIsFamilyPickerVisible(true) : setIsAppSelectionVisible(true)}
+                                selectedApps={selectedApps}
+                                nativeCount={nativeIosCount}
+                            />
 
-                        {/* Box 2: Strictness */}
-                        <View className="py-[5px]">
-                            <Animated.View
-                                style={[
-                                    { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
-                                    glowStyle
-                                ]}
-                            >
-                                <LinearGradient
-                                    colors={['rgba(255,255,255,0.08)', 'transparent']}
-                                    style={{ flex: 1, marginHorizontal: 2 }}
-                                />
-                            </Animated.View>
-                            <TouchableOpacity
-                                activeOpacity={0.7}
+                            <ConfigRow
+                                title="STRICTNESS"
+                                icon={getModeIcon(strictMode) as any}
+                                subtitle={getModeTitle(strictMode)}
                                 onPress={() => setIsStrictModeVisible(true)}
-                                className="border border-white/40 p-5 bg-black"
-                                style={{
-                                    shadowColor: '#fff',
-                                    shadowOffset: { width: 0, height: 0 },
-                                    shadowOpacity: 0.1,
-                                    shadowRadius: 10,
-                                    elevation: 6
-                                }}
-                            >
-                                <View className="flex-row justify-between items-center mb-4">
-                                    <View className="flex-row items-center gap-2">
-                                        <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">STRICTNESS</Text>
-                                        <View className="bg-white/10 px-1.5 py-0.5 border border-white/10">
-                                            <Text className="text-white/40 font-label text-[10px] font-bold">PREMIUM</Text>
-                                        </View>
-                                    </View>
-                                    <Ionicons name="shield-checkmark-outline" size={16} color="white" />
-                                </View>
-                                <View className="flex-row items-center gap-3">
-                                    <View className="w-10 h-10 bg-white/5 items-center justify-center border border-white/10">
-                                        <MaterialCommunityIcons name={getModeIcon(strictMode)} size={20} color="white" />
-                                    </View>
-                                    <View>
-                                        <Text className="text-white font-headline font-black text-sm uppercase tracking-tight">
-                                            {getModeTitle(strictMode)}
-                                        </Text>
-
-                                        <Text className="text-white/40 font-label text-[10px] mt-1">Select the strictness level for this session</Text>
-                                    </View>
-                                </View>
-                            </TouchableOpacity>
+                            />
                         </View>
 
                         {/* Box 3: Timed Breaks */}
@@ -798,17 +673,14 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
 
             <View className="px-6 py-6 bg-[#0a0a0a]">
                 <TouchableOpacity
-                    className={`h-16 items-center justify-center ${hasAppsSelected ? 'bg-white' : 'bg-white/10'}`}
+                    className={`h-16 items-center justify-center ${hasAppsSelected ? 'bg-white' : 'bg-white/10'} border border-white`}
                     activeOpacity={0.9}
                     onPress={hasAppsSelected ? handleInitiate : () => Platform.OS === 'ios' ? setIsFamilyPickerVisible(true) : setIsAppSelectionVisible(true)}
                 >
                     <View className="items-center">
-                        <Text className={`font-headline font-black text-lg uppercase tracking-[0.2em] ${hasAppsSelected ? 'text-black' : 'text-white'}`}>
-                            {hasAppsSelected ? 'Add Block' : 'Select Targets'}
+                        <Text className={`font-headline font-black text-xs uppercase tracking-[0.3em] ${hasAppsSelected ? 'text-black' : 'text-white'}`}>
+                            {hasAppsSelected ? 'SAVE TO LIBRARY' : 'SELECT TARGETS'}
                         </Text>
-                        {hasAppsSelected && (
-                            <Text className="text-black/40 font-label text-[10px] mt-1">Preparing airtight lockdown</Text>
-                        )}
                     </View>
                 </TouchableOpacity>
             </View>
@@ -934,93 +806,23 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                 }}
             />
 
-            {/* QR Generation Overlay */}
-            {isQrModalVisible && (
-                <Animated.View
-                    entering={FadeIn}
-                    style={StyleSheet.absoluteFill}
-                    className="bg-black/95 items-center justify-center px-8 z-50"
-                >
-                    <View className="w-full bg-[#0a0a0a] border border-white/20 p-8 rounded-sm items-center">
-                        <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">SIGNATURE_READY</Text>
-
-                        <View className="flex-row items-center justify-center mb-6">
-                            <Text className="text-[#72fe88] font-label text-[10px] uppercase tracking-widest text-center font-bold mr-2">
-                                AUTOMATIC GALLERY STORAGE ACTIVE
-                            </Text>
-                            <TouchableOpacity onPress={() => Alert.alert(
-                                "CLEANUP_PROTOCOL",
-                                "1. SIGNATURE IS SAVED AUTOMATICALLY TO YOUR GALLERY.\n2. WHEN YOU DELETE THE BLOCK, UNLINK WILL PURGE THE MATCHING SIGNATURE AUTOMATICALLY."
-                            )}>
-                                <Ionicons name="information-circle-outline" size={14} color="#72fe88" />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View className="w-64 h-64 bg-white p-4 mb-6 items-center justify-center">
-                            {generatedQrData && (
-                                <QRCode
-                                    value={generatedQrData}
-                                    size={220}
-                                    color="black"
-                                    backgroundColor="white"
-                                    logo={require('../../assets/icon.png')}
-                                    logoSize={50}
-                                    logoBackgroundColor="white"
-                                    logoBorderRadius={10}
-                                    getRef={(c) => (qrRef.current = c)}
-                                />
-                            )}
-                        </View>
-
-                        <View className="bg-white/5 border border-white/10 p-4 mb-8 flex-row items-center">
-                            <Ionicons name="warning-outline" size={18} color="#FFD700" style={{ marginRight: 12 }} />
-                            <Text className="flex-1 text-white/80 font-label text-[10px] uppercase tracking-wider leading-4">
-                                IF THE QR IS LOST, YOU CAN'T STOP THE SESSION.{"\n"}
-                                <Text className="text-white font-bold italic">REMEMBER THAT.</Text>
-                            </Text>
-                        </View>
-
-                        <TouchableOpacity
-                            onPress={async () => {
-                                setIsQrSaving(true);
-                                try {
-                                    // 1. Await the Save and get the ID
-                                    const assetId = await handleSaveQR(); 
-                                    
-                                    // 2. Construct the session with the actual assetId
-                                    const sessionToSave = {
-                                        ...pendingSession,
-                                        strictnessConfig: {
-                                            ...pendingSession.strictnessConfig,
-                                            assetId: assetId
-                                        }
-                                    };
-
-                                    // 3. Save to database
-                                    await finalizeSession(sessionToSave);
-                                    setIsQrModalVisible(false);
-                                } catch (e) {
-                                    console.error("Deploy failure:", e);
-                                    setIsQrSaving(false);
-                                }
-                            }}
-                            className="w-full h-14 bg-white items-center justify-center mb-3"
-                            disabled={isQrSaving}
-                        >
-                            <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">
-                                {isQrSaving ? 'SAVING QR CODE TO GALLERY...' : 'CONFIRM DEPLOYMENT'}
-                            </Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={() => setIsQrModalVisible(false)}
-                            className="w-full h-14 border border-white/20 items-center justify-center opacity-50"
-                        >
-                            <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">CANCEL SIGNATURE</Text>
-                        </TouchableOpacity>
-                    </View>
-                </Animated.View>
-            )}
+            {/* Signature Protocol Deployment */}
+            <SignatureDeploymentModal
+                visible={isQrModalVisible}
+                qrData={generatedQrData}
+                title="FOCUS_SIGNATURE"
+                onCancel={() => setIsQrModalVisible(false)}
+                onSuccess={async (assetId) => {
+                    const finalSession = {
+                        ...pendingSession,
+                        strictnessConfig: {
+                            ...pendingSession.strictnessConfig,
+                            assetId
+                        }
+                    };
+                    await finalizeSession(finalSession);
+                }}
+            />
 
             {/* Security Permission Overlay */}
             {isAdminModalVisible && (

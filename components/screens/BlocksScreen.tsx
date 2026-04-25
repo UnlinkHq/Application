@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, AppState } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, AppState, DeviceEventEmitter } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -58,8 +58,8 @@ export const BlocksScreen = () => {
         const sub = AppState.addEventListener('change', (state) => {
             if (state === 'active') refreshData();
         });
-        // LIGHNING_REFRESH: Listen for internal app signals to refresh instantly
-        const refreshSub = require('react-native').DeviceEventEmitter.addListener('UNLINK_REFRESH_DATA', refreshData);
+        // LIGHTNING_REFRESH: Listen for internal app signals to refresh instantly
+        const refreshSub = DeviceEventEmitter.addListener('UNLINK REFRESH DATA', refreshData);
         
         return () => {
             sub.remove();
@@ -359,16 +359,36 @@ const LibraryItem = ({ block, index, onPlay, onDelete, onEdit, isActive }: { blo
                 <View className="flex-row items-center justify-between mb-4">
                     <View className="flex-row items-center gap-3 flex-1 mr-4">
                         <View className="w-10 h-10 bg-white/5 items-center justify-center">
-                            <MaterialCommunityIcons name="shield" size={20} color={isActive ? "#72fe88" : "white"} />
+                            <MaterialCommunityIcons 
+                                name={block.type === 'schedule' ? "calendar-clock" : "shield"} 
+                                size={20} 
+                                color={isActive ? "#72fe88" : "white"} 
+                            />
                         </View>
                         <View className="flex-1">
-                            <Text
-                                numberOfLines={1}
-                                className={`font-headline font-black text-sm uppercase tracking-widest ${isActive ? 'text-[#72fe88]' : 'text-white'}`}
-                            >
-                                {block.title}
-                            </Text>
-                            <Text className="text-white/30 font-label text-[10px] mt-1">{block.apps.length} Targets • {block.durationMins} Mins</Text>
+                            <View className="flex-row items-center gap-2 mb-1">
+                                <Text
+                                    numberOfLines={1}
+                                    className={`font-headline font-black text-sm uppercase tracking-widest ${isActive ? 'text-[#72fe88]' : 'text-white'}`}
+                                >
+                                    {block.title}
+                                </Text>
+                                <View className={`px-1.5 py-0.5 border ${block.type === 'schedule' ? 'border-blue-500/30' : 'border-white/10'}`}>
+                                    <Text className={`font-label text-[7px] uppercase tracking-tighter ${block.type === 'schedule' ? 'text-blue-500' : 'text-white/40'}`}>
+                                        {block.type === 'schedule' ? 'Scheduled' : 'Instant'}
+                                    </Text>
+                                </View>
+                            </View>
+                            
+                            {block.type === 'schedule' && block.schedule ? (
+                                <Text className="text-white/30 font-label text-[10px]">
+                                    {block.schedule.startTime} - {block.schedule.endTime} • {block.schedule.days.join(', ')}
+                                </Text>
+                            ) : (
+                                <Text className="text-white/30 font-label text-[10px]">
+                                    {block.apps.length} Targets • {block.durationMins} Mins
+                                </Text>
+                            )}
                         </View>
                     </View>
 

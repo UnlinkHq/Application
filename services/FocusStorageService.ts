@@ -20,6 +20,14 @@ export interface BlockSession {
     durationMins: number;
     apps: string[];
     appIcons?: string[];
+    type: 'block_now' | 'schedule';
+    
+    schedule?: {
+        days: string[];
+        startTime: string; // HH:mm
+        endTime: string;   // HH:mm
+        isEnabled: boolean;
+    };
 
     scrollingProtocol: {
         enabled: boolean;
@@ -50,6 +58,7 @@ export class FocusStorageService {
 
     static async startSession(rawSession: any): Promise<void> {
         console.log('--- [STORAGE_ENGINE] DEPLOYING_PROTOCOL ---');
+        console.log(JSON.stringify(rawSession, null, 2));
 
         // 1. Instantly migrate/harden the session so there's no missing data
         const session = FocusStorageService.migrateSession(rawSession);
@@ -57,25 +66,48 @@ export class FocusStorageService {
         // 2. Save locally as active
         await AsyncStorage.setItem(ACTIVE_SESSION_KEY, JSON.stringify(session));
 
-        // 3. Transmit to Native Layer (Android)
+        // 3. Transmit to Native Layer
+        await FocusStorageService.syncNativeLayer(session);
+    }
+
+    private static async syncNativeLayer(session: BlockSession): Promise<void> {
+        
         if (Platform.OS === 'android') {
+            console.log(`--- [NATIVE_SYNC] SYNCHRONIZING_PROTOCOL: ${session.id} ---`);
             ScreenTime.setBlockingSuspended(false);
 
             // Send config BEFORE blocks so the background service is ready
             ScreenTime.setSurgicalConfig({
-                youtube: session.scrollingProtocol.youtube.enabled,
-                instagram: session.scrollingProtocol.instagram.enabled,
+                youtube: session.scrollingProtocol?.youtube?.enabled || false,
+                instagram: session.scrollingProtocol?.instagram?.enabled || false,
                 config: {
-                    ytGate: session.scrollingProtocol.youtube.intentGate,
-                    ytShelf: session.scrollingProtocol.youtube.hideShorts,
-                    ytFinite: session.scrollingProtocol.youtube.finiteFeed,
-                    igGate: session.scrollingProtocol.instagram.intentGate,
-                    igDMs: session.scrollingProtocol.instagram.dmSafeZone,
-                    igFinite: session.scrollingProtocol.instagram.finiteFeed
+                    ytGate: session.scrollingProtocol?.youtube?.intentGate ?? true,
+                    ytShelf: session.scrollingProtocol?.youtube?.hideShorts ?? true,
+                    ytFinite: session.scrollingProtocol?.youtube?.finiteFeed ?? true,
+                    igGate: session.scrollingProtocol?.instagram?.intentGate ?? true,
+                    igDMs: session.scrollingProtocol?.instagram?.dmSafeZone ?? true,
+                    igFinite: session.scrollingProtocol?.instagram?.finiteFeed ?? true
                 }
             });
             ScreenTime.setUninstallProtection(session.strictnessConfig?.isUninstallProtected ?? false);
-            ScreenTime.setSessionDuration(session.durationMins || 0);
+            
+            // Calculate duration based on session type
+            let durationMins = session.durationMins || 0;
+            if (session.type === 'schedule' && session.schedule) {
+                try {
+                    const now = new Date();
+                    const [endH, endM] = session.schedule.endTime.split(':').map(Number);
+                    const endDate = new Date(now);
+                    endDate.setHours(endH, endM, 0, 0);
+                    
+                    const diffMs = endDate.getTime() - now.getTime();
+                    durationMins = Math.max(0, Math.floor(diffMs / (1000 * 60)));
+                    console.log(`--- [NATIVE_SYNC] SCHEDULE_REMAINING: ${durationMins}m ---`);
+                } catch (e) {
+                    console.error('Temporal Calculation Failure:', e);
+                }
+            }
+            ScreenTime.setSessionDuration(durationMins);
 
             let hardBlockedApps = session.apps || [];
 
@@ -87,13 +119,11 @@ export class FocusStorageService {
                 hardBlockedApps = hardBlockedApps.filter((app: string) => app !== 'com.instagram.android');
             }
 
-            ScreenTime.setBlockedApps(hardBlockedApps, "FOCUS_PROTOCOL_ENGAGED", "");
-
+            ScreenTime.setBlockedApps(hardBlockedApps, "FORCE_FOCUS_ACTIVE", "");
             const breaksLeft = (session.timedBreaks?.allowedCount || 0) - (session.timedBreaks?.usedCount || 0);
             ScreenTime.setBreaksRemaining(Math.max(0, breaksLeft));
         }
 
-        // 4. For iOS, we rely on the activateShield call or standard family controls
         if (Platform.OS === 'ios') {
             ScreenTime.activateShield();
         }
@@ -227,39 +257,41 @@ export class FocusStorageService {
 
     static async getActiveSession(): Promise<BlockSession | null> {
         const data = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
-        if (!data) return null;
+        
+        // Tier 1: Check for explicit ad-hoc focused sessions (manual start)
+        if (data) {
+            try {
+                const sessionData = JSON.parse(data);
+                const session = FocusStorageService.migrateSession(sessionData);
 
-        try {
-            const sessionData = JSON.parse(data);
-            const session = FocusStorageService.migrateSession(sessionData);
+                // Time-Aware Validation: If the focus budget is exhausted, terminate the session
+                if (!session.isOnBreak) {
+                    const totalEffectivePause = session.accumulatedBreakMs || 0;
+                    const activeElapsedMs = Date.now() - session.startTime - totalEffectivePause;
+                    const activeElapsedMins = activeElapsedMs / (1000 * 60);
 
-            // Time-Aware Validation: If the focus budget is exhausted, terminate the session
-            if (!session.isOnBreak) {
-                const totalEffectivePause = session.accumulatedBreakMs || 0;
-                const activeElapsedMs = Date.now() - session.startTime - totalEffectivePause;
-                const activeElapsedMins = activeElapsedMs / (1000 * 60);
+                    if (activeElapsedMins >= session.durationMins && session.type === 'block_now') {
+                        await FocusStorageService.stopSession(true); // MARK_AS_COMPLETED
+                        return null;
+                    }
+                } else if (session.isOnBreak && session.breakStartTime) {
+                    // AUTO_EXPIRY_CHECK: If break duration is exceeded, re-engage the block automatically
+                    const breakDurationMs = (session.timedBreaks?.durationMins || 0) * 60 * 1000;
+                    const breakElapsed = Date.now() - session.breakStartTime;
 
-                if (activeElapsedMins >= session.durationMins) {
-                    await FocusStorageService.stopSession(true); // MARK_AS_COMPLETED
-                    return null;
+                    if (breakElapsed >= breakDurationMs) {
+                        console.log('--- [AUTO_LOCK] BREAK_EXPIRED_PROTOCOL_RE_ENFORCED ---');
+                        const locked = await FocusStorageService.applyToggleBreak(session);
+                        return locked || null;
+                    }
                 }
-            } else if (session.isOnBreak && session.breakStartTime) {
-                // AUTO_EXPIRY_CHECK: If break duration is exceeded, re-engage the block automatically
-                const breakDurationMs = (session.timedBreaks?.durationMins || 0) * 60 * 1000;
-                const breakElapsed = Date.now() - session.breakStartTime;
-
-                if (breakElapsed >= breakDurationMs) {
-                    console.log('--- [AUTO_LOCK] BREAK_EXPIRED_PROTOCOL_RE_ENFORCED ---');
-                    // RESOLVE_RECURSION: Use internal method to avoid infinite loop
-                    const locked = await FocusStorageService.applyToggleBreak(session);
-                    return locked || null;
-                }
+                return session;
+            } catch (e) {
+                console.error('Core Session Analysis Failure:', e);
             }
-
-            return session;
-        } catch (e) {
-            return null;
         }
+
+        return null;
     }
 
     // --- Library Management ---
@@ -272,6 +304,9 @@ export class FocusStorageService {
     }
 
     static async saveBlock(block: BlockSession): Promise<void> {
+        console.log('--- [STORAGE_ENGINE] PERSISTING_NEW_BLOCK_PROTOCOL ---');
+        console.log(JSON.stringify(block, null, 2));
+        
         const library = await this.getLibraryBlocks();
         const exists = library.findIndex(b => b.id === block.id);
 
@@ -291,31 +326,41 @@ export class FocusStorageService {
     }
 
     static migrateSession(session: any): BlockSession {
-        // Deep clone or construct to ensure we aren't mutating the original
-        // while also providing default fallbacks everywhere
-        const oldFlags = session.surgicalFlags || {};
-        const oldConfig = oldFlags.config || {};
-
         const sp = session.scrollingProtocol || {};
         const yt = sp.youtube || {};
         const ig = sp.instagram || {};
 
         return {
             ...session,
+            type: session.type || 'block_now',
+            durationMins: session.durationMins || 0,
+            startTime: session.startTime || Date.now(),
+            apps: session.apps || [],
+            appIcons: session.appIcons || [],
             scrollingProtocol: {
-                enabled: sp.enabled ?? (oldFlags.youtube || oldFlags.instagram || false),
+                enabled: sp.enabled || false,
                 youtube: {
-                    enabled: yt.enabled ?? (oldFlags.youtube || false),
-                    intentGate: yt.intentGate ?? oldConfig.ytGate ?? true,
-                    hideShorts: yt.hideShorts ?? oldConfig.ytShelf ?? true,
-                    finiteFeed: yt.finiteFeed ?? oldConfig.ytFinite ?? true
+                    enabled: yt.enabled || false,
+                    intentGate: yt.intentGate ?? true,
+                    hideShorts: yt.hideShorts ?? true,
+                    finiteFeed: yt.finiteFeed ?? true
                 },
                 instagram: {
-                    enabled: ig.enabled ?? (oldFlags.instagram || false),
-                    intentGate: ig.intentGate ?? oldConfig.igGate ?? true,
-                    dmSafeZone: ig.dmSafeZone ?? oldConfig.igDMs ?? true,
-                    finiteFeed: ig.finiteFeed ?? oldConfig.igFinite ?? true
+                    enabled: ig.enabled || false,
+                    intentGate: ig.intentGate ?? true,
+                    dmSafeZone: ig.dmSafeZone ?? true,
+                    finiteFeed: ig.finiteFeed ?? true
                 }
+            },
+            strictnessConfig: session.strictnessConfig || {
+                mode: 'normal',
+                isUninstallProtected: false
+            },
+            timedBreaks: session.timedBreaks || {
+                enabled: false,
+                allowedCount: 0,
+                durationMins: 0,
+                usedCount: 0
             }
         };
     }

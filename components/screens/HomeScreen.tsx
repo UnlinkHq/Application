@@ -66,9 +66,10 @@ const ActiveProtocolStatus = ({
     const breakRemainingMs = Math.max(0, breakDurationMs - breakElapsedMs);
 
     const isOnBreak = !!session.isOnBreak;
+    const timedBreaks = session.timedBreaks || { enabled: false, allowedCount: 0, usedCount: 0 };
 
-    const breaksLeft = session.timedBreaks.enabled
-        ? session.timedBreaks.allowedCount - (session.timedBreaks.usedCount || 0)
+    const breaksLeft = timedBreaks.enabled
+        ? timedBreaks.allowedCount - (timedBreaks.usedCount || 0)
         : 0;
 
     return (
@@ -82,12 +83,12 @@ const ActiveProtocolStatus = ({
                         <View key="dot-active" className="w-2 h-2 rounded-full bg-white animate-pulse" />
                     )}
                     <Text className={`font-headline font-black text-[10px] uppercase tracking-[0.15em] ${isOnBreak ? 'text-[#72fe88]' : 'text-white'}`}>
-                        {isOnBreak ? `Break Active (${formatTime(breakRemainingMs)})` : 'Protocol Engaged'}
+                        {isOnBreak ? `Break Active (${formatTime(breakRemainingMs)})` : session.type === 'schedule' ? 'Schedule Engaged' : 'Protocol Engaged'}
                     </Text>
                 </View>
                 <View className="px-2 py-0.5 border border-white/20">
                     <Text className="text-white/40 font-label text-[8px] uppercase tracking-tighter">
-                        {session.strictnessConfig.mode.replace('_', ' ')} logic
+                        {session.strictnessConfig?.mode?.replace('_', ' ') || 'STANDARD'} logic
                     </Text>
                 </View>
             </View>
@@ -130,22 +131,45 @@ const ActiveProtocolStatus = ({
 
             {/* Core Metrics Grid */}
             <View className="flex-row mb-5 py-4 border-y border-white/10">
-                <View className="flex-1">
-                    <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Session Elapsed</Text>
-                    <Text className="text-white font-headline font-black text-xl">{formatTime(elapsedMs)}</Text>
-                </View>
-                <View className="w-[1px] bg-white/10 mx-3" />
-                <View className="flex-1">
-                    <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Time to Target</Text>
-                    <Text className={`font-headline font-black text-xl ${remainingMs < 300000 && !isOnBreak ? 'text-red-500' : 'text-white'}`}>
-                        {formatTime(remainingMs)}
-                    </Text>
-                </View>
-                <View className="w-[1px] bg-white/10 mx-3" />
-                <View className="flex-1">
-                    <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Breaks Left</Text>
-                    <Text className="text-white font-headline font-black text-xl">{breaksLeft}</Text>
-                </View>
+                {session.type === 'schedule' && session.schedule ? (
+                    <>
+                        <View className="flex-1">
+                            <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Phase Start</Text>
+                            <Text className="text-white font-headline font-black text-xl">{session.schedule.startTime}</Text>
+                        </View>
+                        <View className="w-[1px] bg-white/10 mx-3" />
+                        <View className="flex-1">
+                            <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Phase End</Text>
+                            <Text className="text-white font-headline font-black text-xl">
+                                {session.schedule.endTime}
+                            </Text>
+                        </View>
+                        <View className="w-[1px] bg-white/10 mx-3" />
+                        <View className="flex-1">
+                            <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Protocol</Text>
+                            <Text className="text-[#72fe88] font-headline font-black text-[9px] uppercase mt-1">Recurring</Text>
+                        </View>
+                    </>
+                ) : (
+                    <>
+                        <View className="flex-1">
+                            <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Session Elapsed</Text>
+                            <Text className="text-white font-headline font-black text-xl">{formatTime(elapsedMs)}</Text>
+                        </View>
+                        <View className="w-[1px] bg-white/10 mx-3" />
+                        <View className="flex-1">
+                            <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Time to Target</Text>
+                            <Text className={`font-headline font-black text-xl ${remainingMs < 300000 && !isOnBreak ? 'text-red-500' : 'text-white'}`}>
+                                {formatTime(remainingMs)}
+                            </Text>
+                        </View>
+                        <View className="w-[1px] bg-white/10 mx-3" />
+                        <View className="flex-1">
+                            <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Breaks Left</Text>
+                            <Text className="text-white font-headline font-black text-xl">{breaksLeft}</Text>
+                        </View>
+                    </>
+                )}
             </View>
 
             {/* Interaction Layer */}
