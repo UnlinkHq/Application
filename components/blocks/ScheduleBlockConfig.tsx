@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useContext } from 'react';
-import { View, Text, Switch, TouchableOpacity, Platform, Alert, Linking, StyleSheet, Dimensions, TextInput, DeviceEventEmitter, Image, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, Alert, Linking, StyleSheet, Dimensions, TextInput, DeviceEventEmitter, Modal } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as Haptics from 'expo-haptics';
@@ -18,8 +18,13 @@ import { ConfigRow } from '../ui/ConfigRow';
 import {
     isAdminActive,
     getSelectionCount,
-    FamilyPickerView
+    FamilyPickerView,
+    getEngineHealth
 } from '../../modules/screen-time';
+import { TimedBreaksConfig } from './TimedBreaksConfig';
+import { FocusCoachConfig, ScrollingProtocolConfig } from './FocusCoachConfig';
+import { SecurityConfig } from './SecurityConfig';
+import { AIBetaTeaser } from './AIBetaTeaser';
 
 const { width } = Dimensions.get('window');
 
@@ -58,7 +63,21 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
     const [showStartTimePicker, setShowStartTimePicker] = useState(false);
     const [showEndTimePicker, setShowEndTimePicker] = useState(false);
     const [isFamilyPickerVisible, setIsFamilyPickerVisible] = useState(false);
-    
+    const [hasAccessibility, setHasAccessibility] = useState(true);
+    const [blockUninstall, setBlockUninstall] = useState(false);
+
+    // -- Break States --
+    const [allowTimedBreaks, setAllowTimedBreaks] = useState(false);
+    const [breakTimes, setBreakTimes] = useState(1);
+    const [breakDuration, setBreakDuration] = useState(5);
+
+    // -- Scrolling States --
+    const [scrollingConfig, setScrollingConfig] = useState<ScrollingProtocolConfig>({
+        enabled: false,
+        youtube: { enabled: false, intentGate: true, hideShorts: true, finiteFeed: true },
+        instagram: { enabled: false, intentGate: true, dmSafeZone: true, finiteFeed: true }
+    });
+
     // -- Strict Mode States --
     const [strictConfig, setStrictConfig] = useState<any>(null);
     const [isQrModalVisible, setIsQrModalVisible] = useState(false);
@@ -69,12 +88,19 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
 
     const allDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    // -- Lifecycle: Sync with Native Selection Count (iOS) --
-    useEffect(() => {
+    const syncNativeStatus = useCallback(async () => {
         if (Platform.OS === 'ios') {
             setNativeIosCount(getSelectionCount());
         }
+        if (Platform.OS === 'android') {
+            const health = await getEngineHealth();
+            setHasAccessibility(health.accessibility);
+        }
     }, []);
+
+    useEffect(() => {
+        syncNativeStatus();
+    }, [syncNativeStatus]);
 
     // -- Day Recurrence Handlers --
     const toggleDay = useCallback((day: string) => {
@@ -96,7 +122,7 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
         const schedule = FocusStorageService.migrateSession(payload);
         try {
             await FocusStorageService.saveBlock(schedule);
-            
+
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             DeviceEventEmitter.emit('UNLINK REFRESH DATA');
             onBack();
@@ -113,6 +139,17 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
         if (!hasAppsSelected) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             Alert.alert("REQUIRED TARGETS", "PLEASE SELECT APPS TO SCHEDULE RESTRICTIONS");
+            return;
+        }
+
+        // Check for Android Admin if Protect Uninstall is requested
+        if (Platform.OS === 'android' && blockUninstall && !isAdminActive()) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            Alert.alert(
+                "PERMISSION REQUIRED",
+                "PROTECT UNINSTALL REQUIRES DEVICE ADMIN PERMISSION. PLEASE ENABLE IT IN THE SECURITY SECTION.",
+                [{ text: "OK" }]
+            );
             return;
         }
 
@@ -135,13 +172,15 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
             },
             strictnessConfig: {
                 mode: strictMode,
-                isUninstallProtected: isAdminActive(),
+                isUninstallProtected: blockUninstall,
                 ...strictConfig
             },
-            scrollingProtocol: {
-                enabled: false,
-                youtube: { enabled: false },
-                instagram: { enabled: false }
+            scrollingProtocol: scrollingConfig,
+            timedBreaks: {
+                enabled: allowTimedBreaks,
+                allowedCount: breakTimes,
+                durationMins: breakDuration,
+                usedCount: 0
             }
         };
 
@@ -180,142 +219,171 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
             <BottomSheetScrollView
                 className="flex-1"
                 showsVerticalScrollIndicator={false}
-                contentContainerStyle={{ paddingBottom: 120, paddingHorizontal: 0 }}
+                contentContainerStyle={{ paddingBottom: 120 }}
             >
-                {/* Section: Protocol Identity */}
-                <View className="mt-8 mb-10">
-                    <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-4">PROTOCOL IDENTITY</Text>
-                    <View className="border-b border-white/20 pb-4">
-                        <TextInput
-                            placeholder="NAME YOUR SCHEDULE"
-                            placeholderTextColor="rgba(255,255,255,0.1)"
-                            className="text-white font-headline font-black text-xl uppercase tracking-tight"
-                            value={title}
-                            onChangeText={setTitle}
-                            selectionColor="white"
+                <View className="px-1">
+                    {/* Section: Protocol Identity */}
+                    <View className="mt-8 mb-10">
+                        <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-4">PROTOCOL IDENTITY</Text>
+                        <View className="border-b border-white/20 pb-4">
+                            <TextInput
+                                placeholder="NAME YOUR SCHEDULE"
+                                placeholderTextColor="rgba(255,255,255,0.1)"
+                                className="text-white font-headline font-black text-xl uppercase tracking-tight"
+                                value={title}
+                                onChangeText={setTitle}
+                                selectionColor="white"
+                            />
+                        </View>
+                    </View>
+
+                    {/* Section: Auto-Deploy Toggle */}
+                    <View className="bg-white/5 border border-white/10 p-5 flex-row justify-between items-center mb-8">
+                        <View className="flex-row items-center">
+                            <MaterialCommunityIcons name="clock-check-outline" size={18} color="white" style={{ marginRight: 12 }} />
+                            <Text className="text-white font-headline font-black text-[11px] uppercase tracking-widest">AUTO DEPLOY ENABLE</Text>
+                        </View>
+                        <ModernToggle
+                            value={isEnabled}
+                            onValueChange={setIsEnabled}
                         />
                     </View>
-                </View>
 
-                {/* Section: Auto-Deploy Toggle */}
-                <View className="bg-white/5 border border-white/10 p-5 flex-row justify-between items-center mb-8">
-                    <View className="flex-row items-center">
-                        <MaterialCommunityIcons name="clock-check-outline" size={18} color="white" style={{ marginRight: 12 }} />
-                        <Text className="text-white font-headline font-black text-[11px] uppercase tracking-widest">AUTO DEPLOY ENABLE</Text>
+                    {/* Section: Configuration Core */}
+                    <View className="mb-10">
+                        <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-4">SPECIFICATIONS</Text>
+                        <View className="border border-white/10 bg-white/5">
+                            <ConfigRow
+                                title="RESTRICTION TARGETS"
+                                icon="apps-outline"
+                                iconLibrary="Ionicons"
+                                onPress={() => Platform.OS === 'ios' ? setIsFamilyPickerVisible(true) : setIsAppSelectionVisible(true)}
+                                selectedApps={selectedApps}
+                                nativeCount={nativeIosCount}
+                            />
+
+                            <ConfigRow
+                                title="STRICTNESS ENFORCEMENT"
+                                icon={getModeIcon(strictMode) as any}
+                                subtitle={getModeTitle(strictMode)}
+                                onPress={() => setIsStrictModeVisible(true)}
+                            />
+                        </View>
                     </View>
-                    <ModernToggle
-                        value={isEnabled}
-                        onValueChange={setIsEnabled}
-                    />
-                </View>
 
-                {/* Section: Configuration Core */}
-                <View className="mb-10">
-                    <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-4">SPECIFICATIONS</Text>
-                    <View className="border border-white/10 bg-white/5">
-                        <ConfigRow
-                            title="RESTRICTION TARGETS"
-                            icon="apps-outline"
-                            iconLibrary="Ionicons"
-                            onPress={() => Platform.OS === 'ios' ? setIsFamilyPickerVisible(true) : setIsAppSelectionVisible(true)}
-                            selectedApps={selectedApps}
-                            nativeCount={nativeIosCount}
-                        />
-
-                        <ConfigRow
-                            title="STRICTNESS ENFORCEMENT"
-                            icon={getModeIcon(strictMode) as any}
-                            subtitle={getModeTitle(strictMode)}
-                            onPress={() => setIsStrictModeVisible(true)}
-                        />
+                    {/* Section: Recurrence Window */}
+                    <View className="mb-10">
+                        <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-4">RECURRENCE WINDOW</Text>
+                        <View className="flex-row justify-between bg-white/5 p-2 border border-white/5">
+                            {allDays.map(day => (
+                                <TouchableOpacity
+                                    key={day}
+                                    onPress={() => toggleDay(day)}
+                                    className={`w-10 h-10 items-center justify-center ${days.includes(day) ? 'bg-white' : 'bg-transparent'}`}
+                                >
+                                    <Text className={`font-headline font-black text-[10px] uppercase ${days.includes(day) ? 'text-black' : 'text-white/40'}`}>
+                                        {day[0]}
+                                    </Text>
+                                </TouchableOpacity>
+                            ))}
+                        </View>
                     </View>
-                </View>
 
-                {/* Section: Recurrence Window */}
-                <View className="mb-10">
-                    <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-4">RECURRENCE WINDOW</Text>
-                    <View className="flex-row justify-between bg-white/5 p-2 border border-white/5">
-                        {allDays.map(day => (
+                    {/* Section: Phase Boundaries */}
+                    <View className="mb-10">
+                        <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-4">PHASE BOUNDARIES</Text>
+                        <View className="border border-white/10 bg-white/5">
                             <TouchableOpacity
-                                key={day}
-                                onPress={() => toggleDay(day)}
-                                className={`w-10 h-10 items-center justify-center ${days.includes(day) ? 'bg-white' : 'bg-transparent'}`}
+                                onPress={() => setShowStartTimePicker(true)}
+                                className="flex-row justify-between items-center p-5 border-b border-white/5"
                             >
-                                <Text className={`font-headline font-black text-[10px] uppercase ${days.includes(day) ? 'text-black' : 'text-white/40'}`}>
-                                    {day[0]}
-                                </Text>
+                                <View className="flex-row items-center">
+                                    <MaterialCommunityIcons name="clock-start" size={16} color="rgba(255,255,255,0.4)" style={{ marginRight: 12 }} />
+                                    <Text className="text-white font-headline font-black text-[10px] uppercase tracking-widest">START PHASE</Text>
+                                </View>
+                                <View className="bg-white/10 px-3 py-1.5">
+                                    <Text className="text-white font-headline font-black text-[10px]">
+                                        {formatTimeSurgical(startTime)}
+                                    </Text>
+                                </View>
                             </TouchableOpacity>
-                        ))}
+
+                            <TouchableOpacity
+                                onPress={() => setShowEndTimePicker(true)}
+                                className="flex-row justify-between items-center p-5"
+                            >
+                                <View className="flex-row items-center">
+                                    <MaterialCommunityIcons name="clock-end" size={16} color="rgba(255,255,255,0.4)" style={{ marginRight: 12 }} />
+                                    <Text className="text-white font-headline font-black text-[10px] uppercase tracking-widest">END PHASE</Text>
+                                </View>
+                                <View className="bg-white/10 px-3 py-1.5">
+                                    <Text className="text-white font-headline font-black text-[10px]">
+                                        {formatTimeSurgical(endTime)}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        </View>
                     </View>
-                </View>
 
-                {/* Section: Phase Boundaries */}
-                <View className="mb-10">
-                    <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-4">PHASE BOUNDARIES</Text>
-                    <View className="border border-white/10 bg-white/5">
-                        <TouchableOpacity
-                            onPress={() => setShowStartTimePicker(true)}
-                            className="flex-row justify-between items-center p-5 border-b border-white/5"
-                        >
-                            <View className="flex-row items-center">
-                                <MaterialCommunityIcons name="clock-start" size={16} color="rgba(255,255,255,0.4)" style={{ marginRight: 12 }} />
-                                <Text className="text-white font-headline font-black text-[10px] uppercase tracking-widest">START PHASE</Text>
-                            </View>
-                            <View className="bg-white/10 px-3 py-1.5">
-                                <Text className="text-white font-headline font-black text-[10px]">
-                                    {formatTimeSurgical(startTime)}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
+                    {/* Section: Dynamic Protocols */}
+                    <View className="mb-10">
+                        <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-4">DYNAMIC PROTOCOLS</Text>
 
-                        <TouchableOpacity
-                            onPress={() => setShowEndTimePicker(true)}
-                            className="flex-row justify-between items-center p-5"
-                        >
-                            <View className="flex-row items-center">
-                                <MaterialCommunityIcons name="clock-end" size={16} color="rgba(255,255,255,0.4)" style={{ marginRight: 12 }} />
-                                <Text className="text-white font-headline font-black text-[10px] uppercase tracking-widest">END PHASE</Text>
-                            </View>
-                            <View className="bg-white/10 px-3 py-1.5">
-                                <Text className="text-white font-headline font-black text-[10px]">
-                                    {formatTimeSurgical(endTime)}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
+                        <TimedBreaksConfig
+                            enabled={allowTimedBreaks}
+                            onEnabledChange={setAllowTimedBreaks}
+                            breakCount={breakTimes}
+                            onBreakCountChange={setBreakTimes}
+                            breakDuration={breakDuration}
+                            onBreakDurationChange={setBreakDuration}
+                        />
+
+                        <FocusCoachConfig
+                            config={scrollingConfig}
+                            onConfigChange={setScrollingConfig}
+                            hasAccessibility={hasAccessibility}
+                        />
+
+                        <SecurityConfig
+                            enabled={blockUninstall}
+                            onEnabledChange={setBlockUninstall}
+                        />
+
+                        <AIBetaTeaser />
                     </View>
-                </View>
 
-                {/* Time Selection Engines (Native Fallback) */}
-                {showStartTimePicker && (
-                    <DateTimePicker
-                        value={startTime}
-                        mode="time"
-                        is24Hour={false}
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={(event, date) => {
-                            if (Platform.OS === 'android') setShowStartTimePicker(false);
-                            if (date) {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                setStartTime(date);
-                            }
-                        }}
-                    />
-                )}
-                {showEndTimePicker && (
-                    <DateTimePicker
-                        value={endTime}
-                        mode="time"
-                        is24Hour={false}
-                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                        onChange={(event, date) => {
-                            if (Platform.OS === 'android') setShowEndTimePicker(false);
-                            if (date) {
-                                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                setEndTime(date);
-                            }
-                        }}
-                    />
-                )}
+                    {/* Time Selection Engines (Native Fallback) */}
+                    {showStartTimePicker && (
+                        <DateTimePicker
+                            value={startTime}
+                            mode="time"
+                            is24Hour={false}
+                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            onChange={(event, date) => {
+                                if (Platform.OS === 'android') setShowStartTimePicker(false);
+                                if (date) {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    setStartTime(date);
+                                }
+                            }}
+                        />
+                    )}
+                    {showEndTimePicker && (
+                        <DateTimePicker
+                            value={endTime}
+                            mode="time"
+                            is24Hour={false}
+                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                            onChange={(event, date) => {
+                                if (Platform.OS === 'android') setShowEndTimePicker(false);
+                                if (date) {
+                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    setEndTime(date);
+                                }
+                            }}
+                        />
+                    )}
+                </View>
             </BottomSheetScrollView>
 
             {/* Global Commitment Action */}

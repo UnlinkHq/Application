@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Image, Dimensions, StyleSheet, Platform, AppState, AppStateStatus, Modal, ScrollView, Switch, Alert, Linking, DeviceEventEmitter } from 'react-native';
-import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, Text, TouchableOpacity, TextInput, Dimensions, StyleSheet, Platform, AppState, AppStateStatus, Modal, Switch, Alert, Linking, DeviceEventEmitter } from 'react-native';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
@@ -21,7 +21,9 @@ import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Svg, { Circle, Path, G } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AppSelectionModal } from './AppSelectionModal';
+import { FocusCoachConfig, ScrollingProtocolConfig } from './FocusCoachConfig';
+import { SecurityConfig } from './SecurityConfig';
+import { AIBetaTeaser } from './AIBetaTeaser';
 import { StrictModeModal, StrictModeLevel } from './StrictModeModal';
 import {
     isAdminActive,
@@ -41,6 +43,8 @@ import { ConfigRow } from '../ui/ConfigRow';
 import { SignatureDeploymentModal } from './SignatureDeploymentModal';
 import SignatureService from '../../services/SignatureService';
 import { FocusStorageService } from '../../services/FocusStorageService';
+import { TimedBreaksConfig } from './TimedBreaksConfig';
+import { AppSelectionModal } from './AppSelectionModal';
 
 const { width } = Dimensions.get('window');
 const DIAL_SIZE = width * 0.5;
@@ -83,6 +87,13 @@ const CircularDurationPicker = React.memo(({ duration, onSelectDuration }: { dur
     const initialAngle = (duration / 480) * 2 * Math.PI;
     const rotation = useSharedValue(initialAngle);
     const lastValidDuration = useSharedValue(duration);
+
+    useEffect(() => {
+        const newAngle = (duration / 480) * 2 * Math.PI;
+        if (Math.abs(rotation.value - newAngle) > 0.01) {
+            rotation.value = withSpring(newAngle, { damping: 20, stiffness: 100 });
+        }
+    }, [duration]);
 
     const animatedProps = useAnimatedProps(() => {
         const angle = rotation.value;
@@ -182,32 +193,25 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
     const [strictMode, setStrictMode] = useState<StrictModeLevel>('normal');
     const [strictConfig, setStrictConfig] = useState<any>(null);
     const [title, setTitle] = useState('');
-    const [blockShorts, setBlockShorts] = useState({ youtube: false, instagram: false });
     const [blockUninstall, setBlockUninstall] = useState(false);
     const [allowTimedBreaks, setAllowTimedBreaks] = useState(false);
-    const [breakTimes, setBreakTimes] = useState(1); // 1, 2, 3
-    const [breakDuration, setBreakDuration] = useState(5); // 5, 10, 15
+    const [breakTimes, setBreakTimes] = useState(1);
+    const [breakDuration, setBreakDuration] = useState(5);
     const [isAppSelectionVisible, setIsAppSelectionVisible] = useState(false);
-    const [isFocusCoachEnabled, setIsFocusCoachEnabled] = useState(false);
-    const [isFocusCoachInfoVisible, setIsFocusCoachInfoVisible] = useState(false);
-    const [focusCoachConfig, setFocusCoachConfig] = useState({
-        ytGate: true,
-        ytShelf: true,
-        ytFinite: true,
-        igGate: true,
-        igDMs: true,
-        igFinite: true
+    const [scrollingConfig, setScrollingConfig] = useState<ScrollingProtocolConfig>({
+        enabled: false,
+        youtube: { enabled: false, intentGate: true, hideShorts: true, finiteFeed: true },
+        instagram: { enabled: false, intentGate: true, dmSafeZone: true, finiteFeed: true }
     });
     const [isStrictModeVisible, setIsStrictModeVisible] = useState(false);
     const [isFamilyPickerVisible, setIsFamilyPickerVisible] = useState(false);
     const [isQrModalVisible, setIsQrModalVisible] = useState(false);
     const [generatedQrData, setGeneratedQrData] = useState<string | null>(null);
     const [pendingSession, setPendingSession] = useState<any>(null);
-    const [isAdminModalVisible, setIsAdminModalVisible] = useState(false);
     const [nativeIosCount, setNativeIosCount] = useState(0);
     const [hasAccessibility, setHasAccessibility] = useState(true);
-    const [showAccessibilityDisclosure, setShowAccessibilityDisclosure] = useState(false);
-    const [pendingToggle, setPendingToggle] = useState<(() => void) | null>(null);
+
+
 
     const syncNativeStatus = useCallback(async () => {
         // iOS: Always sync selection count
@@ -248,30 +252,27 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
         });
     }, []);
 
-    const handleToggleUninstall = (value: boolean) => {
-        if (value && !isAdminActive()) {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            setIsAdminModalVisible(true);
-            return;
-        }
-        setBlockUninstall(value);
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    };
+
 
     const handleInitiate = async () => {
         const hasApps = Platform.OS === 'ios' ? nativeIosCount > 0 : selectedApps.length > 0;
-        const hasSurgical = blockShorts.youtube || blockShorts.instagram;
+        const hasSurgical = scrollingConfig.youtube.enabled || scrollingConfig.instagram.enabled;
+
 
         if (!hasApps && !hasSurgical) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            alert("REQUIRED_FIELD: PLEASE_SELECT_TARGETS_OR_SURGICAL_BLOCKS");
+            Alert.alert("REQUIRED SELECTION", "PLEASE SELECT TARGET APPS OR ENABLE SURGICAL BLOCKING TO PROCEED.");
             return;
         }
 
         // 1. Check for Android Admin if Protect Uninstall is requested
         if (Platform.OS === 'android' && blockUninstall && !isAdminActive()) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            setIsAdminModalVisible(true);
+            Alert.alert(
+                "PERMISSION REQUIRED",
+                "PROTECT UNINSTALL REQUIRES DEVICE ADMIN PERMISSION. PLEASE ENABLE IT IN THE SECURITY SECTION.",
+                [{ text: "OK" }]
+            );
             return;
         }
 
@@ -282,27 +283,10 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
             durationMins: duration,
             apps: selectedApps.map(a => a.id),
             appIcons: selectedApps.map(a => a.icon),
-            scrollingProtocol: {
-                enabled: isFocusCoachEnabled && (blockShorts.youtube || blockShorts.instagram),
-                youtube: {
-                    enabled: isFocusCoachEnabled && blockShorts.youtube,
-                    intentGate: focusCoachConfig.ytGate,
-                    hideShorts: focusCoachConfig.ytShelf,
-                    finiteFeed: focusCoachConfig.ytFinite
-                },
-                instagram: {
-                    enabled: isFocusCoachEnabled && blockShorts.instagram,
-                    intentGate: focusCoachConfig.igGate,
-                    dmSafeZone: focusCoachConfig.igDMs,
-                    finiteFeed: focusCoachConfig.igFinite
-                }
-            },
+            scrollingProtocol: scrollingConfig,
             strictnessConfig: {
                 mode: strictMode,
                 isUninstallProtected: blockUninstall,
-                allowTimedBreaks,
-                breakLimit: breakTimes,
-                breakDurationMins: breakDuration,
                 ...strictConfig
             },
             timedBreaks: {
@@ -397,276 +381,27 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                             />
                         </View>
 
-                        {/* Box 3: Timed Breaks */}
-                        <View className="mt-2">
-                            <View className="border border-white/10 p-5 bg-black/20">
-                                <View className="flex-row items-center justify-between mb-4">
-                                    <View>
-                                        <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">Allow Timed Breaks</Text>
-                                        <Text className="text-white/40 font-label text-[10px] mt-1">Temporary relief during sessions</Text>
-                                    </View>
-                                    <ModernToggle value={allowTimedBreaks} onValueChange={setAllowTimedBreaks} />
-                                </View>
+                        <TimedBreaksConfig
+                            enabled={allowTimedBreaks}
+                            onEnabledChange={setAllowTimedBreaks}
+                            breakCount={breakTimes}
+                            onBreakCountChange={setBreakTimes}
+                            breakDuration={breakDuration}
+                            onBreakDurationChange={setBreakDuration}
+                        />
 
-                                {allowTimedBreaks && (
-                                    <Animated.View layout={Layout.springify()} entering={FadeIn} className="flex-row gap-4 mt-2">
-                                        <View className="flex-1">
-                                            <Text className="text-white/20 font-headline font-black text-[9px] uppercase tracking-widest mb-3">Break Count</Text>
-                                            <View className="flex-row gap-2">
-                                                {[1, 2, 3].map(num => (
-                                                    <TouchableOpacity
-                                                        key={num}
-                                                        onPress={() => setBreakTimes(num)}
-                                                        className={`flex-1 h-12 items-center justify-center border ${breakTimes === num ? 'bg-white border-white' : 'border-white/20 bg-transparent'}`}
-                                                    >
-                                                        <Text className={`font-headline font-black text-xs ${breakTimes === num ? 'text-black' : 'text-white/40'}`}>{num}</Text>
-                                                    </TouchableOpacity>
-                                                ))}
-                                            </View>
-                                        </View>
-                                        <View className="flex-1">
-                                            <Text className="text-white/20 font-headline font-black text-[9px] uppercase tracking-widest mb-3">Minutes per break</Text>
-                                            <View className="flex-row gap-2">
-                                                {[5, 10, 15].map(min => (
-                                                    <TouchableOpacity
-                                                        key={min}
-                                                        onPress={() => setBreakDuration(min)}
-                                                        className={`flex-1 h-12 items-center justify-center border ${breakDuration === min ? 'bg-white border-white' : 'border-white/20 bg-transparent'}`}
-                                                    >
-                                                        <Text className={`font-headline font-black text-xs ${breakDuration === min ? 'text-black' : 'text-white/40'}`}>{min}M</Text>
-                                                    </TouchableOpacity>
-                                                ))}
-                                            </View>
-                                        </View>
-                                    </Animated.View>
-                                )}
-                            </View>
-                        </View>
+                        <FocusCoachConfig
+                            config={scrollingConfig}
+                            onConfigChange={setScrollingConfig}
+                            hasAccessibility={hasAccessibility}
+                        />
 
+                        <SecurityConfig
+                            enabled={blockUninstall}
+                            onEnabledChange={setBlockUninstall}
+                        />
 
-                        <View className="mt-4 mb-2">
-                            <View className="flex-row items-center justify-between mb-3">
-                                <View className="flex-row items-center gap-2">
-                                    <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em]">FOCUS COACH</Text>
-                                    <TouchableOpacity onPress={() => setIsFocusCoachInfoVisible(true)}>
-                                        <Ionicons name="information-circle-outline" size={14} color="rgba(255,255,255,0.2)" />
-                                    </TouchableOpacity>
-                                </View>
-
-                            </View>
-
-                            <View className="border border-white/10 bg-black/40 overflow-hidden">
-                                {/* Header Toggle */}
-                                <TouchableOpacity
-                                    activeOpacity={0.9}
-                                    onPress={() => {
-                                        if (Platform.OS === 'android' && !hasAccessibility && !isFocusCoachEnabled) {
-                                            setPendingToggle(() => () => setIsFocusCoachEnabled(true));
-                                            setShowAccessibilityDisclosure(true);
-                                            return;
-                                        }
-                                        setIsFocusCoachEnabled(!isFocusCoachEnabled);
-                                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                    }}
-                                    className="flex-row items-center p-5 bg-white/5 border-b border-white/5"
-                                >
-                                    <View className="w-10 h-10 bg-white/5 items-center justify-center mr-4 border border-white/10">
-                                        <MaterialCommunityIcons name="brain" size={20} color={isFocusCoachEnabled ? "#FFF" : "rgba(255,255,255,0.2)"} />
-                                    </View>
-                                    <View className="flex-1">
-                                        <Text className="text-white font-headline font-black text-xs uppercase tracking-tight">Block Scrolling</Text>
-                                        <Text className="text-white/40 font-label text-[9px] mt-1">
-                                            {isFocusCoachEnabled ? "Bypassing Hard Blocks for Coach Heuristics" : "Coach inactive. Standard blocks will apply."}
-                                        </Text>
-                                    </View>
-                                    <View pointerEvents="none">
-                                        <ModernToggle value={isFocusCoachEnabled} onValueChange={() => { }} />
-                                    </View>
-                                </TouchableOpacity>
-
-                                {isFocusCoachEnabled && Platform.OS === 'android' && (
-                                    <Animated.View entering={FadeInDown.duration(400)} className="p-1">
-                                        {/* YouTube Section */}
-                                        <View className="mb-1 p-3">
-                                            <View className="flex-row items-center mb-3">
-                                                <MaterialCommunityIcons name="youtube" size={18} color="#FF0000" />
-                                                <Text className="text-white/40 font-headline font-black text-[9px] uppercase ml-2 tracking-widest">SCROLLING YOUTUBE</Text>
-                                                <View className="flex-1 h-[1px] bg-white/5 ml-3" />
-                                                <Switch
-                                                    value={blockShorts.youtube}
-                                                    onValueChange={(v) => {
-                                                        if (Platform.OS === 'android' && v && !hasAccessibility) {
-                                                            setPendingToggle(() => () => setBlockShorts(p => ({ ...p, youtube: true })));
-                                                            setShowAccessibilityDisclosure(true);
-                                                            return;
-                                                        }
-                                                        setBlockShorts(p => ({ ...p, youtube: v }));
-                                                        if (v) {
-                                                            setFocusCoachConfig(p => ({ ...p, ytGate: true, ytShelf: true, ytFinite: true }));
-                                                        }
-                                                    }}
-                                                    trackColor={{ false: '#1A1A1A', true: '#FF0000' }}
-                                                    thumbColor="#FFF"
-                                                />
-                                            </View>
-
-                                            {blockShorts.youtube && (
-                                                <View className="ml-7 gap-3">
-                                                    <TouchableOpacity
-                                                        onPress={() => setFocusCoachConfig(p => ({ ...p, ytGate: !p.ytGate }))}
-                                                        className="flex-row items-center justify-between"
-                                                    >
-                                                        <Text className={`text-[10px] font-headline font-black uppercase ${focusCoachConfig.ytGate ? 'text-white' : 'text-white/20'}`}>[ ] 3S CALM INTENT GATE</Text>
-                                                        <Ionicons name={focusCoachConfig.ytGate ? "checkbox" : "square-outline"} size={16} color={focusCoachConfig.ytGate ? "white" : "rgba(255,255,255,0.2)"} />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        onPress={() => setFocusCoachConfig(p => ({ ...p, ytShelf: !p.ytShelf }))}
-                                                        className="flex-row items-center justify-between"
-                                                    >
-                                                        <Text className={`text-[10px] font-headline font-black uppercase ${focusCoachConfig.ytShelf ? 'text-white' : 'text-white/20'}`}>[ ] HIDE SHORTS SHELF (GPU)</Text>
-                                                        <Ionicons name={focusCoachConfig.ytShelf ? "checkbox" : "square-outline"} size={16} color={focusCoachConfig.ytShelf ? "white" : "rgba(255,255,255,0.2)"} />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        onPress={() => setFocusCoachConfig(p => ({ ...p, ytFinite: !p.ytFinite }))}
-                                                        className="flex-row items-center justify-between"
-                                                    >
-                                                        <Text className={`text-[10px] font-headline font-black uppercase ${focusCoachConfig.ytFinite ? 'text-white' : 'text-white/20'}`}>[ ] AUTONOMOUS FINITE FEED</Text>
-                                                        <Ionicons name={focusCoachConfig.ytFinite ? "checkbox" : "square-outline"} size={16} color={focusCoachConfig.ytFinite ? "white" : "rgba(255,255,255,0.2)"} />
-                                                    </TouchableOpacity>
-
-                                                    <View className="mt-1 flex-row items-center gap-2">
-                                                        <MaterialCommunityIcons name="brain" size={14} color="rgba(255,255,255,0.3)" />
-                                                        <Text className="text-[8px] text-white/30 font-label uppercase">Intelligent BrainRot Detection Active</Text>
-                                                    </View>
-                                                </View>
-                                            )}
-                                        </View>
-
-                                        {/* Instagram Section */}
-                                        <View className="mb-1 p-3">
-                                            <View className="flex-row items-center mb-3">
-                                                <MaterialCommunityIcons name="instagram" size={18} color="#E1306C" />
-                                                <Text className="text-white/40 font-headline font-black text-[9px] uppercase ml-2 tracking-widest">SCROLLING INSTAGRAM</Text>
-                                                <View className="flex-1 h-[1px] bg-white/5 ml-3" />
-                                                <Switch
-                                                    value={blockShorts.instagram}
-                                                    onValueChange={(v) => {
-                                                        if (Platform.OS === 'android' && v && !hasAccessibility) {
-                                                            setPendingToggle(() => () => setBlockShorts(p => ({ ...p, instagram: true })));
-                                                            setShowAccessibilityDisclosure(true);
-                                                            return;
-                                                        }
-                                                        setBlockShorts(p => ({ ...p, instagram: v }));
-                                                        if (v) {
-                                                            setFocusCoachConfig(p => ({ ...p, igGate: true, igDMs: true, igFinite: true }));
-                                                        }
-                                                    }}
-                                                    trackColor={{ false: '#1A1A1A', true: '#E1306C' }}
-                                                    thumbColor="#FFF"
-                                                />
-                                            </View>
-
-                                            {blockShorts.instagram && (
-                                                <View className="ml-7 gap-3">
-                                                    <TouchableOpacity
-                                                        onPress={() => setFocusCoachConfig(p => ({ ...p, igGate: !p.igGate }))}
-                                                        className="flex-row items-center justify-between"
-                                                    >
-                                                        <Text className={`text-[10px] font-headline font-black uppercase ${focusCoachConfig.igGate ? 'text-white' : 'text-white/20'}`}>[ ] 3S CALM INTENT GATE</Text>
-                                                        <Ionicons name={focusCoachConfig.igGate ? "checkbox" : "square-outline"} size={16} color={focusCoachConfig.igGate ? "white" : "rgba(255,255,255,0.2)"} />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        onPress={() => setFocusCoachConfig(p => ({ ...p, igDMs: !p.igDMs }))}
-                                                        className="flex-row items-center justify-between"
-                                                    >
-                                                        <Text className={`text-[10px] font-headline font-black uppercase ${focusCoachConfig.igDMs ? 'text-white' : 'text-white/20'}`}>[ ] DM SAFE-ZONE PROTOCOL</Text>
-                                                        <Ionicons name={focusCoachConfig.igDMs ? "checkbox" : "square-outline"} size={16} color={focusCoachConfig.igDMs ? "white" : "rgba(255,255,255,0.2)"} />
-                                                    </TouchableOpacity>
-                                                    <TouchableOpacity
-                                                        onPress={() => setFocusCoachConfig(p => ({ ...p, igFinite: !p.igFinite }))}
-                                                        className="flex-row items-center justify-between"
-                                                    >
-                                                        <Text className={`text-[10px] font-headline font-black uppercase ${focusCoachConfig.igFinite ? 'text-white' : 'text-white/20'}`}>[ ] AUTONOMOUS FINITE FEED</Text>
-                                                        <Ionicons name={focusCoachConfig.igFinite ? "checkbox" : "square-outline"} size={16} color={focusCoachConfig.igFinite ? "white" : "rgba(255,255,255,0.2)"} />
-                                                    </TouchableOpacity>
-
-                                                    <View className="mt-1 flex-row items-center gap-2">
-                                                        <MaterialCommunityIcons name="brain" size={14} color="rgba(255,255,255,0.3)" />
-                                                        <Text className="text-[8px] text-white/30 font-label uppercase">Intelligent BrainRot Detection Active</Text>
-                                                    </View>
-                                                </View>
-                                            )}
-                                        </View>
-                                    </Animated.View>
-                                )}
-
-                                {isFocusCoachEnabled && Platform.OS === 'ios' && (
-                                    <View className="p-5 border-t border-white/5">
-                                        <Text className="text-white/30 font-label text-[10px] leading-4 italic">
-                                            iOS does not permit surgical shielding.
-                                            Focus Coach on iOS functions as a <Text className="text-white/60 font-bold">Hard Barrier</Text> with custom breathable shields.
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                        </View>
-
-                        <View className="mt-4">
-                            <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-3">GENERAL PROTECTION</Text>
-                            <TouchableOpacity
-                                activeOpacity={0.8}
-                                onPress={() => handleToggleUninstall(!blockUninstall)}
-                                className="border border-white/10 bg-black/40 p-4 flex-row items-center"
-                            >
-                                <View className="w-9 h-9 bg-white/5 items-center justify-center mr-4 border border-white/10">
-                                    <Ionicons name="lock-closed-outline" size={18} color="white" />
-                                </View>
-                                <View className="flex-1">
-                                    <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">PROTECT UNINSTALL</Text>
-                                    <Text className="text-white/40 font-label text-[10px] mt-1">Prevent app removal during session</Text>
-                                </View>
-                                <View pointerEvents="none">
-                                    <ModernToggle
-                                        value={blockUninstall}
-                                        onValueChange={() => { }}
-                                    />
-                                </View>
-                            </TouchableOpacity>
-                        </View>
-
-                        <View className="mt-6 mb-4">
-                            <View className="flex-row items-center gap-2 mb-3">
-                                <Text className="text-white/40 font-headline font-black text-[9px] uppercase ml-1 tracking-widest">AI  PERSONALIZED</Text>
-                                <View className="flex-1 h-[1px] bg-[#7851ff]/10 ml-2" />
-                                <View className="bg-[#7851ff]/10 px-1.5 py-0.5 border border-[#7851ff]/20">
-                                    <Text className="text-[#7851ff] font-label text-[8px] font-black">BETA</Text>
-                                </View>
-                            </View>
-
-                            <View className="border border-[#7851ff]/20 bg-[#7851ff]/5 p-5 relative overflow-hidden">
-                                <LinearGradient
-                                    colors={['rgba(120, 81, 255, 0.1)', 'transparent']}
-                                    start={{ x: 0, y: 0 }}
-                                    end={{ x: 1, y: 1 }}
-                                    style={StyleSheet.absoluteFill}
-                                />
-                                <View className="flex-row items-start gap-4">
-                                    <View className="w-10 h-10 bg-[#7851ff]/20 items-center justify-center border border-[#7851ff]/30">
-                                        <MaterialCommunityIcons name="auto-fix" size={20} color="#7851ff" />
-                                    </View>
-                                    <View className="flex-1">
-                                        <Text className="text-white font-headline font-black text-sm uppercase tracking-tight">AI FOCUS COACH</Text>
-                                        <Text className="text-white/40 font-label text-[10px] mt-1 leading-4">
-                                            A personalized coach that learns your friction points and automatically adjusts blocks based on your cognitive load.
-                                        </Text>
-                                        <View className="flex-row items-center gap-2 mt-3">
-                                            <View key="ai-dev-dot" className="w-1.5 h-1.5 rounded-full bg-[#7851ff] animate-pulse" />
-                                            <Text className="text-[#7851ff] font-label text-[9px] font-black uppercase tracking-widest">DEVELOPMENT_IN_PROGRESS</Text>
-                                        </View>
-                                    </View>
-                                </View>
-                            </View>
-                        </View>
+                        <AIBetaTeaser />
                     </View>
                 </View>
             </BottomSheetScrollView>
@@ -687,90 +422,14 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
 
             {/* Android Picker */}
             <AppSelectionModal
+
                 visible={isAppSelectionVisible}
                 onClose={() => setIsAppSelectionVisible(false)}
                 selectedApps={selectedApps.map(a => a.id)}
                 onToggleApp={toggleAppSelection}
             />
 
-            {/* Focus Coach Tech Modal */}
-            <Modal
-                visible={isFocusCoachInfoVisible}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setIsFocusCoachInfoVisible(false)}
-            >
-                <View className="flex-1 bg-black/90 justify-center px-10">
-                    <View className="bg-[#0a0a0a] border border-white/20 p-8">
-                        <View className="flex-row items-center mb-6">
-                            <MaterialCommunityIcons name="brain" size={24} color="white" />
-                            <Text className="text-white font-headline font-black text-lg uppercase tracking-widest ml-4">COACH_PROTOCOL_V2</Text>
-                        </View>
 
-                        <Text className="text-white/60 font-label text-[11px] leading-5 uppercase tracking-wide mb-6">
-                            Surgical masking utilizes native GPU acceleration and Accessibility heuristics to detect in-app elements in real-time.
-                            {"\n\n"}
-                            <Text className="text-white font-bold">BYPASS_LOGIC:</Text> When active, the standard "Hard Wall" is replaced by a surgical entry gate. This allows you to check DMs without seeing reels.
-                        </Text>
-
-                        <TouchableOpacity
-                            onPress={() => setIsFocusCoachInfoVisible(false)}
-                            className="bg-white py-4 items-center"
-                        >
-                            <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">ACKNOWLEDGE_DEEP_FOCUS</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </Modal>
-
-            {/* Accessibility Disclosure Modal (Play Store Compliance) */}
-            <Modal
-                visible={showAccessibilityDisclosure}
-                transparent
-                animationType="slide"
-            >
-                <View className="flex-1 bg-black/95 justify-center px-8">
-                    <View className="bg-[#0e0e0e] p-8 border border-white/20">
-                        <View className="w-16 h-16 border border-white/10 items-center justify-center mb-8">
-                            <Ionicons name="eye-outline" size={32} color="white" />
-                        </View>
-
-                        <Text className="text-white font-headline font-black text-2xl uppercase tracking-[0.2em] mb-4">
-                            Surgical_Shield
-                        </Text>
-
-                        <Text className="text-white/60 font-label text-[11px] leading-5 mb-8">
-                            Unlink uses the <Text className="text-white font-bold">Accessibility Service API</Text> to provide surgical shielding for YouTube and Instagram.
-                            {"\n\n"}
-                            This allows us to:
-                            {"\n"}• Detect when you enter 'Shorts' or 'Reels' sections.
-                            {"\n"}• Filter distracting content inside apps.
-                            {"\n"}• Prevent app tampering during active sessions.
-                            {"\n\n"}
-                            <Text className="text-white/40 italic">We do NOT collect or store your personal data. All processing happens on-device.</Text>
-                        </Text>
-
-                        <View className="flex-row gap-4">
-                            <TouchableOpacity
-                                onPress={() => setShowAccessibilityDisclosure(false)}
-                                className="flex-1 h-14 border border-white/10 items-center justify-center"
-                            >
-                                <Text className="text-white font-headline font-black text-[10px] uppercase tracking-widest">DECLINE</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setShowAccessibilityDisclosure(false);
-                                    requestAccessibilityPermission();
-                                    if (pendingToggle) pendingToggle();
-                                }}
-                                className="flex-1 h-14 bg-white items-center justify-center"
-                            >
-                                <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">ENABLE_SHIELD</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
 
             {/* iOS Native Picker Modal */}
             {Platform.OS === 'ios' && (
@@ -824,60 +483,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                 }}
             />
 
-            {/* Security Permission Overlay */}
-            {isAdminModalVisible && (
-                <Animated.View
-                    entering={FadeIn}
-                    style={StyleSheet.absoluteFill}
-                    className="bg-black/95 items-center justify-center px-8 z-[60]"
-                >
-                    <View className="w-full bg-[#0a0a0a] border border-white/20 p-8 rounded-sm items-center">
-                        <View className="w-16 h-16 bg-white/5 items-center justify-center mb-6 border border-white/10">
-                            <MaterialCommunityIcons name="shield-lock-outline" size={32} color="white" />
-                        </View>
 
-                        <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">UNINSTALL_PROTECTION</Text>
-                        <Text className="text-white/40 font-label text-[9px] uppercase tracking-widest mb-8 text-center italic">LEVEL_02_SECURITY_ENFORCEMENT</Text>
-
-                        <View className="bg-white/5 border border-white/10 p-5 mb-8 w-full">
-                            <View className="flex-row items-start mb-4">
-                                <View className="w-5 h-5 bg-white/10 items-center justify-center mr-3 mt-0.5">
-                                    <View className="w-1.5 h-1.5 bg-white" />
-                                </View>
-                                <Text className="flex-1 text-white/80 font-label text-[10px] uppercase tracking-wider leading-4">
-                                    Enabling this prevents the app from being uninstalled while a focus session is active.
-                                </Text>
-                            </View>
-                            <View className="flex-row items-start">
-                                <View className="w-5 h-5 bg-white/10 items-center justify-center mr-3 mt-0.5">
-                                    <View className="w-1.5 h-1.5 bg-white" />
-                                </View>
-                                <Text className="flex-1 text-white/80 font-label text-[10px] uppercase tracking-wider leading-4">
-                                    You will be redirected to the Android system settings to grant <Text className="text-white font-bold">Device Administrator</Text> access.
-                                </Text>
-                            </View>
-                        </View>
-
-                        <TouchableOpacity
-                            onPress={() => {
-                                setIsAdminModalVisible(false);
-                                setBlockUninstall(true);
-                                requestAdmin();
-                            }}
-                            className="w-full h-14 bg-white items-center justify-center mb-3"
-                        >
-                            <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">GRANT_PERMISSION</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            onPress={() => setIsAdminModalVisible(false)}
-                            className="w-full h-14 border border-white/20 items-center justify-center"
-                        >
-                            <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">ABORT_REQUEST</Text>
-                        </TouchableOpacity>
-                    </View>
-                </Animated.View>
-            )}
         </View>
     );
 };
