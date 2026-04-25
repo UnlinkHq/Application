@@ -225,11 +225,11 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
                     {/* Section: Protocol Identity */}
                     <View className="mt-8 mb-10">
                         <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-4">PROTOCOL IDENTITY</Text>
-                        <View className="border-b border-white/20 pb-4">
+                        <View className="border-b border-white/20 ">
                             <TextInput
                                 placeholder="NAME YOUR SCHEDULE"
                                 placeholderTextColor="rgba(255,255,255,0.1)"
-                                className="text-white font-headline font-black text-xl uppercase tracking-tight"
+                                className="text-white font-headline font-black text-xl tracking-tight"
                                 value={title}
                                 onChangeText={setTitle}
                                 selectionColor="white"

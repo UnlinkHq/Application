@@ -60,7 +60,7 @@ export const BlocksScreen = () => {
         });
         // LIGHTNING_REFRESH: Listen for internal app signals to refresh instantly
         const refreshSub = DeviceEventEmitter.addListener('UNLINK REFRESH DATA', refreshData);
-        
+
         return () => {
             sub.remove();
             refreshSub.remove();
@@ -83,7 +83,7 @@ export const BlocksScreen = () => {
         const session = { ...block, startTime: Date.now() };
         const previousSession = activeSession;
         setActiveSession(session); // Optimistic update
-        
+
         console.log('--- [DEBUG] INITIATING_FOCUS_SESSION ---');
         try {
             await FocusStorageService.startSession(session);
@@ -102,7 +102,7 @@ export const BlocksScreen = () => {
         setLibrary(prev => prev.filter(b => b.id !== id)); // Optimistic update
         try {
             await FocusStorageService.deleteBlock(id);
-            
+
             // Clean up the QR signature from the gallery
             if (assetId) {
                 try {
@@ -112,7 +112,7 @@ export const BlocksScreen = () => {
                     // Silently fail if user denies deletion or asset is already gone
                 }
             }
-            
+
             refreshData();
         } catch (error) {
             setLibrary(previousLibrary); // Rollback
@@ -165,7 +165,7 @@ export const BlocksScreen = () => {
 
 
                     {/* Section: FOCUS_LIBRARY */}
-                    <View className="px-6">
+                    <View className="px-4">
                         <View className="flex-row items-center justify-between mb-6">
                             <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.3em]">
                                 FOCUS_LIBRARY
@@ -359,10 +359,10 @@ const LibraryItem = ({ block, index, onPlay, onDelete, onEdit, isActive }: { blo
                 <View className="flex-row items-center justify-between mb-4">
                     <View className="flex-row items-center gap-3 flex-1 mr-4">
                         <View className="w-10 h-10 bg-white/5 items-center justify-center">
-                            <MaterialCommunityIcons 
-                                name={block.type === 'schedule' ? "calendar-clock" : "shield"} 
-                                size={20} 
-                                color={isActive ? "#72fe88" : "white"} 
+                            <MaterialCommunityIcons
+                                name={block.type === 'schedule' ? "calendar-clock" : "shield"}
+                                size={20}
+                                color={isActive ? "#72fe88" : "white"}
                             />
                         </View>
                         <View className="flex-1">
@@ -379,7 +379,7 @@ const LibraryItem = ({ block, index, onPlay, onDelete, onEdit, isActive }: { blo
                                     </Text>
                                 </View>
                             </View>
-                            
+
                             {block.type === 'schedule' && block.schedule ? (
                                 <Text className="text-white/30 font-label text-[10px]">
                                     {block.schedule.startTime} - {block.schedule.endTime} • {block.schedule.days.join(', ')}
