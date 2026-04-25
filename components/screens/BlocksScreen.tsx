@@ -98,25 +98,28 @@ export const BlocksScreen = () => {
         const block = library.find(b => b.id === id);
         const assetId = (block?.strictnessConfig as any)?.assetId;
 
-        const previousLibrary = library;
-        setLibrary(prev => prev.filter(b => b.id !== id)); // Optimistic update
         try {
-            await FocusStorageService.deleteBlock(id);
-
-            // Clean up the QR signature from the gallery
-            if (assetId) {
-                try {
-                    await MediaLibrary.deleteAssetsAsync([assetId]);
-                } catch (assetError) {
-                    console.error('Failed to delete asset:', assetError);
-                    // Silently fail if user denies deletion or asset is already gone
-                }
+            // 1. Attempt to delete the photo first (ONLY if it's a QR_CODE session)
+            if (block?.strictnessConfig?.mode === 'qr_code' && assetId) {
+                // If user clicks "Deny", this will throw and jump to catch block
+                await MediaLibrary.deleteAssetsAsync([assetId]);
             }
 
-            refreshData();
-        } catch (error) {
-            setLibrary(previousLibrary); // Rollback
-            console.error('Failed to delete block:', error);
+            // 2. If we reach here, user accepted or there was no photo
+            const previousLibrary = library;
+            setLibrary(prev => prev.filter(b => b.id !== id)); // Optimistic update
+            
+            try {
+                await FocusStorageService.deleteBlock(id);
+                refreshData();
+            } catch (storageError) {
+                setLibrary(previousLibrary); // Rollback
+                console.error('Failed to delete block from storage:', storageError);
+            }
+        } catch (assetError) {
+            // User denied deletion - this is intended behavior
+            console.log('User denied QR signature deletion. Aborting session removal.');
+            // We stop here - the focus session is NOT deleted
         }
     };
 
