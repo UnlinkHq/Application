@@ -72,7 +72,10 @@ export const AppSelectionModal = ({
             try {
                 const installedApps = await getInstalledApps();
                 if (installedApps && installedApps.length > 0) {
-                    setAllApps(installedApps.map(a => ({
+                    // Deduplicate by packageName to prevent React key collision
+                    const uniqueApps = Array.from(new Map(installedApps.map(a => [a.packageName, a])).values());
+
+                    setAllApps(uniqueApps.map(a => ({
                         id: a.packageName,
                         name: a.label,
                         icon: `data:image/png;base64,${a.icon}`,

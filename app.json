@@ -47,6 +47,11 @@
         "barStyle": "light-content",
         "backgroundColor": "#000000"
       }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "92176d19-24d9-423a-9c85-ac793489e32d"
+      }
     }
   }
 }

@@ -534,15 +534,21 @@ class ScreenTimeModule : Module() {
       val packageManager = context.packageManager
       val mainIntent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
       val resolvedActivities = packageManager.queryIntentActivities(mainIntent, 0)
+      
       val appList = mutableListOf<Map<String, Any>>()
+      val addedPackages = mutableSetOf<String>()
+      
       for (resolveInfo in resolvedActivities) {
         val packageName = resolveInfo.activityInfo.packageName
+        if (addedPackages.contains(packageName)) continue
+        
         try {
             val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
             val label = packageManager.getApplicationLabel(applicationInfo).toString()
             val iconDrawable = packageManager.getApplicationIcon(applicationInfo)
             val iconBase64 = bitmapToBase64(iconDrawable)
             appList.add(mapOf("packageName" to packageName, "label" to label, "icon" to (iconBase64 ?: "")))
+            addedPackages.add(packageName)
         } catch (e: Exception) {}
       }
       return@AsyncFunction appList

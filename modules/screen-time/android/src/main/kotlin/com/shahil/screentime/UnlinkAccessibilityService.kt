@@ -96,6 +96,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
     private var watchTimeHandler = Handler(Looper.getMainLooper())
     private val brainrotHandler = Handler(Looper.getMainLooper())
     private val brainrotHideRunnable = Runnable { hideBrainrotMeter() }
+    private var lastLockActionTime = 0L
     
     private val watchTimeRunnable = object : Runnable {
         override fun run() {
@@ -241,13 +242,14 @@ class UnlinkAccessibilityService : AccessibilityService() {
                                resourceName.contains("thread", ignoreCase = true)
 
                     if (!isDM) {
-                        val isSurgicalEngagement = resourceName.contains("reel", ignoreCase = true) || 
+                        val isSurgicalEngagement = (resourceName.contains("reel", ignoreCase = true) || 
                                                    resourceName.contains("reels", ignoreCase = true) ||
                                                    resourceName.contains("short", ignoreCase = true) || 
                                                    resourceName.contains("clip", ignoreCase = true) ||
-                                                   resourceName.contains("clips", ignoreCase = true)
+                                                   resourceName.contains("clips", ignoreCase = true)) &&
+                                                   !resourceName.contains("container", ignoreCase = true)
 
-                        if (isSurgicalEngagement) {
+                        if (isSurgicalEngagement && eventType == AccessibilityEvent.TYPE_VIEW_SCROLLED) {
                             val scrollInterval = now - lastBrainrotScrollTime
                             if (scrollInterval > 150L) { 
                                 if (!isCurrentlyInShortsMode) {
@@ -339,7 +341,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
         try {
             createNotificationChannel()
             startForeground(NOTIFICATION_ID, createNotification())
-            resetBrainrotState()
+            // Removed resetBrainrotState() to preserve score across service restarts
             val filter = IntentFilter()
             filter.addAction("com.shahil.unlink.SYNC_LIST")
             filter.addAction(Intent.ACTION_SCREEN_OFF)
@@ -808,10 +810,16 @@ class UnlinkAccessibilityService : AccessibilityService() {
     }
 
     private fun enforceShortsLockSurgical() {
+        val now = System.currentTimeMillis()
+        if (now - lastLockActionTime < 2000L) return // Cooldown to prevent multiple back actions
+        lastLockActionTime = now
+
         visibilityHandler.post {
-            Toast.makeText(this, "BRAIN ROT: ${String.format("%.1f", globalBrainrotScore)}% | SHORTS LOCKED UNTIL HEALED TO 30%", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "SHORTS LOCKED: Brain will heal itself when you stay out of Reels/Shorts.", Toast.LENGTH_LONG).show()
             performGlobalAction(GLOBAL_ACTION_BACK)
-            isCurrentlyInShortsMode = false; hideBrainrotMeter(); watchTimeHandler.removeCallbacks(watchTimeRunnable)
+            isCurrentlyInShortsMode = false
+            hideBrainrotMeter()
+            watchTimeHandler.removeCallbacks(watchTimeRunnable)
         }
     }
 
@@ -819,9 +827,20 @@ class UnlinkAccessibilityService : AccessibilityService() {
         if (node == null) return false
         // STRICT ID MATCHING: Only trigger if the actual Shorts containers are visible.
         val ids = if (pkg == "com.google.android.youtube") {
-            listOf("com.google.android.youtube:id/reel_recycler", "com.google.android.youtube:id/reel_watch_fragment_root") 
+            listOf(
+                "com.google.android.youtube:id/reel_recycler", 
+                "com.google.android.youtube:id/reel_watch_fragment_root",
+                "com.google.android.youtube:id/shorts_container"
+            ) 
         } else {
-            listOf("com.instagram.android:id/clips_video_container", "com.instagram.android:id/reels_view_pager")
+            listOf(
+                "com.instagram.android:id/clips_video_container", 
+                "com.instagram.android:id/reels_view_pager",
+                "com.instagram.android:id/reels_video_container",
+                "com.instagram.android:id/clips_pager",
+                "com.instagram.android:id/reels_pager",
+                "com.instagram.android:id/clips_video_container"
+            )
         }
         
         for (id in ids) {
@@ -839,12 +858,52 @@ class UnlinkAccessibilityService : AccessibilityService() {
 
     private fun findSurgicalContainerByStructure(node: AccessibilityNodeInfo?): Boolean {
         if (node == null) return false
-        if (node.isScrollable && (node.className?.contains("RecyclerView") == true || node.className?.contains("ViewPager") == true)) {
-            val rect = Rect(); node.getBoundsInScreen(rect)
-            // Instagram Reels are strictly full screen scrollables
-            if (rect.height() > resources.displayMetrics.heightPixels * 0.9) return true
+        
+        val className = node.className?.toString() ?: ""
+        val resourceId = node.viewIdResourceName ?: ""
+        
+        // STRICT EXCLUSION: If we see ANY markers of the main Home Feed, abort Reels detection immediately
+        if (resourceId.contains("feed_recycler", ignoreCase = true) || 
+            resourceId.contains("feed_list", ignoreCase = true) ||
+            resourceId.contains("action_bar_container", ignoreCase = true) ||
+            resourceId.contains("toolbar", ignoreCase = true) ||
+            resourceId.contains("header_container", ignoreCase = true)) {
+            return false
         }
-        for (i in 0 until node.childCount) { if (findSurgicalContainerByStructure(node.getChild(i))) return true }
+
+        // Check for scrollable pagers/collections that are near full-screen
+        if (node.isScrollable || className.contains("ViewPager") || className.contains("RecyclerView") || className.contains("ViewPager2")) {
+            val rect = Rect()
+            node.getBoundsInScreen(rect)
+            val screenHeight = resources.displayMetrics.heightPixels
+            
+            // Reels are almost always full-screen vertical pagers (ViewPager2)
+            if (rect.height() > screenHeight * 0.9) { // Back to 0.9 to be safe
+                // High Confidence: IDs or descriptions containing "reel", "clip", or "short"
+                if (resourceId.contains("reels_video_container", ignoreCase = true) || 
+                    resourceId.contains("clips_video_container", ignoreCase = true) ||
+                    resourceId.contains("reel_viewer", ignoreCase = true)) {
+                    return true
+                }
+                
+                // Medium Confidence: ViewPager2 in Instagram is used for Reels, but we need to see a "reel" somewhere in the hierarchy
+                if (className.contains("ViewPager2") || className.contains("ViewPager")) {
+                    // Quick check of children for "reel" or "clip" markers
+                    for (i in 0 until Math.min(node.childCount, 5)) {
+                        val child = node.getChild(i)
+                        if (child?.viewIdResourceName?.contains("reel", ignoreCase = true) == true ||
+                            child?.viewIdResourceName?.contains("clip", ignoreCase = true) == true) {
+                            return true
+                        }
+                    }
+                }
+            }
+        }
+        
+        for (i in 0 until node.childCount) {
+            val found = findSurgicalContainerByStructure(node.getChild(i))
+            if (found) return true
+        }
         return false
     }
 

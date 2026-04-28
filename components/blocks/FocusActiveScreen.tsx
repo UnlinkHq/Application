@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, SafeAreaView, TextInput, StyleSheet } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInDown, useSharedValue, useAnimatedStyle, withTiming, runOnJS, cancelAnimation, Easing } from 'react-native-reanimated';
 import { MetricsEngine, UserMetrics } from '../../services/MetricsEngine';
 import { FocusStorageService, BlockSession } from '../../services/FocusStorageService';
 import * as ScreenTime from '../../modules/screen-time';
@@ -192,6 +192,27 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
         return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
 
+    const stopProgress = useSharedValue(0);
+
+    const handlePressIn = () => {
+        stopProgress.value = withTiming(1, { duration: 5000, easing: Easing.linear }, (finished) => {
+            if (finished) {
+                runOnJS(handleStop)(false);
+            }
+        });
+    };
+
+    const handlePressOut = () => {
+        cancelAnimation(stopProgress);
+        stopProgress.value = withTiming(0, { duration: 200 });
+    };
+
+    const progressStyle = useAnimatedStyle(() => {
+        return {
+            width: `${stopProgress.value * 100}%`,
+        };
+    });
+
     return (
         <SafeAreaView className="flex-1 bg-black">
             <Animated.View
@@ -318,12 +339,19 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                     </View>
                 ) : (
                     <TouchableOpacity
-                        onPress={() => handleStop(false)}
-                        className="h-16 border border-white/10 items-center justify-center bg-transparent"
-                        activeOpacity={0.7}
+                        onPressIn={handlePressIn}
+                        onPressOut={handlePressOut}
+                        className="h-16 border border-white/10 items-center justify-center bg-transparent overflow-hidden relative"
+                        activeOpacity={1}
                     >
-                        <Text className="text-white/40 font-headline font-black text-sm uppercase tracking-[0.3em]">
-                            STOP FOCUS MODE
+                        <Animated.View 
+                            style={[
+                                { position: 'absolute', left: 0, top: 0, bottom: 0, backgroundColor: 'rgba(255, 0, 0, 0.3)' },
+                                progressStyle
+                            ]} 
+                        />
+                        <Text className="text-white/40 font-headline font-black text-sm uppercase tracking-[0.3em] z-10">
+                            HOLD TO STOP (5S)
                         </Text>
                     </TouchableOpacity>
                 )}
