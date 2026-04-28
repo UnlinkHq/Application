@@ -94,7 +94,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
         const updated = await FocusStorageService.toggleBreak();
         if (updated) {
             refreshSession();
-            await ScreenTime.setBlockedApps([], "BREAK_PROTOCOL_ACTIVE", "REST_PERIOD");
+            await ScreenTime.setBlockedApps([], "BREAK PROTOCOL ACTIVE", "REST PERIOD");
         }
     };
 
@@ -128,7 +128,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                     subject: 'MOM TEST: UNLINK VERIFICATION CODE',
                     html: `
                         <div style="font-family: sans-serif; padding: 20px; color: #000;">
-                            <h2 style="letter-spacing: 2px;">UNLINK_PROTOCOL</h2>
+                            <h2 style="letter-spacing: 2px;">UNLINK PROTOCOL</h2>
                             <p>Your verification code to terminate the focus session is:</p>
                             <h1 style="font-size: 48px; letter-spacing: 15px; margin: 30px 0;">${newOtp}</h1>
                             <p style="color: #666; font-size: 12px;">This code was requested via the Mom Test protocol.</p>
@@ -143,10 +143,10 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                 setEmailCooldown(60); // 60s cooldown
             } else {
                 const err = await response.json();
-                alert(`API_ERROR: ${err.message || 'FAILED_TO_SEND_EMAIL'}`);
+                alert(`API ERROR: ${err.message || 'FAILED TO SEND EMAIL'}`);
             }
         } catch (error) {
-            alert("NETWORK_ERROR: CHECK_CONNECTION");
+            alert("NETWORK ERROR: CHECK CONNECTION");
         } finally {
             setIsEmailSending(false);
         }
@@ -166,7 +166,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
         if (otp === generatedOtp) {
             handleStop(false);
         } else {
-            alert("INVALID_PROTOCOL_CODE");
+            alert("INVALID PROTOCOL CODE");
         }
     };
 
@@ -175,7 +175,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
         if (data === session.strictnessConfig.qrCodeData) {
             handleStop(false);
         } else {
-            alert("PROTOCOL_MISMATCH: INVALID_QR_SIGNATURE");
+            alert("PROTOCOL MISMATCH: INVALID QR SIGNATURE");
         }
     };
 
@@ -201,7 +201,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                 <View className="items-center mb-12">
                     <Ionicons name={isOnBreak ? "cafe" : "shield-checkmark"} size={60} color={isOnBreak ? "#3b82f6" : "white"} />
                     <Text className={`font-headline font-black text-xs uppercase tracking-[0.4em] mt-4 ${isOnBreak ? 'text-blue-500' : 'text-white/40'}`}>
-                        {isOnBreak ? 'BREAK_PROTOCOL_ACTIVE' : 'FOCUS_PROTOCOL_ENGAGED'}
+                        {isOnBreak ? 'BREAK PROTOCOL ACTIVE' : 'FOCUS PROTOCOL ENGAGED'}
                     </Text>
                 </View>
 
@@ -210,7 +210,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                         {isOnBreak ? formatSeconds(breakTimeLeft) : formatTime(timeLeft)}
                     </Text>
                     <Text className="text-white/20 font-label text-[10px] uppercase tracking-widest mt-2">
-                        {isOnBreak ? 'TIME_UNTIL_RE_ENFORCEMENT' : 'REMAINING_RESTRICTION_PERIOD'}
+                        {isOnBreak ? 'TIME UNTIL RE ENFORCEMENT' : 'REMAINING RESTRICTION PERIOD'}
                     </Text>
                 </View>
 
@@ -230,7 +230,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                 <View className="flex-row items-center mt-12 gap-2">
                     <View className="w-1.5 h-1.5 rounded-full bg-green-500" />
                     <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest">
-                        AIRTIGHT_LOCKDOWN_ACTIVE
+                        AIRTIGHT LOCKDOWN ACTIVE
                     </Text>
                 </View>
 
@@ -241,7 +241,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                         className="mt-8 bg-red-900/20 border border-red-500/30 p-4 rounded-xl items-center w-full"
                     >
                         <Text className="text-red-500 font-headline font-black text-[10px] uppercase tracking-widest mb-2">
-                            ENFORCEMENT_WARNING: OVERLAY_PERMISSION_MISSING
+                            ENFORCEMENT WARNING: OVERLAY PERMISSION MISSING
                         </Text>
                         <Text className="text-white/60 font-body text-[10px] text-center mb-4">
                             Unlink cannot physically block other apps without 'Display over other apps' permission.
@@ -250,7 +250,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                             onPress={() => ScreenTime.requestOverlayPermission()}
                             className="bg-red-500 px-4 py-2 rounded-sm"
                         >
-                            <Text className="text-white font-headline font-black text-[10px] uppercase">GRANT_CONTROL_NOW</Text>
+                            <Text className="text-white font-headline font-black text-[10px] uppercase">GRANT CONTROL NOW</Text>
                         </TouchableOpacity>
                     </Animated.View>
                 )}
@@ -265,8 +265,8 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                     >
                         <Text className={`font-headline font-black text-sm uppercase tracking-widest ${isOnBreak ? 'text-white' : 'text-blue-500'}`}>
                             {isOnBreak
-                                ? 'END_BREAK_NOW'
-                                : `TAKE_BREAK (${breaksLeft}_REMAINING)`}
+                                ? 'END BREAK NOW'
+                                : `TAKE BREAK (${breaksLeft} REMAINING)`}
                         </Text>
                     </TouchableOpacity>
                 )}
@@ -277,7 +277,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                         className="h-16 border border-white/20 items-center justify-center bg-white/5"
                     >
                         <Text className="text-white font-headline font-black text-sm uppercase tracking-widest">
-                            SCAN_QR_SIGNATURE
+                            SCAN QR SIGNATURE
                         </Text>
                     </TouchableOpacity>
                 ) : session.strictnessConfig.mode === 'mom_test' ? (
@@ -308,10 +308,10 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                             >
                                 <Text className={`font-headline font-black text-sm uppercase tracking-widest ${isEmailSending || emailCooldown > 0 ? 'text-white/20' : 'text-white'}`}>
                                     {isEmailSending
-                                        ? 'SENDING_PROTOCOL...'
+                                        ? 'SENDING PROTOCOL...'
                                         : emailCooldown > 0
                                             ? `COOLDOWN (${emailCooldown}S)`
-                                            : 'REQUEST_UNBLOCK_VIA_EMAIL'}
+                                            : 'REQUEST UNBLOCK VIA EMAIL'}
                                 </Text>
                             </TouchableOpacity>
                         )}
@@ -323,13 +323,13 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                         activeOpacity={0.7}
                     >
                         <Text className="text-white/40 font-headline font-black text-sm uppercase tracking-[0.3em]">
-                            STOP_FOCUS_MODE
+                            STOP FOCUS MODE
                         </Text>
                     </TouchableOpacity>
                 )}
 
                 <Text className="text-white/20 font-label text-[8px] text-center uppercase tracking-widest">
-                    BYPASSING_WILL_IMPACT_YOUR_WEEKLY_CONSISTENCY_METRICS
+                    BYPASSING WILL IMPACT YOUR WEEKLY CONSISTENCY METRICS
                 </Text>
             </View>
 
@@ -349,7 +349,7 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
                                 onPress={() => setIsScanning(false)}
                                 className="mt-20 bg-white px-8 py-4"
                             >
-                                <Text className="text-black font-headline font-black text-xs uppercase">ABORT_SCAN</Text>
+                                <Text className="text-black font-headline font-black text-xs uppercase">ABORT SCAN</Text>
                             </TouchableOpacity>
                         </View>
                     </CameraView>

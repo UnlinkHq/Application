@@ -59,7 +59,7 @@ export const ConfigRow = React.memo(({
                         </View>
                     ) : (
                         <Text className="text-white/40 font-label text-[9px] uppercase tracking-widest">
-                            {subtitle || (nativeCount > 0 ? `${nativeCount} COMMITTED` : 'NONE_DEFINED')}
+                            {subtitle || (nativeCount > 0 ? `${nativeCount} COMMITTED` : 'NONE DEFINED')}
                         </Text>
                     )}
                 </View>

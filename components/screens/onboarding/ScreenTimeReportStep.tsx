@@ -125,13 +125,13 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
                   onPress={() => setViewMode('Day')}
                   className={`flex-1 py-4 items-center justify-center ${viewMode === 'Day' ? 'bg-white' : ''}`}
                 >
-                  <Text className={`text-[10px] font-headline font-black uppercase tracking-widest ${viewMode === 'Day' ? 'text-black' : 'text-white/40'}`}>DAY_VIEW</Text>
+                  <Text className={`text-[10px] font-headline font-black uppercase tracking-widest ${viewMode === 'Day' ? 'text-black' : 'text-white/40'}`}>DAY VIEW</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={() => setViewMode('Week')}
                   className={`flex-1 py-4 items-center justify-center ${viewMode === 'Week' ? 'bg-white' : ''}`}
                 >
-                  <Text className={`text-[10px] font-headline font-black uppercase tracking-widest ${viewMode === 'Week' ? 'text-black' : 'text-white/40'}`}>WEEK_VIEW</Text>
+                  <Text className={`text-[10px] font-headline font-black uppercase tracking-widest ${viewMode === 'Week' ? 'text-black' : 'text-white/40'}`}>WEEK VIEW</Text>
                 </TouchableOpacity>
             </View>
         </View>

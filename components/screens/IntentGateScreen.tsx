@@ -55,7 +55,7 @@ export const IntentGateScreen = () => {
             <SafeAreaView style={styles.content}>
                 {/* Header */}
                 <View style={styles.header}>
-                    <Text style={styles.protocolText}>INTENT_GATE_V2</Text>
+                    <Text style={styles.protocolText}>INTENT GATE V2</Text>
                 </View>
 
                 {/* Main Question */}
@@ -71,7 +71,7 @@ export const IntentGateScreen = () => {
                 {!showActions ? (
                     <View style={styles.calmSection}>
                         <Text style={styles.timer}>{countdown}</Text>
-                        <Text style={styles.statusText}>FOCUSING_SYSTEM...</Text>
+                        <Text style={styles.statusText}>FOCUSING SYSTEM...</Text>
                     </View>
                 ) : (
                     <Animated.View

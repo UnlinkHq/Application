@@ -59,9 +59,9 @@ export const QRUnlockModal = ({
         } else {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             Alert.alert(
-                "INVALID_SIGNATURE",
-                "THE_SCANNED_QR_CODE_DOES_NOT_MATCH_THIS_SESSION_PROTOCOL.",
-                [{ text: "TRY_AGAIN", onPress: () => setScanned(false) }]
+                "INVALID SIGNATURE",
+                "THE SCANNED QR CODE DOES NOT MATCH THIS SESSION PROTOCOL.",
+                [{ text: "TRY AGAIN", onPress: () => setScanned(false) }]
             );
         }
     };
@@ -98,7 +98,7 @@ export const QRUnlockModal = ({
 
                 {/* Header/Close */}
                 <View className="absolute top-12 left-6 right-6 flex-row justify-between items-center">
-                    <Text className="text-white font-headline font-black text-lg tracking-[0.2em]">UNLINK_SCAN</Text>
+                    <Text className="text-white font-headline font-black text-lg tracking-[0.2em]">UNLINK SCAN</Text>
                     <TouchableOpacity 
                         onPress={onClose}
                         className="w-10 h-10 bg-black items-center justify-center border border-white/20"

@@ -79,7 +79,7 @@ export const StrictModeModal = ({
 
     const handleSendVerificationCode = async () => {
         if (!emailAddress || isSendingCode) {
-            alert("INVALID_INPUT: PLEASE_ENTER_VALID_EMAIL");
+            alert("INVALID INPUT: PLEASE ENTER VALID EMAIL");
             return;
         }
 
@@ -100,7 +100,7 @@ export const StrictModeModal = ({
                     subject: 'MOM TEST: SETUP VERIFICATION CODE',
                     html: `
                         <div style="font-family: sans-serif; padding: 20px; color: #000;">
-                            <h2 style="letter-spacing: 2px;">UNLINK_SETUP</h2>
+                            <h2 style="letter-spacing: 2px;">UNLINK SETUP</h2>
                             <p>You have been chosen as a Trusted Contact for an Unlink Focus Session.</p>
                             <p>Use this code to verify your identity:</p>
                             <h1 style="font-size: 32px; letter-spacing: 10px; margin: 20px 0;">${code}</h1>
@@ -115,10 +115,10 @@ export const StrictModeModal = ({
                 setVerificationStep('verify');
             } else {
                 const err = await response.json();
-                alert(`API_ERROR: ${err.message || 'FAILED_TO_SEND'}`);
+                alert(`API ERROR: ${err.message || 'FAILED TO SEND'}`);
             }
         } catch (error) {
-            alert("NETWORK_ERROR: CHECK_CONNECTION");
+            alert("NETWORK ERROR: CHECK CONNECTION");
         } finally {
             setIsSendingCode(false);
         }
@@ -128,18 +128,18 @@ export const StrictModeModal = ({
         if (enteredSetupCode === setupCode) {
             setIsVerified(true);
         } else {
-            alert("INVALID_VERIFICATION_CODE");
+            alert("INVALID VERIFICATION CODE");
         }
     };
 
     const handleConfirm = () => {
         if (selectedMode === 'mom_test' && !isVerified) {
-            alert("VERIFICATION_REQUIRED: PLEASE_VERIFY_TRUSTED_CONTACT");
+            alert("VERIFICATION REQUIRED: PLEASE VERIFY TRUSTED CONTACT");
             return;
         }
 
         if (selectedMode === 'money') {
-            alert("PROTOCOL_UNDER_DEVELOPMENT: This mode will be available in V2.0.");
+            alert("PROTOCOL UNDER DEVELOPMENT: This mode will be available in V2.0.");
             return;
         }
 
@@ -249,7 +249,7 @@ export const StrictModeModal = ({
                                         >
                                             <MaterialCommunityIcons name="send" size={14} color="black" style={{ marginRight: 8 }} />
                                             <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">
-                                                {isSendingCode ? 'SENDING...' : 'SEND_VERIFICATION_CODE'}
+                                                {isSendingCode ? 'SENDING...' : 'SEND VERIFICATION CODE'}
                                             </Text>
                                         </TouchableOpacity>
                                     </View>
@@ -305,7 +305,7 @@ export const StrictModeModal = ({
 
                     {selectedMode === 'money' && (
                         <Animated.View entering={FadeInDown} className="mb-8">
-                            <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-4">CASH_STAKES_CONFIGURATION</Text>
+                            <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-4">CASH STAKES CONFIGURATION</Text>
                             <View className="bg-white/5 border border-white/10 p-10 items-center border-dashed">
                                 <View className="w-16 h-16 bg-white/5 items-center justify-center rounded-full mb-6">
                                     <MaterialCommunityIcons name="clock-fast" size={32} color="rgba(255,255,255,0.2)" />
@@ -316,7 +316,7 @@ export const StrictModeModal = ({
                                     <Text className="text-white"> Stake. Loss. Focus.</Text>
                                 </Text>
                                 <View className="mt-8 px-4 py-2 bg-white/5 border border-white/20">
-                                    <Text className="text-[#72fe88] font-headline font-black text-[10px] uppercase tracking-widest">EXPECTED_LAUNCH: Q3 2026</Text>
+                                    <Text className="text-[#72fe88] font-headline font-black text-[10px] uppercase tracking-widest">EXPECTED LAUNCH: Q3 2026</Text>
                                 </View>
                             </View>
                         </Animated.View>
@@ -334,8 +334,8 @@ export const StrictModeModal = ({
                     disabled={isConfirmDisabled}
                 >
                     <Text className={`font-headline font-black text-lg uppercase tracking-[0.2em] ${isConfirmDisabled || selectedMode === 'money' ? 'text-white/20' : 'text-black'}`}>
-                        {selectedMode === 'mom_test' && !isVerified ? 'VERIFICATION_REQUIRED' : 
-                         selectedMode === 'money' ? 'UNDER_DEVELOPMENT' : 'Select Protocol'}
+                        {selectedMode === 'mom_test' && !isVerified ? 'VERIFICATION REQUIRED' : 
+                         selectedMode === 'money' ? 'UNDER DEVELOPMENT' : 'Select Protocol'}
                     </Text>
                 </TouchableOpacity>
             </View>

@@ -19,7 +19,7 @@ export const UsageBudgetConfig = ({ onBack }: UsageBudgetConfigProps) => {
         
         <View className="items-center mb-8 px-6">
             <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.3em] text-center mb-2">
-                PROTOCOL_02: TEMPORAL_THRESHOLD
+                PROTOCOL 02: TEMPORAL THRESHOLD
             </Text>
             <Text className="text-white font-headline font-black text-2xl uppercase tracking-widest text-center">
                 CONFIGURE USAGE BUDGET
@@ -79,7 +79,7 @@ export const UsageBudgetConfig = ({ onBack }: UsageBudgetConfigProps) => {
         </View>
 
         {/* Budget Configuration */}
-        <Text className="text-white font-headline font-black text-xs uppercase tracking-[0.3em] mb-4">SET_TIME_LIMIT</Text>
+        <Text className="text-white font-headline font-black text-xs uppercase tracking-[0.3em] mb-4">SET TIME LIMIT</Text>
         <View className="border-2 border-white p-6 mb-12">
              <View className="flex-row justify-center items-center">
                  <View className="items-center">

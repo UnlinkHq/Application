@@ -61,8 +61,8 @@ export const SecurityConfig = ({
                             <MaterialCommunityIcons name="shield-lock-outline" size={32} color="white" />
                         </View>
 
-                        <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">UNINSTALL_PROTECTION</Text>
-                        <Text className="text-white/40 font-label text-[9px] uppercase tracking-widest mb-8 text-center italic">LEVEL_02_SECURITY_ENFORCEMENT</Text>
+                        <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">UNINSTALL PROTECTION</Text>
+                        <Text className="text-white/40 font-label text-[9px] uppercase tracking-widest mb-8 text-center italic">LEVEL 02 SECURITY ENFORCEMENT</Text>
 
                         <View className="bg-white/5 border border-white/10 p-5 mb-8 w-full">
                             <View className="flex-row items-start mb-4">
@@ -91,14 +91,14 @@ export const SecurityConfig = ({
                             }}
                             className="w-full h-14 bg-white items-center justify-center mb-3"
                         >
-                            <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">GRANT_PERMISSION</Text>
+                            <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">GRANT PERMISSION</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
                             onPress={() => setIsAdminModalVisible(false)}
                             className="w-full h-14 border border-white/20 items-center justify-center"
                         >
-                            <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">ABORT_REQUEST</Text>
+                            <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">ABORT REQUEST</Text>
                         </TouchableOpacity>
                     </View>
                 </Animated.View>

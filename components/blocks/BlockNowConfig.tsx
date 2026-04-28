@@ -278,7 +278,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
 
         const sessionPayload = {
             id: Math.random().toString(36).substring(7),
-            title: title || "ALLOW_FOCUS_SESSION",
+            title: title || "ALLOW FOCUS SESSION",
             type: 'block_now' as const,
             durationMins: duration,
             apps: selectedApps.map(a => a.id),
@@ -469,7 +469,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
             <SignatureDeploymentModal
                 visible={isQrModalVisible}
                 qrData={generatedQrData}
-                title="FOCUS_SIGNATURE"
+                title="FOCUS SIGNATURE"
                 onCancel={() => setIsQrModalVisible(false)}
                 onSuccess={async (assetId) => {
                     const finalSession = {

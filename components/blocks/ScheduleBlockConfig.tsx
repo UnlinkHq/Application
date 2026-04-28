@@ -421,7 +421,7 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
             <SignatureDeploymentModal
                 visible={isQrModalVisible}
                 qrData={generatedQrData}
-                title="SCHEDULE_SIGNATURE"
+                title="SCHEDULE SIGNATURE"
                 onCancel={() => {
                     setIsQrModalVisible(false);
                     setIsQrSaving(false);

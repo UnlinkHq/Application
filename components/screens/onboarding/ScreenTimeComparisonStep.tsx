@@ -94,7 +94,7 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
   if (loading) {
     return (
       <View className="flex-1 items-center justify-center bg-black">
-        <Text className="text-white/40 text-[10px] font-label uppercase tracking-widest">CALCULATING_DATA_STREAM...</Text>
+        <Text className="text-white/40 text-[10px] font-label uppercase tracking-widest">CALCULATING DATA STREAM...</Text>
       </View>
     );
   }
@@ -170,14 +170,14 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
           <View className="font-label text-[10px] space-y-1">
               <Text className="text-white">LAT: 37.7749</Text>
               <Text className="text-white">LONG: -122.4194</Text>
-              <Text className="text-[#ffb4aa]">CRITICAL_OVERUSE_DETECTION</Text>
+              <Text className="text-[#ffb4aa]">CRITICAL OVERUSE DETECTION</Text>
           </View>
       </View>
       
       <View className="absolute top-24 right-6 pointer-events-none opacity-30 z-0 hidden md:block items-end">
           <View className="font-label text-[10px] space-y-1 items-end">
               <Text className="text-white">SYSTEM_ID: OP-094</Text>
-              <Text className="text-white">MODE: SURGICAL_INTERVENTION</Text>
+              <Text className="text-white">MODE: SURGICAL INTERVENTION</Text>
               <Text className="text-white">BUFFER: 0.00ms</Text>
           </View>
       </View>

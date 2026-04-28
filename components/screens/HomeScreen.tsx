@@ -96,7 +96,7 @@ const ActiveProtocolStatus = ({
             {/* Session Identification */}
             <View className="mb-5">
                 <Text className="text-white font-headline font-black text-xl uppercase tracking-tighter leading-tight">
-                    {session.title || 'UNNAMED_PROTOCOL'}
+                    {session.title || 'UNNAMED PROTOCOL'}
                 </Text>
             </View>
 
@@ -118,12 +118,12 @@ const ActiveProtocolStatus = ({
                 <View className="flex-1 flex-row flex-wrap gap-2">
                     {session.scrollingProtocol?.youtube?.enabled && (
                         <View className="px-2 py-0.5 border border-red-500/30 bg-red-500/5">
-                            <Text className="text-red-500 font-label text-[7px] uppercase tracking-widest">YT_SHORTS</Text>
+                            <Text className="text-red-500 font-label text-[7px] uppercase tracking-widest">YT SHORTS</Text>
                         </View>
                     )}
                     {session.scrollingProtocol?.instagram?.enabled && (
                         <View className="px-2 py-0.5 border border-pink-500/30 bg-pink-500/5">
-                            <Text className="text-pink-500 font-label text-[7px] uppercase tracking-widest">IG_REELS</Text>
+                            <Text className="text-pink-500 font-label text-[7px] uppercase tracking-widest">IG REELS</Text>
                         </View>
                     )}
                 </View>
@@ -638,7 +638,7 @@ export const HomeScreen = () => {
                             {/* Section 04: Consumption Label */}
                             <View className="px-3 mt-8">
                                 <Text className="font-label text-[10px] uppercase tracking-widest text-[#919191] mb-8">
-                                    {selectedHour !== null ? 'HOURLY_INTENSITY' : 'HOME_USAGE_STATS'}
+                                    {selectedHour !== null ? 'HOURLY INTENSITY' : 'HOME USAGE STATS'}
                                 </Text>
                             </View>
                         </>

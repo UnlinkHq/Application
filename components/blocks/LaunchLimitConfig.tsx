@@ -16,7 +16,7 @@ export const LaunchLimitConfig = ({ onBack }: LaunchLimitConfigProps) => {
         
         <View className="items-center mb-8 px-6">
             <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.3em] text-center mb-2">
-                PROTOCOL_03: FREQUENCY_THRESHOLD
+                PROTOCOL 03: FREQUENCY THRESHOLD
             </Text>
             <Text className="text-white font-headline font-black text-2xl uppercase tracking-widest text-center">
                 CONFIGURE LAUNCH LIMIT

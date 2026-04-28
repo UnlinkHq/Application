@@ -129,15 +129,15 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
             let categoryText = "Utility";
 
             if (index === 0) {
-              severityText = "EXTREME_USAGE";
+              severityText = "EXTREME USAGE";
               severityColor = "text-[#ffb4aa]";
               barColor = "bg-[#ffb4aa]";
-              categoryText = "PRIMARY_DRAIN";
+              categoryText = "PRIMARY DRAIN";
             } else if (index === 1) {
-              severityText = "HIGH_USAGE";
+              severityText = "HIGH USAGE";
               severityColor = "text-white";
               barColor = "bg-white";
-              categoryText = "SECONDARY_DRAIN";
+              categoryText = "SECONDARY DRAIN";
             } else {
               categoryText = "APPLICATION";
             }

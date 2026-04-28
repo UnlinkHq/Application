@@ -236,7 +236,7 @@ export const FocusCoachConfig = ({
                     <View className="bg-[#0a0a0a] border border-white/20 p-8">
                         <View className="flex-row items-center mb-6">
                             <MaterialCommunityIcons name="brain" size={24} color="white" />
-                            <Text className="text-white font-headline font-black text-lg uppercase tracking-widest ml-4">COACH_PROTOCOL_V2</Text>
+                            <Text className="text-white font-headline font-black text-lg uppercase tracking-widest ml-4">COACH PROTOCOL V2</Text>
                         </View>
 
                         <Text className="text-white/60 font-label text-[11px] leading-5 uppercase tracking-wide mb-6">
@@ -249,7 +249,7 @@ export const FocusCoachConfig = ({
                             onPress={() => setIsInfoVisible(false)}
                             className="bg-white py-4 items-center"
                         >
-                            <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">ACKNOWLEDGE_DEEP_FOCUS</Text>
+                            <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">ACKNOWLEDGE DEEP FOCUS</Text>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -268,7 +268,7 @@ export const FocusCoachConfig = ({
                         </View>
 
                         <Text className="text-white font-headline font-black text-2xl uppercase tracking-[0.2em] mb-4">
-                            Surgical_Shield
+                            Surgical Shield
                         </Text>
 
                         <Text className="text-white/60 font-label text-[11px] leading-5 mb-8">
@@ -297,7 +297,7 @@ export const FocusCoachConfig = ({
                                 }}
                                 className="flex-1 h-14 bg-white items-center justify-center"
                             >
-                                <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">ENABLE_SHIELD</Text>
+                                <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">ENABLE SHIELD</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

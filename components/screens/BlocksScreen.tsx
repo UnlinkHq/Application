@@ -108,7 +108,7 @@ export const BlocksScreen = () => {
             // 2. If we reach here, user accepted or there was no photo
             const previousLibrary = library;
             setLibrary(prev => prev.filter(b => b.id !== id)); // Optimistic update
-            
+
             try {
                 await FocusStorageService.deleteBlock(id);
                 refreshData();
@@ -171,10 +171,10 @@ export const BlocksScreen = () => {
                     <View className="px-4">
                         <View className="flex-row items-center justify-between mb-6">
                             <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.3em]">
-                                FOCUS_LIBRARY
+                                FOCUS LIBRARY
                             </Text>
                             <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
-                                <Text className="text-blue-500 font-label text-[10px] uppercase tracking-widest">MANAGE_ALL</Text>
+                                <Text className="text-blue-500 font-label text-[10px] uppercase tracking-widest">MANAGE ALL</Text>
                             </TouchableOpacity>
                         </View>
 
@@ -212,7 +212,7 @@ export const BlocksScreen = () => {
                                 <MaterialIcons name="lock" size={32} color="#ef4444" />
                             </View>
                             <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-4">
-                                PROTOCOL_ENFORCED
+                                PROTOCOL ENFORCED
                             </Text>
                             <Text className="text-white/40 font-label text-[10px] text-center leading-4 mb-8">
                                 You cannot modify focus parameters while a session is live. Terminate the active deployment to enable editing.

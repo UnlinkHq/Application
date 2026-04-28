@@ -19,7 +19,7 @@ export const SignatureDeploymentModal = ({
     qrData,
     onSuccess,
     onCancel,
-    title = "PROTOCOL_SIGNATURE"
+    title = "PROTOCOL SIGNATURE"
 }: SignatureDeploymentModalProps) => {
     const qrRef = useRef<any>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -87,7 +87,7 @@ export const SignatureDeploymentModal = ({
                 <View className="bg-white/5 border border-white/10 p-5 mb-8 flex-row items-center">
                     <Ionicons name="warning-outline" size={20} color="#FFD700" style={{ marginRight: 16 }} />
                     <View className="flex-1">
-                        <Text className="text-white font-headline font-black text-[10px] uppercase mb-1">STRICT_REQUIREMENT</Text>
+                        <Text className="text-white font-headline font-black text-[10px] uppercase mb-1">STRICT REQUIREMENT</Text>
                         <Text className="text-white/60 font-label text-[9px] uppercase tracking-wider leading-4">
                             This signature is required for future protocol modifications. If lost, the session cannot be terminated early.
                         </Text>
@@ -101,7 +101,7 @@ export const SignatureDeploymentModal = ({
                     className={`w-full h-16 ${isSaving ? 'bg-white/20' : 'bg-white'} items-center justify-center`}
                 >
                     <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">
-                        {isSaving ? 'ENCRYPTING_SIG...' : 'SAVE_AND_DEPLOY'}
+                        {isSaving ? 'ENCRYPTING SIG...' : 'SAVE AND DEPLOY'}
                     </Text>
                 </TouchableOpacity>
                 

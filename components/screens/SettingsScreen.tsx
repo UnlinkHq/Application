@@ -126,7 +126,7 @@ export const SettingsScreen = () => {
                                 {isSessionLocking && (
                                     <View className="flex-row items-center mt-1">
                                          <MaterialIcons name="lock" size={10} color="#72fe88" />
-                                         <Text className="text-[#72fe88] font-label text-[8px] uppercase ml-1">LOCKED_BY_ACTIVE_SESSION</Text>
+                                         <Text className="text-[#72fe88] font-label text-[8px] uppercase ml-1">LOCKED BY ACTIVE SESSION</Text>
                                     </View>
                                 )}
                             </View>
@@ -189,11 +189,11 @@ export const SettingsScreen = () => {
                         onPress={() => {
                             import('react-native').then(({ Alert, Linking }) => {
                                 Alert.alert(
-                                    "FOUNDER_SUPPORT",
+                                    "FOUNDER SUPPORT",
                                     "I respond fast! Usually within a few hours. Message me for any bugs, feedback, or just to say hi @shahileeee",
                                     [
                                         { text: "LATER", style: "cancel" },
-                                        { text: "OPEN_TELEGRAM", onPress: () => Linking.openURL('https://t.me/shahileeee') }
+                                        { text: "OPEN TELEGRAM", onPress: () => Linking.openURL('https://t.me/shahileeee') }
                                     ]
                                 );
                             });
@@ -206,11 +206,11 @@ export const SettingsScreen = () => {
                         onPress={() => {
                             import('react-native').then(({ Alert, Linking }) => {
                                 Alert.alert(
-                                    "WAIT_BEFORE_YOU_GO!",
+                                    "WAIT BEFORE YOU GO!",
                                     "Is there something wrong? I'm working hard on this startup journey and would love to fix any issues you have personally. Message me on Telegram @shahileeee and I'll respond fast!",
                                     [
                                         { text: "NEVERMIND", style: "cancel" },
-                                        { text: "HELP_ME_DIRECTLY", onPress: () => Linking.openURL('https://t.me/shahileeee') }
+                                        { text: "HELP ME DIRECTLY", onPress: () => Linking.openURL('https://t.me/shahileeee') }
                                     ]
                                 );
                             });

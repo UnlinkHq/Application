@@ -103,7 +103,7 @@ export const PermissionBanner = () => {
           </View>
           <View style={styles.titleContainer}>
             <Text style={[styles.title, isCoreGood && { color: '#FF9500' }]}>
-              {isCoreGood ? 'SURGICAL_PROTOCOL_OFFLINE' : 'ENGINE_CRITICAL_FAILURE'}
+              {isCoreGood ? 'SURGICAL PROTOCOL OFFLINE' : 'ENGINE CRITICAL FAILURE'}
             </Text>
             <Text style={styles.subtitle}>
               {isCoreGood ? 'Enable Accessibility for Surgical & Scroll protection' : 'Core background persistence is compromised'}

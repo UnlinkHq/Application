@@ -79,10 +79,10 @@ export const MomTestUnlockModal = ({
                 Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } else {
                 const err = await response.json();
-                alert(`API_ERROR: ${err.message || 'FAILED_TO_SEND'}`);
+                alert(`API ERROR: ${err.message || 'FAILED TO SEND'}`);
             }
         } catch (error) {
-            alert("NETWORK_ERROR: CHECK_COMMUNICATION_CHANNELS");
+            alert("NETWORK ERROR: CHECK COMMUNICATION CHANNELS");
         } finally {
             setIsSending(false);
         }
