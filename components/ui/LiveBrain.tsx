@@ -14,13 +14,13 @@ import Animated, {
 
 // 7 Progressive Decay Stages
 const STAGES = [
-  require('../../assets/mascots/stage_1.png'), // Cool/Sigma
-  require('../../assets/mascots/stage_2.png'), // Happy
-  require('../../assets/mascots/stage_3.png'), // Numb
-  require('../../assets/mascots/stage_4.png'), // Tired
-  require('../../assets/mascots/stage_5.png'), // Sick
-  require('../../assets/mascots/stage_6.png'), // Rotting
-  require('../../assets/mascots/stage_7.png'), // Dead
+  require('../../assets/mascots/stage_1.webp'), // Cool/Sigma
+  require('../../assets/mascots/stage_2.webp'), // Happy
+  require('../../assets/mascots/stage_3.webp'), // Numb
+  require('../../assets/mascots/stage_4.webp'), // Tired
+  require('../../assets/mascots/stage_5.webp'), // Sick
+  require('../../assets/mascots/stage_6.webp'), // Rotting
+  require('../../assets/mascots/stage_7.webp'), // Dead
 ];
 
 interface LiveBrainProps {

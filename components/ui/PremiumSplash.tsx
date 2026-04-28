@@ -78,7 +78,7 @@ export const PremiumSplash = () => {
                 {/* Main Logo Icon */}
                 <Animated.View style={animatedLogoStyle}>
                     <Image 
-                        source={require('../../assets/logo_icon.png')} 
+                        source={require('../../assets/logo_icon.webp')} 
                         style={styles.logo}
                         resizeMode="contain"
                     />
