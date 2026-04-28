@@ -501,9 +501,11 @@ class ScreenTimeModule : Module() {
                       addToMaps(currentPkg!!, duration, currentStart, hourlyMap, dailyTotalMap)
                    }
               }
+              if (currentPkg != pkg) {
+                  pickupMap[pkg] = (pickupMap[pkg] ?: 0) + 1
+              }
               currentPkg = pkg
               currentStart = time
-              pickupMap[pkg] = (pickupMap[pkg] ?: 0) + 1
           } else if (type == ACTIVITY_PAUSED || type == MOVE_TO_BACKGROUND) {
               if (currentPkg == pkg) {
                   val duration = time - currentStart
@@ -514,6 +516,16 @@ class ScreenTimeModule : Module() {
               }
           }
       }
+      
+      // Handle the last app that was resumed but not paused within the window
+      if (currentPkg != null) {
+          val lastTime = Math.min(System.currentTimeMillis(), endTime.toLong())
+          val duration = lastTime - currentStart
+          if (duration > 0) {
+              addToMaps(currentPkg!!, duration, currentStart, hourlyMap, dailyTotalMap)
+          }
+      }
+
       return@AsyncFunction mapOf("hourly" to hourlyMap, "daily" to dailyTotalMap, "pickups" to pickupMap)
     }
 

@@ -667,12 +667,7 @@ export const HomeScreen = () => {
                     windowSize={5}
                     removeClippedSubviews={Platform.OS === 'android'}
                     ListFooterComponent={
-                        <View className="pb-32 px-3">
-                            {/* Aesthetic Separator */}
-                            <View className="flex-row justify-center py-10 opacity-20">
-                                <Text className="font-label text-2xl text-white transform rotate-45">//</Text>
-                            </View>
-                        </View>
+                        <View className="pb-32 px-3" />
                     }
                 />
 

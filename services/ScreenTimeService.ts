@@ -39,12 +39,12 @@ export const ScreenTimeService = {
         }
     },
 
-    async getGlobalBrainrot(): Promise<{score: number, date: string, shortsCount: number}> {
-        if (Platform.OS !== 'android') return {score: 0, date: '', shortsCount: 0};
+    async getGlobalBrainrot(): Promise<{ score: number, date: string, shortsCount: number }> {
+        if (Platform.OS !== 'android') return { score: 0, date: '', shortsCount: 0 };
         try {
             return await ScreenTimeModule.getGlobalBrainrot();
         } catch (e) {
-            return {score: 0, date: '', shortsCount: 0};
+            return { score: 0, date: '', shortsCount: 0 };
         }
     },
 
@@ -104,7 +104,7 @@ export const ScreenTimeService = {
                 'com.google.android.apps.nexuslauncher', // Pixel Launcher - BLOCK
                 'com.android.systemui', // Status bar / Notification shade - BLOCK
                 // 'com.android.settings', // Settings - ALLOW
-                // 'com.android.settings.intelligence', // Settings Suggestions - ALLOW
+                // 'com.android.settings.intelligence', // Settings Suggestions - ALLOW 
                 'com.samsung.android.lool', // Device Care - BLOCK (Background service usually)
                 'android', // System Resources - BLOCK
                 'com.google.android.googlequicksearchbox', // Google App/Discover - BLOCK (Often background/feed)
@@ -114,8 +114,12 @@ export const ScreenTimeService = {
             ];
 
             const isSystemApp = (pkg: string) => {
-                // Block if it's in the list
-                return SYSTEM_PACKAGES.includes(pkg);
+                // 1. Explicitly block known system packages that might have launcher icons
+                if (SYSTEM_PACKAGES.includes(pkg)) return true;
+
+                // 2. If it's not in our appMap (installed launcher apps), it's likely a system component
+                // This ensures we only count "actual apps" as requested.
+                return !appMap[pkg];
             };
 
             // 1. Process Hourly Data for Timeline
@@ -160,17 +164,24 @@ export const ScreenTimeService = {
             let totalDailyDuration = 0;
             let aggregatedPickups = 0;
 
-            Object.keys(dailyTotalMapNative).forEach(pkg => {
+            // Combine all packages that have either duration or pickups recorded
+            const allPkgKeys = new Set([
+                ...Object.keys(dailyTotalMapNative),
+                ...Object.keys(pickupMapNative)
+            ]);
+
+            allPkgKeys.forEach(pkg => {
                 if (isSystemApp(pkg)) return;
 
-                const timeMs = dailyTotalMapNative[pkg];
+                const timeMs = dailyTotalMapNative[pkg] || 0;
                 const seconds = Math.floor(timeMs / 1000);
                 const appPickups = pickupMapNative[pkg] || 0;
-                
+
+                // Track global total of filtered pickups
                 aggregatedPickups += appPickups;
 
-                if (seconds > 0) {
-                    totalDailyDuration += seconds;
+                if (seconds > 0 || appPickups > 0) {
+                    if (seconds > 0) totalDailyDuration += seconds;
 
                     // Exclude specific launcher types from visual list but keep time
                     if (pkg.includes('launcher') || pkg.includes('home')) return;
@@ -192,9 +203,8 @@ export const ScreenTimeService = {
 
             allDayApps.sort((a, b) => b.duration - a.duration);
 
-            // Use native total if available and GT sum, otherwise use sum
-            const nativeTotalPickups = pickupMapNative["total_pickups"] || 0;
-            const finalPickups = Math.max(nativeTotalPickups, aggregatedPickups);
+            // Use our filtered aggregated pickups as the final source of truth
+            const finalPickups = aggregatedPickups;
 
             const finalUsage: DailyUsage = {
                 date: startOfDay.getDate(),

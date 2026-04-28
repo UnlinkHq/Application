@@ -82,7 +82,7 @@ interface AppUsageListProps {
 }
 
 export const AppUsageList = memo(({ apps, selectedAppId, onAppPress, overrideColor, isHourlyView, hideHeader }: AppUsageListProps) => {
-  const activeApps = apps.filter(app => app.duration >= 60);
+  const activeApps = apps.filter(app => app.duration > 0 || (app.pickups && app.pickups > 0));
 
   return (
     <View className={hideHeader ? "" : "mt-8"}>
