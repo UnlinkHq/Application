@@ -32,9 +32,7 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
     if (preFetchedData && preFetchedApps) {
       processData(preFetchedData.daily || preFetchedData, preFetchedApps);
       setLoading(false);
-      return;
     }
-    fetchData();
   }, [preFetchedData, preFetchedApps]);
 
   const processData = (dailyStats: any, allApps: any[]) => {
@@ -62,27 +60,6 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
 
     setTotalDailySeconds(totalDuration);
     setTopApps(processedApps);
-  };
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      
-      const now = new Date();
-      const end = now.getTime();
-      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).getTime(); // just last 24h
-
-      const [usageData, installedApps] = await Promise.all([
-        getUsageStats(start, end),
-        getInstalledApps()
-      ]);
-
-      processData(usageData.daily || {}, installedApps);
-    } catch (e) {
-      console.error("Failed to fetch app usage data", e);
-    } finally {
-      setLoading(false);
-    }
   };
 
   if (loading) {

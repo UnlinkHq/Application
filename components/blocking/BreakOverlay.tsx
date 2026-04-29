@@ -49,9 +49,9 @@ export const BreakOverlay = () => {
         <Text style={styles.subtitle}>Breathe active.</Text>
 
         <View style={styles.circleContainer}>
-          <Svg 
-            width={width * 0.8} 
-            height={width * 0.8} 
+          <Svg
+            width={width * 0.8}
+            height={width * 0.8}
             style={{ transform: [{ rotate: '-90deg' }] }}
           >
             <Circle

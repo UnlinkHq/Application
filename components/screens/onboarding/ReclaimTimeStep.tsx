@@ -22,28 +22,8 @@ export const ReclaimTimeStep: React.FC<ReclaimTimeStepProps> = ({
       const todayData = preFetchedData.weekHistory[preFetchedData.weekHistory.length - 1];
       setTodaySeconds(todayData ? todayData.duration : 0);
       setLoading(false);
-      return;
     }
-    fetchData();
   }, [preFetchedData]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const now = new Date();
-      const startOfDay = new Date(now.setHours(0, 0, 0, 0)).getTime();
-      const endOfDay = new Date(now.setHours(23, 59, 59, 999)).getTime();
-
-      const stats = await getUsageStats(startOfDay, endOfDay);
-      const dailyStats: Record<string, number> = stats.daily || {};
-      const totalDuration = Object.values(dailyStats).reduce((sum: number, val: number) => sum + val, 0);
-      setTodaySeconds(totalDuration / 1000);
-    } catch (e) {
-      console.error("Failed to fetch today's usage for reclaim step", e);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (

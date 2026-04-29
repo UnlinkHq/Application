@@ -22,9 +22,7 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
     if (preFetchedData) {
       calculateMetrics(preFetchedData.daily || preFetchedData);
       setLoading(false);
-      return;
     }
-    fetchData();
   }, [preFetchedData]);
 
   const calculateMetrics = (dailyStats: Record<string, number>) => {
@@ -42,32 +40,16 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
     setTotalHours(projectedHours);
   };
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const now = new Date();
-      const end = now.getTime();
-      const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).getTime();
-
-      const usageData = await getUsageStats(start, end);
-      calculateMetrics(usageData.daily || {});
-    } catch (e) {
-      console.error("Failed to fetch usage data for comparison", e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const comparisons = useMemo(() => [
     {
       title: "READING",
-      value: Math.floor(totalHours / 15),
+      value: Math.floor(totalHours / 10),
       unit: "BOOKS",
-      description: `Estimated at 15 hours per book. A broad exploration of literature and applied psychology.`
+      description: `Estimated at 10 hours per book. A broad exploration of literature and applied psychology.`
     },
     {
       title: "LEARN A LANGUAGE",
-      value: Math.floor(totalHours / 480),
+      value: Math.floor(totalHours / 400),
       unit: "FLUENCY LEVELS",
       description: `Enough time to reach B1 level proficiency in a new language. You could communicate fluently with millions.`
     },
@@ -79,7 +61,7 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
     },
     {
       title: "PHYSICAL TRAINING",
-      value: Math.floor(totalHours / 3),
+      value: Math.floor(totalHours / 1.5),
       unit: "SESSIONS",
       description: `Volume equates to nearly daily conditioning, capable of complete physiological transformation.`
     }

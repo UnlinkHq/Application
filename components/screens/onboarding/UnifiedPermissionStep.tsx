@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, AppState } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, AppState, Linking } from 'react-native';
 import { MaterialIcons, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import ScreenTimeModule from '../../../modules/screen-time';
 import { BottomSheetWrapper } from '../../ui/BottomSheetWrapper';
@@ -123,12 +123,24 @@ export const UnifiedPermissionStep: React.FC<UnifiedPermissionStepProps> = ({ on
                         isGranted={permissions.usage}
                         onPress={handleAllowUsage}
                     />
-                    <PermissionItem 
-                        title="BACKGROUND PERMISSION"
-                        description="Monitors active apps to trigger surgical interventions."
-                        isGranted={permissions.background}
-                        onPress={handleAllowBackground}
-                    />
+                    <View>
+                        <PermissionItem 
+                            title="BACKGROUND PERMISSION"
+                            description="Monitors active apps to trigger surgical interventions."
+                            isGranted={permissions.background}
+                            onPress={handleAllowBackground}
+                        />
+                        {!permissions.background && (
+                            <View className="mt-2 p-3 bg-[#111111] border border-[#ff4444]/20">
+                                <Text className="text-[#ff4444] font-headline font-black text-[10px] uppercase tracking-widest mb-1">
+                                    XIAOMI / ANDROID 13+ USERS:
+                                </Text>
+                                <Text className="text-white/50 font-label text-[9px] leading-relaxed">
+                                    If this permission is greyed out or says "Restricted Setting": Go to phone Settings → Apps → Unlink → Tap the top right 3 dots (or scroll to bottom) → "Allow restricted settings". Then come back here.
+                                </Text>
+                            </View>
+                        )}
+                    </View>
                     <PermissionItem 
                         title="OVERLAY PERMISSION"
                         description="Enables the block screen to prevent distractions."
@@ -194,7 +206,7 @@ export const UnifiedPermissionStep: React.FC<UnifiedPermissionStepProps> = ({ on
             >
                 <View className="px-6 py-4">
                     <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-6 leading-relaxed">
-                        UNLINK IS BUILT ON PRIVACY. WE NEVER SEND YOUR DATA TO OUR SERVERS WITHOUT YOUR PERMISSION.
+                        UNLINK IS BUILT ON ABSOLUTE PRIVACY. ALL SCREEN TIME DATA AND APP MONITORING HAPPENS LOCALLY ON YOUR DEVICE. WE DO NOT COLLECT OR UPLOAD ANY PERSONAL DATA.
                     </Text>
 
                     <View className="space-y-6">
@@ -218,9 +230,23 @@ export const UnifiedPermissionStep: React.FC<UnifiedPermissionStepProps> = ({ on
                         </View>
                     </View>
 
+                    <View className="mt-8 pt-6 border-t border-white/10">
+                        <Text className="text-white/60 font-headline font-black text-[10px] uppercase tracking-widest mb-3 text-center">
+                            STILL DON'T TRUST IT?
+                        </Text>
+                        <TouchableOpacity 
+                            onPress={() => Linking.openURL('https://t.me/shahilmakhija')}
+                            className="bg-[#2AABEE]/10 py-3 items-center border border-[#2AABEE]/30"
+                        >
+                            <Text className="text-[#2AABEE] font-headline font-black text-[10px] uppercase tracking-widest">
+                                MESSAGE ME (THE DEVELOPER) DIRECTLY
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
+
                     <TouchableOpacity 
                         onPress={() => setShowWhyModal(false)}
-                        className="mt-10 bg-white py-4 items-center"
+                        className="mt-6 bg-white py-4 items-center"
                     >
                         <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">UNDERSTOOD</Text>
                     </TouchableOpacity>

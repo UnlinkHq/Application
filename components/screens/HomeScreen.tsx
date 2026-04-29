@@ -52,10 +52,10 @@ const ActiveProtocolStatus = ({
 
     const referenceTime = session.isOnBreak && session.breakStartTime ? session.breakStartTime : now;
     const totalPauseMs = session.accumulatedBreakMs || 0;
-    
+
     // Elapsed since start
     const elapsedMs = Math.max(0, referenceTime - session.startTime - totalPauseMs);
-    
+
     // Remaining in session
     const totalDurationMs = session.durationMins * 60 * 1000;
     const remainingMs = Math.max(0, totalDurationMs - elapsedMs);
@@ -250,13 +250,13 @@ export const HomeScreen = () => {
     const [globalShortsCount, setGlobalShortsCount] = useState<number>(0);
 
     const [showConfetti, setShowConfetti] = useState(false);
-    const [activeFeedback, setActiveFeedback] = useState<{type: string, message: string} | null>(null);
+    const [activeFeedback, setActiveFeedback] = useState<{ type: string, message: string } | null>(null);
     const [feedbackVisible, setFeedbackVisible] = useState(false);
 
     useEffect(() => {
         const checkActiveSession = async () => {
             const session = await FocusStorageService.getActiveSession();
-            
+
             // UNIFIED_FEEDBACK_ENGINE: Detect completion, penalties, or breaks
             const feedbackTag = await AsyncStorage.getItem('@unlink_gamification_feedback');
             if (feedbackTag) {
@@ -272,9 +272,9 @@ export const HomeScreen = () => {
                     } else {
                         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
                     }
-                    
+
                     await AsyncStorage.removeItem('@unlink_gamification_feedback');
-                    
+
                     // Hide feedback after 6-8 seconds
                     setTimeout(() => setFeedbackVisible(false), 8000);
                 }
@@ -515,20 +515,18 @@ export const HomeScreen = () => {
 
                 {/* Gamification Feedback Banner */}
                 {feedbackVisible && activeFeedback && (
-                    <Animated.View 
-                        className={`py-2 px-4 flex-row items-center justify-center gap-2 ${
-                            activeFeedback.type === 'SUCCESS' ? 'bg-[#72fe88]' : 
+                    <Animated.View
+                        className={`py-2 px-4 flex-row items-center justify-center gap-2 ${activeFeedback.type === 'SUCCESS' ? 'bg-[#72fe88]' :
                             activeFeedback.type === 'PENALTY' ? 'bg-red-500' : 'bg-orange-500'
-                        }`}
+                            }`}
                     >
-                        <MaterialCommunityIcons 
-                            name={activeFeedback.type === 'SUCCESS' ? 'brain' : 'alert-circle'} 
-                            size={12} 
-                            color={activeFeedback.type === 'SUCCESS' ? 'black' : 'white'} 
+                        <MaterialCommunityIcons
+                            name={activeFeedback.type === 'SUCCESS' ? 'brain' : 'alert-circle'}
+                            size={12}
+                            color={activeFeedback.type === 'SUCCESS' ? 'black' : 'white'}
                         />
-                        <Text className={`font-headline font-black text-[9px] uppercase tracking-widest ${
-                            activeFeedback.type === 'SUCCESS' ? 'text-black' : 'text-white'
-                        }`}>
+                        <Text className={`font-headline font-black text-[9px] uppercase tracking-widest ${activeFeedback.type === 'SUCCESS' ? 'text-black' : 'text-white'
+                            }`}>
                             {activeFeedback.message}
                         </Text>
                     </Animated.View>

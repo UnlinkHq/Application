@@ -40,31 +40,8 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
     if (preFetchedData && preFetchedData.length > 0) {
       setWeekData(preFetchedData);
       setLoading(false);
-      return;
     }
-    fetchData();
   }, [preFetchedData]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const dailyPromises = getDays.map(async (day) => {
-        const stats = await getUsageStats(day.startOfDay, day.endOfDay);
-        const totalDuration = Object.values(stats.daily || {}).reduce((sum, val) => (sum as number) + (val as number), 0);
-        return {
-          day: day.label,
-          duration: (totalDuration as number) / 1000
-        };
-      });
-
-      const results = await Promise.all(dailyPromises);
-      setWeekData(results);
-    } catch (e) {
-      console.error("Failed to fetch screen time data", e);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (loading) {
     return (

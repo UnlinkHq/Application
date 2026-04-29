@@ -72,6 +72,16 @@ export const OnboardingScreen = ({ onFinish }: { onFinish: () => void }) => {
         ScreenTimeModule.getInstalledApps()
       ]);
 
+      // Only count apps that appear on the user's home screen (filters out system/background processes)
+      const installedPackages = new Set(apps.map((a: any) => a.packageName));
+      
+      const filteredDaily: Record<string, number> = {};
+      for (const [pkg, duration] of Object.entries(allUsage.daily || {})) {
+          if (installedPackages.has(pkg)) {
+              filteredDaily[pkg] = duration as number;
+          }
+      }
+
       // Fetch daily breakdown for the chart
       const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
       const weekHistory = [];
@@ -82,16 +92,22 @@ export const OnboardingScreen = ({ onFinish }: { onFinish: () => void }) => {
         const endOfDay = new Date(d.setHours(23, 59, 59, 999)).getTime();
         
         const dayStats = await ScreenTimeModule.getUsageStats(startOfDay, endOfDay);
-        const dayDuration = Object.values(dayStats.daily || {}).reduce((sum, val) => (sum as number) + (val as number), 0);
+        
+        let dayDuration = 0;
+        for (const [pkg, duration] of Object.entries(dayStats.daily || {})) {
+            if (installedPackages.has(pkg)) {
+                dayDuration += (duration as number);
+            }
+        }
         
         weekHistory.push({
           day: days[new Date(startOfDay).getDay()],
-          duration: (dayDuration as number) / 1000
+          duration: dayDuration / 1000
         });
       }
 
       setUsageStats({
-        daily: allUsage.daily || {},
+        daily: filteredDaily,
         weekHistory
       });
       setInstalledApps(apps);
