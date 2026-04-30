@@ -74,6 +74,15 @@ class FallbackBlockingService : Service() {
             return
         }
 
+        // --- NEW WATCHDOG LOGIC ---
+        // If Accessibility Service is healthy and running, let it handle the blocking.
+        // We sit idle here to keep the process alive (Watchdog mode) and save battery.
+        if (UnlinkAccessibilityService.instance != null) {
+            handler.post { setWallVisibility(false) }
+            return
+        }
+        // --------------------------
+
         val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
         val time = System.currentTimeMillis()
         val stats = usageStatsManager.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY, time - 1000 * 10, time)
@@ -171,8 +180,9 @@ class FallbackBlockingService : Service() {
     private fun createNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Unlink Focus Protection")
-            .setContentText("Lite Engine Active (Usage Stats mode)")
+            .setContentText("Unlink is protecting your focus")
             .setSmallIcon(android.R.drawable.ic_dialog_info) // Should be replaced by app icon
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
     }
 

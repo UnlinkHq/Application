@@ -601,12 +601,8 @@ class ScreenTimeModule : Module() {
     val expiryTime = prefs.getLong("block_expiry_time", 0L)
     val isSessionActive = expiryTime > System.currentTimeMillis()
     
-    val expectedService = "${context.packageName}/com.shahil.screentime.UnlinkAccessibilityService"
-    val enabledServices = Settings.Secure.getString(context.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES)
-    val hasAccessibility = enabledServices?.contains(expectedService) == true
-    
     val intent = Intent(context, FallbackBlockingService::class.java)
-    if (isSessionActive && !hasAccessibility) {
+    if (isSessionActive) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.startForegroundService(intent)
         } else {
