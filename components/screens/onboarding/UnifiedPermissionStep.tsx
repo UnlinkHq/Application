@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, AppState, Linking } from 'react-native';
-import { MaterialIcons, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import ScreenTimeModule from '../../../modules/screen-time';
 import { BottomSheetWrapper } from '../../ui/BottomSheetWrapper';
 
