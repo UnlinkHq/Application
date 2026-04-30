@@ -61,7 +61,7 @@ export const ScreenTimeGoalStep: React.FC<ScreenTimeGoalStepProps> = ({ onNext, 
     });
 
     return (
-        <View className="flex-1 bg-black flex-col px-6 pb-6 pt-16">
+        <View className="flex-1 bg-black flex-col px-6 pb-24 pt-10 relative">
             <View className="flex-1 w-full justify-between items-center">
 
                 {/* Title Section */}
@@ -72,12 +72,12 @@ export const ScreenTimeGoalStep: React.FC<ScreenTimeGoalStepProps> = ({ onNext, 
                 </View>
 
                 {/* Main Display */}
-                <View className="mt-16 flex-col items-center">
+                <View className="mt-8 md:mt-16 flex-col items-center">
                     <Text className="font-label text-[10px] uppercase tracking-widest text-white/40 mb-2">
                         TARGET HOURS
                     </Text>
                     <View className="flex-row items-baseline space-x-2">
-                        <Text className="font-headline font-black text-8xl text-white tracking-widest uppercase" style={{ fontSize: 130, lineHeight: 140 }}>
+                        <Text className="font-headline font-black text-white tracking-widest uppercase" style={{ fontSize: 110, lineHeight: 120 }}>
                             {screenTimeGoal.toString().padStart(2, '0')}
                         </Text>
                         <Text className="font-headline font-black text-2xl uppercase text-white/40 tracking-widest">
@@ -87,7 +87,7 @@ export const ScreenTimeGoalStep: React.FC<ScreenTimeGoalStepProps> = ({ onNext, 
                 </View>
 
                 {/* Slider Ruler */}
-                <View className="w-full mt-24 px-4">
+                <View className="w-full mt-12 md:mt-24 px-4">
                     <GestureHandlerRootView className="w-full h-16 relative justify-center">
                         <GestureDetector gesture={gesture}>
                             <Animated.View
@@ -121,16 +121,16 @@ export const ScreenTimeGoalStep: React.FC<ScreenTimeGoalStepProps> = ({ onNext, 
 
 
                 {/* Confirm Button */}
-                <View className="mt-10 w-full flex-col justify-end">
+                <View className="absolute bottom-6 right-6 z-50">
                     <TouchableOpacity
                         onPress={onNext}
                         activeOpacity={0.8}
-                        className="w-full py-6 bg-white flex-row items-center justify-center space-x-4 rounded-none active:scale-[0.98] transition-transform"
+                        className="bg-white flex-row items-center justify-center px-6 py-4 shadow-2xl active:scale-[0.98] transition-transform"
                     >
-                        <Text className="text-black font-headline font-black text-lg tracking-widest uppercase text-center">
-                            CONFIRM GOAL
+                        <Text className="text-black font-headline font-black text-lg tracking-widest uppercase mr-3">
+                            NEXT
                         </Text>
-                        <Ionicons name="arrow-forward" size={20} color="black" />
+                        <Ionicons name="arrow-forward" size={24} color="black" />
                     </TouchableOpacity>
                 </View>
             </View>

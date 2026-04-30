@@ -69,7 +69,7 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
   const chartMaxSeconds = Math.max(maxDuration, recommendedLimit, 36000); // at least 10h
 
   return (
-    <View className="flex-1 bg-black pt-16 px-6 relative">
+    <View className="flex-1 bg-black pt-10 pb-24 px-6 relative">
       <View className="flex-1 mb-32">
         {/* Header Section */}
         <View className="mb-8">
@@ -151,17 +151,17 @@ export const ScreenTimeReportStep: React.FC<ScreenTimeReportStepProps> = ({
         </View>
       </View>
 
-      {/* Fixed Action Button - Premium Footer */}
-      <View className="absolute bottom-8 left-6 right-6 z-50 pt-4">
+      {/* Fixed Action Button */}
+      <View className="absolute bottom-6 right-6 z-50">
           <TouchableOpacity 
               onPress={onNext}
               activeOpacity={0.9}
-              className="w-full bg-white flex-row items-center justify-center py-6 active:scale-[0.98]"
+              className="bg-white px-6 py-4 flex flex-row items-center justify-center shadow-2xl active:scale-[0.98]"
           >
-              <Text className="text-black font-headline font-black tracking-[0.2em] uppercase text-lg">
-                  CONTINUE
+              <Text className="text-black font-headline font-black tracking-widest uppercase mr-3 text-lg">
+                  NEXT
               </Text>
-              <MaterialIcons name="arrow-forward" size={20} color="black" style={{ marginLeft: 8 }} />
+              <MaterialIcons name="arrow-forward" size={24} color="black" />
           </TouchableOpacity>
       </View>
     </View>

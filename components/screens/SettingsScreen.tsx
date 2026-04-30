@@ -148,6 +148,25 @@ export const SettingsScreen = () => {
                     />
                 </View>
 
+                {/* Troubleshooting & Privacy */}
+                <SectionHeader title="Troubleshooting & Privacy" />
+                <View className="mb-12">
+                    <SettingsItem
+                        icon="account-balance"
+                        label="Banking Apps Crashing / Blocked?"
+                        onPress={() => {
+                            import('react-native').then(({ Alert }) => {
+                                Alert.alert(
+                                    "WHY BANKING APPS BLOCK UNLINK",
+                                    "High-security banking apps block ANY app that uses 'Accessibility Services' or 'Screen Overlays' to protect you from malware. Since Unlink uses these to block your distractions instantly, banks panic.\n\nYour data is 100% private and never leaves your device. This is a bank security feature, not an Unlink bug.\n\nTo use your banking app, simply pause Unlink or temporarily turn off its Accessibility permission in your phone settings.",
+                                    [{ text: "I UNDERSTAND", style: "default" }]
+                                );
+                            });
+                        }}
+                        isLast
+                    />
+                </View>
+
                 {/* Socials & Journey */}
                 <SectionHeader title="Founder's Journey" />
                 <View className="border border-[#72fe88]/20 bg-[#72fe88]/5 p-6 mb-8 border-dashed">

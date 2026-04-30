@@ -82,7 +82,7 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
         className="absolute inset-0"
       />
 
-      <ScrollView showsVerticalScrollIndicator={false} className="flex-1 pt-8 pb-12 px-8 flex-col max-w-2xl mx-auto w-full">
+      <ScrollView showsVerticalScrollIndicator={false} className="flex-1 pt-8 pb-32 px-8 flex-col max-w-2xl mx-auto w-full">
         {/* Headline Section */}
         <View className="mb-12">
             <Text className="font-label text-[10px] tracking-widest text-white/40 mb-2 uppercase">ANALYSIS COMPLETE</Text>
@@ -170,16 +170,16 @@ export const AppUsageStep: React.FC<AppUsageStepProps> = ({
       </ScrollView>
 
       {/* Footer / Action Area */}
-      <View className="absolute bottom-8 left-6 right-6 z-50">
+      <View className="absolute bottom-8 right-6 z-50">
           <TouchableOpacity 
               onPress={onNext}
               activeOpacity={0.9}
-              className="w-full bg-white flex-row items-center justify-center py-6 shadow-2xl active:scale-[0.98]"
+              className="bg-white flex-row items-center justify-center px-6 py-4 shadow-2xl active:scale-[0.98]"
           >
-              <Text className="text-black font-headline font-black text-lg tracking-widest uppercase">
-                  CONTINUE
+              <Text className="text-black font-headline font-black text-lg tracking-widest uppercase mr-3">
+                  NEXT
               </Text>
-              <MaterialIcons name="arrow-forward" size={20} color="black" style={{ marginLeft: 8 }} />
+              <MaterialIcons name="arrow-forward" size={24} color="black" />
           </TouchableOpacity>
       </View>
     </View>

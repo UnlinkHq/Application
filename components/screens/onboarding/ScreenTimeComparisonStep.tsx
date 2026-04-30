@@ -138,7 +138,7 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
       </View>
 
       {/* Grid Indicators */}
-      <View className="flex-row justify-center space-x-4 mb-[140px] w-full z-10">
+      <View className="flex-row justify-center space-x-4 mb-10 w-full z-10">
         {comparisons.map((_, index) => (
           <View
             key={index}
@@ -165,14 +165,14 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
       </View>
 
       {/* Continue Button Block */}
-      <View className="absolute bottom-0 left-0 w-full p-6 md:p-12 z-50 flex items-center justify-center pt-8">
+      <View className="absolute bottom-6 right-6 z-50">
           <TouchableOpacity 
               onPress={onNext}
               activeOpacity={0.8}
-              className="w-full max-w-lg bg-white flex-row items-center justify-center gap-2 px-10 py-6 rounded-none active:scale-[0.98] transition-transform"
+              className="bg-white flex flex-row items-center justify-center px-6 py-4 shadow-2xl active:scale-[0.98] transition-transform"
           >
-              <Text className="text-black font-headline font-black uppercase tracking-widest text-lg">
-                  CONTINUE
+              <Text className="text-black font-headline font-black uppercase tracking-widest text-lg mr-3">
+                  NEXT
               </Text>
               <MaterialIcons name="arrow-forward" size={24} color="black" />
           </TouchableOpacity>

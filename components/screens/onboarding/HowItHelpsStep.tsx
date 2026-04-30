@@ -89,7 +89,7 @@ export const HowItHelpsStep: React.FC<HowItHelpsStepProps> = ({ onNext }) => {
   );
 
   return (
-    <View className="flex-1 bg-black pt-12 pb-6 px-6">
+    <View className="flex-1 bg-black pt-10 pb-24 px-6 relative">
       
       {/* Main Content Area - Explicitly clipping overflow */}
       <View style={{ width: ITEM_WIDTH }} className="flex-1 overflow-hidden">
@@ -154,17 +154,17 @@ export const HowItHelpsStep: React.FC<HowItHelpsStepProps> = ({ onNext }) => {
           </View>
       </View>
 
-      {/* Action Block - Normalized spacing */}
-      <View className="w-full">
+      {/* Action Block */}
+      <View className="absolute bottom-6 right-6 z-50">
           <TouchableOpacity 
               onPress={onNext}
               activeOpacity={0.8}
-              className="w-full bg-white py-6 flex flex-row items-center justify-center rounded-none active:scale-[0.98] transition-all"
+              className="bg-white px-6 py-4 flex flex-row items-center justify-center shadow-2xl active:scale-[0.98] transition-all"
           >
-              <Text className="text-black text-sm  text font-headline tracking-[0.4em] uppercase mr-2">
-                  CONTINUE
+              <Text className="text-black text-lg font-headline font-black tracking-widest uppercase mr-3">
+                  NEXT
               </Text>
-              <MaterialIcons name="arrow-forward" size={18} color="black" />
+              <MaterialIcons name="arrow-forward" size={24} color="black" />
           </TouchableOpacity>
       </View>
 

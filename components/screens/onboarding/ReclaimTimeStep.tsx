@@ -53,36 +53,36 @@ export const ReclaimTimeStep: React.FC<ReclaimTimeStepProps> = ({
   const afterHeight = (afterHours / beforeHours) * beforeHeight;
 
   return (
-    <View className="flex-1 bg-black pt-16 pb-6 px-8 relative overflow-hidden">
+    <View className="flex-1 bg-black pt-10 pb-24 px-6 relative overflow-hidden">
       
       {/* Structural Guides Background */}
       <View className="absolute top-24 right-0 w-[px] h-32 bg-white opacity-10" />
       <View className="absolute bottom-32 left-0 w-[px] h-32 bg-white opacity-10" />
 
       {/* Header Section */}
-      <View className="mb-10">
+      <View className="mb-6">
         <Text className="font-label text-[10px] tracking-widest uppercase text-white/40 mb-2">
             PHASE 04: PROJECTION
         </Text>
-        <Text className="text-5xl md:text-5xl font-headline font-black tracking-widest leading-none text-white uppercase">
+        <Text className="text-4xl md:text-5xl font-headline font-black tracking-widest leading-none text-white uppercase">
             RECLAIM{'\n'}YOUR TIME
         </Text>
         <View className="w-12 h-[2px] bg-white mt-4" />
       </View>
 
       {/* Instrument Comparison Display */}
-      <View className="flex-col gap-10 py-2 mb-auto">
+      <View className="flex-col gap-6 py-2 mb-auto flex-1">
         {/* Comparison Grid */}
-        <View className="flex-row items-end space-x-8 w-full h-80">
+        <View className="flex-row items-end space-x-6 w-full flex-1 min-h-[100px]">
             
             {/* Before Column */}
             <View className="flex-1 flex-col justify-end h-full">
-                <View className="flex-col mb-4">
+                <View className="flex-col mb-3">
                     <Text className="font-label text-[10px] text-[#ffb4aa] uppercase tracking-widest mb-1">STATUS: CURRENT</Text>
-                    <Text className="text-3xl font-headline font-black text-white leading-none uppercase">{formatHours(beforeHours)}</Text>
+                    <Text className="text-2xl md:text-3xl font-headline font-black text-white leading-none uppercase">{formatHours(beforeHours)}</Text>
                 </View>
                 
-                <View className="h-64 bg-[#1b1b1b] relative overflow-hidden flex-col justify-end">
+                <View className="flex-1 bg-[#1b1b1b] relative overflow-hidden flex-col justify-end w-full min-h-[100px]">
                     <View 
                         className="w-full bg-[#ffb4aa] border-t border-[#ff8a7b] opacity-80" 
                         style={{ height: `${beforeHeight}%` }}
@@ -96,17 +96,17 @@ export const ReclaimTimeStep: React.FC<ReclaimTimeStepProps> = ({
                         <View className="border-b border-white w-full" />
                     </View>
                 </View>
-                <Text className="font-label text-[10px] text-[#919191] uppercase text-center mt-3 tracking-widest">Screen Latency</Text>
+                <Text className="font-label text-[10px] text-[#919191] uppercase text-center mt-2 tracking-widest">Screen Latency</Text>
             </View>
 
             {/* After Column */}
             <View className="flex-1 flex-col justify-end h-full">
-                <View className="flex-col mb-4">
+                <View className="flex-col mb-3">
                     <Text className="font-label text-[10px] text-[#72fe88] uppercase tracking-widest mb-1">TARGET: OPTIMIZED</Text>
-                    <Text className="text-3xl font-headline font-black text-white leading-none uppercase">{formatHours(afterHours)}</Text>
+                    <Text className="text-2xl md:text-3xl font-headline font-black text-white leading-none uppercase">{formatHours(afterHours)}</Text>
                 </View>
                 
-                <View className="h-64 bg-[#1b1b1b] relative overflow-hidden flex-col justify-end">
+                <View className="flex-1 bg-[#1b1b1b] relative overflow-hidden flex-col justify-end w-full min-h-[100px]">
                     <View 
                         className="w-full bg-[#72fe88] border-t border-[#00a741] opacity-80" 
                         style={{ height: `${afterHeight}%` }}
@@ -120,7 +120,7 @@ export const ReclaimTimeStep: React.FC<ReclaimTimeStepProps> = ({
                         <View className="border-b border-white w-full" />
                     </View>
                 </View>
-                <Text className="font-label text-[10px] text-[#919191] uppercase text-center mt-3 tracking-widest">Unlinked Pulse</Text>
+                <Text className="font-label text-[10px] text-[#919191] uppercase text-center mt-2 tracking-widest">Unlinked Pulse</Text>
             </View>
         </View>
 
@@ -137,14 +137,14 @@ export const ReclaimTimeStep: React.FC<ReclaimTimeStepProps> = ({
       </View>
 
       {/* Action Section */}
-      <View className="w-full mb-4 flex-col pt-8">
+      <View className="absolute bottom-6 right-6 z-50">
           <TouchableOpacity 
               onPress={onNext}
               activeOpacity={0.8}
-              className="w-full py-6 bg-white flex-row items-center justify-center rounded-none active:scale-[0.98] transition-transform"
+              className="bg-white flex-row items-center justify-center px-6 py-4 shadow-2xl active:scale-[0.98] transition-transform"
           >
-              <Text className="text-black font-headline font-black text-xl tracking-widest uppercase mr-3">
-                  CONTINUE
+              <Text className="text-black font-headline font-black text-lg tracking-widest uppercase mr-3">
+                  NEXT
               </Text>
               <MaterialIcons name="arrow-forward" size={24} color="black" />
           </TouchableOpacity>

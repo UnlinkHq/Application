@@ -235,7 +235,7 @@ export const UnifiedPermissionStep: React.FC<UnifiedPermissionStepProps> = ({ on
                             STILL DON'T TRUST IT?
                         </Text>
                         <TouchableOpacity 
-                            onPress={() => Linking.openURL('https://t.me/shahilmakhija')}
+                            onPress={() => Linking.openURL('https://t.me/shahileeee')}
                             className="bg-[#2AABEE]/10 py-3 items-center border border-[#2AABEE]/30"
                         >
                             <Text className="text-[#2AABEE] font-headline font-black text-[10px] uppercase tracking-widest">
