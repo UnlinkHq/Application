@@ -232,16 +232,28 @@ export const UnifiedPermissionStep: React.FC<UnifiedPermissionStepProps> = ({ on
 
                     <View className="mt-8 pt-6 border-t border-white/10">
                         <Text className="text-white/60 font-headline font-black text-[10px] uppercase tracking-widest mb-3 text-center">
-                            STILL DON'T TRUST IT?
+                            FULLY OPEN SOURCE. VERIFY IT YOURSELF.
                         </Text>
-                        <TouchableOpacity 
-                            onPress={() => Linking.openURL('https://t.me/shahileeee')}
-                            className="bg-[#2AABEE]/10 py-3 items-center border border-[#2AABEE]/30"
-                        >
-                            <Text className="text-[#2AABEE] font-headline font-black text-[10px] uppercase tracking-widest">
-                                MESSAGE ME (THE DEVELOPER) DIRECTLY
-                            </Text>
-                        </TouchableOpacity>
+                        <View className="flex-col gap-3">
+                            <TouchableOpacity 
+                                onPress={() => Linking.openURL('https://github.com/UnlinkHq/Application/tree/develop')}
+                                className="bg-white/10 py-3 flex-row justify-center items-center border border-white/20"
+                            >
+                                <MaterialCommunityIcons name="github" size={16} color="white" style={{ marginRight: 8 }} />
+                                <Text className="text-white font-headline font-black text-[10px] uppercase tracking-widest">
+                                    VIEW SOURCE CODE
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                onPress={() => Linking.openURL('https://t.me/shahileeee')}
+                                className="bg-[#2AABEE]/10 py-3 flex-row justify-center items-center border border-[#2AABEE]/30"
+                            >
+                                <FontAwesome5 name="telegram-plane" size={16} color="#2AABEE" style={{ marginRight: 8 }} />
+                                <Text className="text-[#2AABEE] font-headline font-black text-[10px] uppercase tracking-widest">
+                                    MESSAGE THE DEVELOPER
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     <TouchableOpacity 
