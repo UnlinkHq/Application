@@ -15,22 +15,18 @@ class BootReceiver : BroadcastReceiver() {
             Log.d("UnlinkBoot", "Survival Event Detected: $action. Resuming Focus Engine...")
             
             val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
-            val startTime = prefs.getLong("session_start_time", 0)
-            val durationMins = prefs.getLong("session_duration_mins", 0)
+            val expiryTime = prefs.getLong("block_expiry_time", 0L)
             
-            if (startTime > 0 && durationMins > 0) {
-                val elapsedTimeMs = System.currentTimeMillis() - startTime
-                val durationMs = durationMins * 60 * 1000
-                
-                if (elapsedTimeMs < durationMs) {
-                    Log.d("UnlinkBoot", "Active Session Found. Re-triggering refresh pulse.")
-                    // Trigger the refresh pulse to wake up the service
-                    val refreshIntent = Intent("com.shahil.ACTION_REFRESH_BLOCKS")
-                    refreshIntent.setPackage(context.packageName)
-                    context.sendBroadcast(refreshIntent)
+            if (expiryTime > System.currentTimeMillis()) {
+                Log.d("UnlinkBoot", "Active Session Found. Igniting Watchdog Foreground Service.")
+                val serviceIntent = Intent(context, FallbackBlockingService::class.java)
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent)
                 } else {
-                    Log.d("UnlinkBoot", "Session has naturally expired.")
+                    context.startService(serviceIntent)
                 }
+            } else {
+                Log.d("UnlinkBoot", "No active session on boot.")
             }
         }
     }
