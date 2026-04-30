@@ -55,7 +55,7 @@ jobs:
           echo "Using Android Build Tools at: $BUILD_TOOLS_DIR"
           
           # Zipalign the APK
-          $BUILD_TOOLS_DIR/zipalign -v -p 4 android/app/build/outputs/apk/release/app-release-unsigned.apk app-release-aligned.apk
+          $BUILD_TOOLS_DIR/zipalign -v -p 4 android/app/build/outputs/apk/release/app-release.apk app-release-aligned.apk
           
           # Sign the APK
           $BUILD_TOOLS_DIR/apksigner sign --ks my-release-key.keystore --ks-key-alias $KEY_ALIAS --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD --out app-release.apk app-release-aligned.apk
