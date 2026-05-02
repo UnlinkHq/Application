@@ -101,14 +101,13 @@ export class FocusStorageService {
                     endDate.setHours(endH, endM, 0, 0);
                     
                     const diffMs = endDate.getTime() - now.getTime();
-                    durationMins = Math.max(0, Math.floor(diffMs / (1000 * 60)));
+                    // Use Math.ceil to ensure we cover the entire window and don't expire prematurely
+                    durationMins = Math.max(1, Math.ceil(diffMs / (1000 * 60)));
                     console.log(`--- [NATIVE_SYNC] SCHEDULE_REMAINING: ${durationMins}m ---`);
                 } catch (e) {
                     console.error('Temporal Calculation Failure:', e);
                 }
             }
-            ScreenTime.setSessionDuration(durationMins);
-
             let hardBlockedApps = session.apps || [];
 
             // Exclude apps from hard blocking if their surgical (scrolling) protocol is enabled
@@ -119,6 +118,10 @@ export class FocusStorageService {
                 hardBlockedApps = hardBlockedApps.filter((app: string) => app !== 'com.instagram.android');
             }
 
+            console.log(`--- [NATIVE_SYNC] FINAL_DURATION_TO_NATIVE: ${durationMins}m ---`);
+            console.log(`--- [NATIVE_SYNC] FINAL_APPS_TO_NATIVE: ${hardBlockedApps.join(', ')} ---`);
+            
+            ScreenTime.setSessionDuration(durationMins);
             ScreenTime.setBlockedApps(hardBlockedApps, "FORCE_FOCUS_ACTIVE", "");
             const breaksLeft = (session.timedBreaks?.allowedCount || 0) - (session.timedBreaks?.usedCount || 0);
             ScreenTime.setBreaksRemaining(Math.max(0, breaksLeft));
@@ -135,6 +138,11 @@ export class FocusStorageService {
             try {
                 const session = JSON.parse(sessionData);
                 
+                if (session.type === 'schedule') {
+                    const { TemporalEngine } = require('./TemporalEngine');
+                    await TemporalEngine.recordManualStop(session.id);
+                }
+
                 if (wasCompleted) {
                     // REWARD_LOGIC: Calculate brain health boost
                     const durationMins = session.durationMins || 0;
@@ -274,6 +282,17 @@ export class FocusStorageService {
                         await FocusStorageService.stopSession(true); // MARK_AS_COMPLETED
                         return null;
                     }
+
+                    // AUTO_RELEASE_LOGIC: If a scheduled session is active but the window has closed, terminate it.
+                    if (session.type === 'schedule') {
+                        const { TemporalUtils } = require('../utils/TemporalUtils');
+                        const isStillInWindow = TemporalUtils.isCurrentlyInSchedule(session);
+                        if (!isStillInWindow) {
+                            console.log(`--- [STORAGE_ENGINE] AUTO_RELEASING_SCHEDULE: ${session.title} (Window Closed) ---`);
+                            await FocusStorageService.stopSession(true); 
+                            return null;
+                        }
+                    }
                 } else if (session.isOnBreak && session.breakStartTime) {
                     // AUTO_EXPIRY_CHECK: If break duration is exceeded, re-engage the block automatically
                     const breakDurationMs = (session.timedBreaks?.durationMins || 0) * 60 * 1000;
@@ -333,7 +352,14 @@ export class FocusStorageService {
         return {
             ...session,
             type: session.type || 'block_now',
-            durationMins: session.durationMins || 0,
+            durationMins: session.durationMins || (session.type === 'schedule' && session.schedule ? (() => {
+                const now = new Date();
+                const [endH, endM] = session.schedule.endTime.split(':').map(Number);
+                const endDate = new Date(now);
+                endDate.setHours(endH, endM, 0, 0);
+                const diffMs = endDate.getTime() - now.getTime();
+                return Math.max(1, Math.ceil(diffMs / (1000 * 60)));
+            })() : 60),
             startTime: session.startTime || Date.now(),
             apps: session.apps || [],
             appIcons: session.appIcons || [],

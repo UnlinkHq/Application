@@ -41,6 +41,7 @@ import { AgreementScreen } from './components/screens/AgreementScreen';
 import { IntentGateScreen } from './components/screens/IntentGateScreen';
 import { addNativeBreakListener } from './modules/screen-time';
 import { PremiumSplash } from './components/ui/PremiumSplash';
+import { TemporalEngine } from './services/TemporalEngine';
 import './global.css';
 
 // Build 0.81.5 has fixed safeAreaView but dependencies might still use it
@@ -117,6 +118,9 @@ export default function App() {
   });
 
   useEffect(() => {
+    // Start the Surgical Temporal Engine for auto-deploying schedules
+    TemporalEngine.start();
+
     async function checkState() {
       try {
         const hasLaunched = await AsyncStorage.getItem('hasLaunched');
@@ -149,6 +153,7 @@ export default function App() {
     });
     
     return () => {
+        TemporalEngine.stop();
         subscription.remove();
         clearInterval(interval);
     };

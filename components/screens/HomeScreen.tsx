@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Platform, AppState, RefreshControl, Image, InteractionManager, Animated } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Platform, AppState, RefreshControl, Image, InteractionManager, Animated, DeviceEventEmitter } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { useBlocking } from '../../context/BlockingContext';
@@ -19,10 +19,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ConfettiCelebration } from '../ui/ConfettiCelebration';
 import { LiveBrain } from '../ui/LiveBrain';
 
-// Optimized Sub-components
-import { DateStrip } from '../home/DateStrip';
-import { DailyOverview } from '../home/DailyOverview';
-import { AppUsageList } from '../home/AppUsageList';
+// Optimized Sub-components (Memoized for high scroll performance)
+import { DateStrip as OriginalDateStrip } from '../home/DateStrip';
+import { DailyOverview as OriginalDailyOverview } from '../home/DailyOverview';
+import { AppUsageList as OriginalAppUsageList } from '../home/AppUsageList';
+
+const DateStrip = React.memo(OriginalDateStrip);
+const DailyOverview = React.memo(OriginalDailyOverview);
+const AppUsageList = React.memo(OriginalAppUsageList);
 
 const ActiveProtocolStatus = ({
     session,
@@ -35,32 +39,35 @@ const ActiveProtocolStatus = ({
     onEmergencyStop: () => void,
     onToggleBreak: () => void
 }) => {
-    const [now, setNow] = useState(Date.now());
-
-    useEffect(() => {
-        const t = setInterval(() => setNow(Date.now()), 1000);
-        return () => clearInterval(t);
-    }, []);
-
     const formatTime = (totalMs: number) => {
-        const totalSecs = Math.floor(totalMs / 1000);
+        const totalSecs = Math.max(0, Math.floor(totalMs / 1000));
         const h = Math.floor(totalSecs / 3600);
         const m = Math.floor((totalSecs % 3600) / 60);
         const s = totalSecs % 60;
-        return `${h > 0 ? h + ':' : ''}${h > 0 && m < 10 ? '0' + m : m}:${s < 10 ? '0' : ''}${s}`;
+        if (h > 0) return `${h}:${m < 10 ? '0' : ''}${m}`;
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
 
-    const referenceTime = session.isOnBreak && session.breakStartTime ? session.breakStartTime : now;
+    const [remaining, setRemaining] = useState(0);
+
+    useEffect(() => {
+        const update = () => {
+            const now = Date.now();
+            const referenceTime = session.isOnBreak && session.breakStartTime ? session.breakStartTime : now;
+            const totalPauseMs = session.accumulatedBreakMs || 0;
+            const elapsedMs = Math.max(0, referenceTime - session.startTime - totalPauseMs);
+            const totalDurationMs = session.durationMins * 60 * 1000;
+            setRemaining(Math.max(0, totalDurationMs - elapsedMs));
+        };
+        update();
+        const t = setInterval(update, 1000);
+        return () => clearInterval(t);
+    }, [session.startTime, session.durationMins, session.isOnBreak, session.breakStartTime, session.accumulatedBreakMs]);
+
     const totalPauseMs = session.accumulatedBreakMs || 0;
-
-    // Elapsed since start
+    const now = Date.now();
+    const referenceTime = session.isOnBreak && session.breakStartTime ? session.breakStartTime : now;
     const elapsedMs = Math.max(0, referenceTime - session.startTime - totalPauseMs);
-
-    // Remaining in session
-    const totalDurationMs = session.durationMins * 60 * 1000;
-    const remainingMs = Math.max(0, totalDurationMs - elapsedMs);
-
-    // Break remaining (if active)
     const breakDurationMs = (session.timedBreaks?.durationMins || 0) * 60 * 1000;
     const breakElapsedMs = session.isOnBreak && session.breakStartTime ? now - session.breakStartTime : 0;
     const breakRemainingMs = Math.max(0, breakDurationMs - breakElapsedMs);
@@ -159,8 +166,8 @@ const ActiveProtocolStatus = ({
                         <View className="w-[1px] bg-white/10 mx-3" />
                         <View className="flex-1">
                             <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Time to Target</Text>
-                            <Text className={`font-headline font-black text-xl ${remainingMs < 300000 && !isOnBreak ? 'text-red-500' : 'text-white'}`}>
-                                {formatTime(remainingMs)}
+                            <Text className={`font-headline font-black text-xl ${remaining < 300000 && !isOnBreak ? 'text-red-500' : 'text-white'}`}>
+                                {formatTime(remaining)}
                             </Text>
                         </View>
                         <View className="w-[1px] bg-white/10 mx-3" />
@@ -280,7 +287,9 @@ export const HomeScreen = () => {
                 }
             }
 
-            setActiveSession(session);
+            const active = await FocusStorageService.getActiveSession();
+            console.log(`--- [HOME_SCREEN] ACTIVE_SESSION_CHECK: ${active ? active.title : 'NONE'} ---`);
+            setActiveSession(active);
         };
 
         // Priority 1: Instant load from Interactions/Cache
@@ -308,10 +317,15 @@ export const HomeScreen = () => {
             }
         });
 
-        // Instant Sync: Listen for native break toggles
+        // Instant Sync: Listen for native break toggles & data refresh signals
         const { addNativeBreakListener } = require('../../modules/screen-time');
         const nativeSub = addNativeBreakListener?.((event: any) => {
             console.log('[HomeScreen] Received native break request sync');
+            checkActiveSession();
+        });
+
+        const refreshSub = DeviceEventEmitter.addListener('UNLINK REFRESH DATA', () => {
+            console.log('[HomeScreen] Received refresh signal');
             checkActiveSession();
         });
 
@@ -319,6 +333,7 @@ export const HomeScreen = () => {
             if (intervalId) clearInterval(intervalId);
             subscription.remove();
             nativeSub?.remove?.();
+            refreshSub.remove();
         };
     }, [selectedDate, isFocused, activeConfigId]);
 

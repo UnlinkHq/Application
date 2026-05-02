@@ -180,10 +180,18 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
     };
 
     const formatTime = (mins: number) => {
-        const h = Math.floor(mins / 60);
-        const m = Math.floor(mins % 60);
-        const s = Math.floor((mins * 60) % 60);
-        return `${h > 0 ? h + ':' : ''}${h > 0 && m < 10 ? '0' + m : m}:${s < 10 ? '0' : ''}${s}`;
+        const totalSecs = Math.max(0, Math.floor(mins * 60));
+        const h = Math.floor(totalSecs / 3600);
+        const m = Math.floor((totalSecs % 3600) / 60);
+        const s = totalSecs % 60;
+
+        if (h > 0) {
+            // Hours case: hh:mm
+            return `${h}:${m < 10 ? '0' : ''}${m}`;
+        } else {
+            // Minutes case: mm:ss
+            return `${m}:${s < 10 ? '0' : ''}${s}`;
+        }
     };
 
     const formatSeconds = (totalSecs: number) => {

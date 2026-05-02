@@ -45,6 +45,7 @@ import SignatureService from '../../services/SignatureService';
 import { FocusStorageService } from '../../services/FocusStorageService';
 import { TimedBreaksConfig } from './TimedBreaksConfig';
 import { AppSelectionModal } from './AppSelectionModal';
+import { TemporalEngine } from '../../services/TemporalEngine';
 
 const { width } = Dimensions.get('window');
 const DIAL_SIZE = width * 0.5;
@@ -272,6 +273,18 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                 "PERMISSION REQUIRED",
                 "PROTECT UNINSTALL REQUIRES DEVICE ADMIN PERMISSION. PLEASE ENABLE IT IN THE SECURITY SECTION.",
                 [{ text: "OK" }]
+            );
+            return;
+        }
+
+        // --- TEMPORAL OVERLAP VALIDATION ---
+        const conflict = await TemporalEngine.checkManualOverlap(duration);
+        if (conflict) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert(
+                "SCHEDULE CONFLICT",
+                `This duration overlaps with your scheduled focus: "${conflict.title}". You can start other blocks at other times, but not overlapping this window.`,
+                [{ text: "UNDERSTOOD" }]
             );
             return;
         }

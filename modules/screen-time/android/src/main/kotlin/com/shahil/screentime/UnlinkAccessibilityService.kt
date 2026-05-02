@@ -98,6 +98,19 @@ class UnlinkAccessibilityService : AccessibilityService() {
     private val brainrotHideRunnable = Runnable { hideBrainrotMeter() }
     private var lastLockActionTime = 0L
     
+    private val heartbeatHandler = Handler(Looper.getMainLooper())
+    private val heartbeatRunnable = object : Runnable {
+        override fun run() {
+            val now = System.currentTimeMillis()
+            if (blockExpiryTime > 0L && blockExpiryTime <= now && !isBlockingSuspended) {
+                Log.d("UnlinkBackground", "Session expired in background. Tearing down.")
+                // TRIGGER HEALING: User gets restoration for completing the session
+                teardownAllBlocks()
+            }
+            heartbeatHandler.postDelayed(this, 10000L) // Check every 10 seconds
+        }
+    }
+    
     private val watchTimeRunnable = object : Runnable {
         override fun run() {
             val now = System.currentTimeMillis()
@@ -209,6 +222,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
         }
 
         val pkg = rootInActiveWindow?.packageName?.toString() ?: event.packageName?.toString() ?: return
+        Log.d("UnlinkWarden", "Accessibility Event: ${AccessibilityEvent.eventTypeToString(eventType)} from $pkg")
         if (pkg == packageName) return
 
         if (blockExpiryTime > now && !isBlockingSuspended) {
@@ -352,6 +366,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
             }
             refreshFromDiskInternal()
             refreshServiceConfig()
+            heartbeatHandler.post(heartbeatRunnable)
         } catch (e: Exception) {}
     }
 
@@ -382,9 +397,15 @@ class UnlinkAccessibilityService : AccessibilityService() {
     }
 
     private fun isBlockActive(pkg: String): Boolean {
+        val now = System.currentTimeMillis()
+        Log.d("UnlinkWarden", "isBlockActive check for $pkg. Suspended: $isBlockingSuspended, Expiry: $blockExpiryTime, Now: $now, Apps: ${currentBlockedApps.joinToString(",")}")
+        
         if (isBlockingSuspended || blockExpiryTime <= 0L) return false
-        if (System.currentTimeMillis() >= blockExpiryTime) return false
-        return currentBlockedApps.any { blocked -> pkg.contains(blocked, ignoreCase = true) }
+        if (now >= blockExpiryTime) return false
+        
+        val isActive = currentBlockedApps.any { blocked -> pkg.contains(blocked, ignoreCase = true) }
+        Log.d("UnlinkWarden", "isBlockActive result for $pkg: $isActive")
+        return isActive
     }
 
     private fun teardownAllBlocks() {
@@ -500,8 +521,9 @@ class UnlinkAccessibilityService : AccessibilityService() {
             val prefs = getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
             currentBlockedApps = prefs.getStringSet("blocked_apps", emptySet()) ?: emptySet()
             blockExpiryTime = prefs.getLong("block_expiry_time", 0L)
-            blockRemainingAtSuspension = prefs.getLong("block_remaining_ms", 0L)
             isBlockingSuspended = prefs.getBoolean("is_blocking_suspended", false)
+            blockRemainingAtSuspension = prefs.getLong("block_remaining_ms", 0L)
+            
             isSurgicalYoutube = prefs.getBoolean("surgical_youtube", false)
             isSurgicalInstagram = prefs.getBoolean("surgical_instagram", false)
             isYtGateEnabled = prefs.getBoolean("coach_yt_gate", true)
@@ -510,19 +532,24 @@ class UnlinkAccessibilityService : AccessibilityService() {
             isIgGateEnabled = prefs.getBoolean("coach_ig_gate", true)
             isIgDmsEnabled = prefs.getBoolean("coach_ig_dms", true)
             isIgFiniteEnabled = prefs.getBoolean("coach_ig_finite", true)
+
             val today = getCurrentDateString()
             lastBrainrotDate = prefs.getString("global_brainrot_date", today) ?: today
             if (lastBrainrotDate != today) {
                 globalBrainrotScore = 0f
                 globalShortsCount = 0
                 lastBrainrotDate = today
+                prefs.edit().putString("global_brainrot_date", today).apply()
             } else {
                 globalBrainrotScore = prefs.getFloat("global_brainrot_score", 0f)
                 globalShortsCount = prefs.getInt("global_shorts_count", 0)
             }
             lastBrainrotScrollTime = prefs.getLong("last_scroll_timestamp", System.currentTimeMillis())
             breaksRemaining = prefs.getInt("breaks_remaining", 0)
-        } catch (e: Exception) {}
+            Log.d("UnlinkWarden", "Disk Refresh: ${currentBlockedApps.size} apps, Expiry: $blockExpiryTime, Suspended: $isBlockingSuspended")
+        } catch (e: Exception) {
+            Log.e("UnlinkWarden", "Failed to refresh from disk", e)
+        }
     }
 
     private fun performSecurityCheck() {
@@ -661,7 +688,17 @@ class UnlinkAccessibilityService : AccessibilityService() {
             if (blockExpiryTime > 0L) teardownAllBlocks(); return
         }
         val totalSeconds = Math.max(0L, remaining / 1000)
-        overlayView?.findViewById<TextView>(resources.getIdentifier("timerText", "id", packageName))?.text = String.format("%02d:%02d", totalSeconds / 60, totalSeconds % 60)
+        val hours = totalSeconds / 3600
+        val mins = (totalSeconds % 3600) / 60
+        val secs = totalSeconds % 60
+        
+        val timerStr = if (hours > 0) {
+            String.format("%02d:%02d", hours, mins)
+        } else {
+            String.format("%02d:%02d", mins, secs)
+        }
+        
+        overlayView?.findViewById<TextView>(resources.getIdentifier("timerText", "id", packageName))?.text = timerStr
     }
 
     private fun getForegroundAppViaUsageStats(): String? {

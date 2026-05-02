@@ -26,6 +26,8 @@ import { FocusCoachConfig, ScrollingProtocolConfig } from './FocusCoachConfig';
 import { SecurityConfig } from './SecurityConfig';
 import { AIBetaTeaser } from './AIBetaTeaser';
 
+import { TemporalEngine } from '../../services/TemporalEngine';
+
 const { width } = Dimensions.get('window');
 
 interface ScheduleBlockConfigProps {
@@ -120,6 +122,20 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
 
     const finalizeDeployment = async (payload: any) => {
         const schedule = FocusStorageService.migrateSession(payload);
+        
+        // --- OVERLAP VALIDATION ---
+        const library = await FocusStorageService.getLibraryBlocks();
+        const conflict = TemporalEngine.checkOverlap(schedule, library);
+        if (conflict) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert(
+                "SCHEDULE CONFLICT",
+                `This window overlaps with "${conflict.title}". Please adjust the time or days.`,
+                [{ text: "UNDERSTOOD" }]
+            );
+            return;
+        }
+
         try {
             await FocusStorageService.saveBlock(schedule);
 
@@ -223,13 +239,13 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
             >
                 <View className="px-1">
                     {/* Section: Protocol Identity */}
-                    <View className="mt-8 mb-10">
-                        <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest mb-4">PROTOCOL IDENTITY</Text>
+                    <View className="mt-4 mb-10">
+                        <Text className="text-white/40 font-label text-[10px] uppercase tracking-widest">PROTOCOL IDENTITY</Text>
                         <View className="border-b border-white/20 ">
                             <TextInput
                                 placeholder="NAME YOUR SCHEDULE"
                                 placeholderTextColor="rgba(255,255,255,0.1)"
-                                className="text-white font-headline font-black text-xl tracking-tight"
+                                className="text-white font-headline font-black text-lg tracking-tight"
                                 value={title}
                                 onChangeText={setTitle}
                                 selectionColor="white"

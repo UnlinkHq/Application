@@ -91,6 +91,7 @@ class ScreenTimeModule : Module() {
     Function("setBlockedApps") { packageNames: List<String>, message: String, timeLeft: String ->
       appContext.reactContext?.let { context ->
         val set = packageNames.toSet()
+        Log.d("ScreenTimeModule", "Updating Blocked Apps: ${packageNames.joinToString(", ")}")
         val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
         prefs.edit().apply {
             putStringSet("blocked_apps", set)
@@ -274,6 +275,8 @@ class ScreenTimeModule : Module() {
         val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
         val startTime = System.currentTimeMillis()
         val expiryTime = startTime + (minutes * 60 * 1000L)
+        
+        Log.d("ScreenTimeModule", "Setting Session Duration: $minutes mins, Expiry: $expiryTime")
         
         prefs.edit().apply {
             putLong("session_duration_mins", minutes.toLong())
