@@ -17,6 +17,20 @@ export class TemporalEngine {
         
         // Initial run
         this.checkAndDeploySchedules();
+        this.syncSchedulesToNative();
+    }
+
+    private static async syncSchedulesToNative() {
+        try {
+            const library = await FocusStorageService.getLibraryBlocks();
+            const schedules = library.filter(b => b.type === 'schedule');
+            
+            const { setNativeSchedules } = require('../modules/screen-time');
+            setNativeSchedules(JSON.stringify(schedules));
+            console.log(`--- [TEMPORAL_ENGINE] NATIVE_SYNC: ${schedules.length} schedules pushed to Android ---`);
+        } catch (e) {
+            console.error('TemporalEngine: Native sync failed', e);
+        }
     }
 
     static stop() {
@@ -93,8 +107,16 @@ export class TemporalEngine {
 
     public static async recordManualStop(id: string) {
         // Mark this schedule as manually stopped for the current day
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const currentDay = dayNames[new Date().getDay()];
         const today = new Date().toDateString();
         await AsyncStorage.setItem(`@unlink_stop_record_${id}`, today);
+
+        // Sync to native so the accessibility service also knows to skip today
+        try {
+            const { setNativeStopRecord } = require('../modules/screen-time');
+            setNativeStopRecord(id, currentDay);
+        } catch (e) {}
     }
 
     public static isCurrentlyInSchedule(block: BlockSession): boolean {

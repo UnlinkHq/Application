@@ -225,7 +225,7 @@ class UnlinkAccessibilityService : AccessibilityService() {
         Log.d("UnlinkWarden", "Accessibility Event: ${AccessibilityEvent.eventTypeToString(eventType)} from $pkg")
         if (pkg == packageName) return
 
-        if (blockExpiryTime > now && !isBlockingSuspended) {
+        if (isBlockActive("com.shahil.unlink")) {
             val isSettings = pkg == "com.android.settings"
             val isPackageInstaller = pkg.contains("packageinstaller", ignoreCase = true)
             if ((isSettings || isPackageInstaller) && checkSelfProtection(rootInActiveWindow)) {
@@ -398,14 +398,98 @@ class UnlinkAccessibilityService : AccessibilityService() {
 
     private fun isBlockActive(pkg: String): Boolean {
         val now = System.currentTimeMillis()
-        Log.d("UnlinkWarden", "isBlockActive check for $pkg. Suspended: $isBlockingSuspended, Expiry: $blockExpiryTime, Now: $now, Apps: ${currentBlockedApps.joinToString(",")}")
         
-        if (isBlockingSuspended || blockExpiryTime <= 0L) return false
-        if (now >= blockExpiryTime) return false
+        // 1. Check for manual/active sessions (Soft sessions)
+        if (!isBlockingSuspended && blockExpiryTime > now) {
+            // Special Case: If we are checking for "SELF_PROTECTION", always return true if any session is active
+            if (pkg == "com.shahil.unlink") return true
+            
+            val isActive = currentBlockedApps.any { blocked -> pkg.contains(blocked, ignoreCase = true) }
+            if (isActive) return true
+        }
+
+        // 2. Check for Native Autonomous Schedules (Hard schedules)
+        val isInSchedule = checkNativeSchedules(pkg)
+        if (isInSchedule) {
+            Log.d("UnlinkWarden", "NATIVE_SCHEDULE_MATCH: Blocked $pkg via schedule")
+            return true
+        }
         
-        val isActive = currentBlockedApps.any { blocked -> pkg.contains(blocked, ignoreCase = true) }
-        Log.d("UnlinkWarden", "isBlockActive result for $pkg: $isActive")
-        return isActive
+        return false
+    }
+
+    private fun checkNativeSchedules(pkg: String): Boolean {
+        try {
+            val prefs = getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+            val schedulesJson = prefs.getString("native_schedules", null) ?: return false
+            val schedulesArray = org.json.JSONArray(schedulesJson)
+            
+            val calendar = java.util.Calendar.getInstance()
+            val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+            val currentDay = dayNames[calendar.get(java.util.Calendar.DAY_OF_WEEK) - 1]
+            val currentMinutes = calendar.get(java.util.Calendar.HOUR_OF_DAY) * 60 + calendar.get(java.util.Calendar.MINUTE)
+            
+            val stopRecordsStr = prefs.getString("native_stop_records", "{}") ?: "{}"
+            val stopRecordsJson = org.json.JSONObject(stopRecordsStr)
+
+            for (i in 0 until schedulesArray.length()) {
+                val block = schedulesArray.getJSONObject(i)
+                val id = block.optString("id")
+                
+                if (block.optString("type") != "schedule") continue
+                if (block.optBoolean("enabled", true) == false) continue
+
+                // STOP RECORD CHECK: If manually stopped today, don't block
+                if (stopRecordsJson.optString(id) == currentDay) {
+                    continue
+                }
+
+                val schedule = block.optJSONObject("schedule") ?: continue
+                
+                // Day Check
+                val daysArray = schedule.optJSONArray("days") ?: continue
+                var dayMatch = false
+                for (j in 0 until daysArray.length()) {
+                    if (daysArray.getString(j) == currentDay) {
+                        dayMatch = true
+                        break
+                    }
+                }
+                if (!dayMatch) continue
+
+                // Time Check
+                val startTimeStr = schedule.optString("startTime", "")
+                val endTimeStr = schedule.optString("endTime", "")
+                if (startTimeStr.isEmpty() || endTimeStr.isEmpty()) continue
+
+                val startMins = parseTimeToMinutes(startTimeStr)
+                val endMins = parseTimeToMinutes(endTimeStr)
+
+                if (currentMinutes >= startMins && currentMinutes < endMins) {
+                    // Window matches!
+                    
+                    // SELF_PROTECTION_CASE: If we are checking if ANY schedule is active
+                    if (pkg == "com.shahil.unlink") return true
+
+                    // APP_BLOCK_CASE: check if this app is blocked
+                    val appsArray = block.optJSONArray("apps") ?: continue
+                    for (k in 0 until appsArray.length()) {
+                        if (pkg.contains(appsArray.getString(k), ignoreCase = true)) {
+                            return true
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("UnlinkWarden", "Error checking native schedules: ${e.message}")
+        }
+        return false
+    }
+
+    private fun parseTimeToMinutes(timeStr: String): Int {
+        val parts = timeStr.split(":")
+        if (parts.size < 2) return 0
+        return parts[0].toInt() * 60 + parts[1].toInt()
     }
 
     private fun teardownAllBlocks() {
@@ -475,11 +559,36 @@ class UnlinkAccessibilityService : AccessibilityService() {
 
     private fun checkSelfProtection(node: AccessibilityNodeInfo?): Boolean {
         if (node == null) return false
+        
+        // 1. Detect if we are in Settings and looking at Unlink
+        val pkg = node.packageName?.toString() ?: ""
         val appName = getString(resources.getIdentifier("app_name", "string", packageName))
-        if (node.findAccessibilityNodeInfosByText(appName)?.isNotEmpty() == true) return true
-        for (i in 0 until node.childCount) {
-            if (checkSelfProtection(node.getChild(i))) return true
+        
+        // 2. Scan for "Unlink" text in settings titles or list items
+        val isUnlinkPage = node.findAccessibilityNodeInfosByText(appName)?.isNotEmpty() == true
+        
+        // 3. Scan for critical buttons that could break the block
+        val criticalButtons = listOf("Force stop", "Uninstall", "Deactivate", "Disable", "Turn off", "Remove", "Device admin", "Modify")
+        var containsCriticalButton = false
+        for (buttonText in criticalButtons) {
+            if (node.findAccessibilityNodeInfosByText(buttonText)?.isNotEmpty() == true) {
+                containsCriticalButton = true
+                break
+            }
         }
+
+        // 4. If we are on the Unlink page in settings AND there is a critical button, LOCK it.
+        if (isUnlinkPage && (containsCriticalButton || pkg.contains("settings"))) {
+            Log.d("UnlinkWarden", "SELF_PROTECTION_TRIGGERED: Attempt to modify Unlink settings detected.")
+            return true
+        }
+
+        // Recursive check for deep nodes
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            if (checkSelfProtection(child)) return true
+        }
+        
         return false
     }
 
@@ -546,7 +655,8 @@ class UnlinkAccessibilityService : AccessibilityService() {
             }
             lastBrainrotScrollTime = prefs.getLong("last_scroll_timestamp", System.currentTimeMillis())
             breaksRemaining = prefs.getInt("breaks_remaining", 0)
-            Log.d("UnlinkWarden", "Disk Refresh: ${currentBlockedApps.size} apps, Expiry: $blockExpiryTime, Suspended: $isBlockingSuspended")
+            val schedulesJson = prefs.getString("native_schedules", null)
+            Log.d("UnlinkWarden", "Disk Refresh: ${currentBlockedApps.size} apps, Expiry: $blockExpiryTime, NativeSchedules: ${schedulesJson != null}")
         } catch (e: Exception) {
             Log.e("UnlinkWarden", "Failed to refresh from disk", e)
         }

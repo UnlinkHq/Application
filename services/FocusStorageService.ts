@@ -336,12 +336,24 @@ export class FocusStorageService {
         }
 
         await AsyncStorage.setItem(LIBRARY_BLOCKS_KEY, JSON.stringify(library));
+        
+        // TRIGGER_NATIVE_SYNC: Ensure the persistent Android service knows about the new rule
+        try {
+            const { TemporalEngine } = require('./TemporalEngine');
+            TemporalEngine.syncSchedulesToNative();
+        } catch (e) {}
     }
 
     static async deleteBlock(id: string): Promise<void> {
         const library = await this.getLibraryBlocks();
         const updated = library.filter(b => b.id !== id);
         await AsyncStorage.setItem(LIBRARY_BLOCKS_KEY, JSON.stringify(updated));
+
+        // TRIGGER_NATIVE_SYNC: Remove from persistent Android service
+        try {
+            const { TemporalEngine } = require('./TemporalEngine');
+            TemporalEngine.syncSchedulesToNative();
+        } catch (e) {}
     }
 
     static migrateSession(session: any): BlockSession {

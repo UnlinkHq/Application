@@ -2,16 +2,16 @@ apply plugin: 'com.android.library'
 apply plugin: 'kotlin-android'
 
 android {
-    compileSdkVersion 34
+    compileSdk 34
     namespace "com.shahil.screentime"
 
     defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 34
+        minSdk 21
+        targetSdk 34
         versionCode 1
         versionName "1.0"
     }
-    lintOptions {
+    lint {
         abortOnError false
     }
 }
@@ -22,4 +22,5 @@ dependencies {
     implementation "androidx.core:core-ktx:1.12.0"
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     implementation 'com.google.android.material:material:1.11.0'
+    implementation "androidx.work:work-runtime-ktx:2.8.1"
 }

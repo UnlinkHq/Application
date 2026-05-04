@@ -46,6 +46,8 @@ interface ScreenTimeModuleInterface {
     setBlockExpiryTime(timestamp: number): void;
     updateGlobalBrainrot(delta: number): void;
     setGlobalBrainrot(score: number): void;
+    setNativeSchedules(schedulesJson: string): void;
+    setNativeStopRecord(blockId: string, dateStr: string): void;
 
     // iOS Shield functions
     activateShield(): void;
@@ -102,7 +104,9 @@ try {
         getSelectionCount: () => 0,
         setBlockExpiryTime: () => { },
         updateGlobalBrainrot: () => { },
-        setGlobalBrainrot: () => { }
+        setGlobalBrainrot: () => { },
+        setNativeSchedules: () => { },
+        setNativeStopRecord: () => { }
     };
 }
 
@@ -250,6 +254,14 @@ export function updateGlobalBrainrot(delta: number): void {
 
 export function setGlobalBrainrot(score: number): void {
     ScreenTimeModule.setGlobalBrainrot(score);
+}
+
+export function setNativeSchedules(schedulesJson: string): void {
+    ScreenTimeModule.setNativeSchedules(schedulesJson);
+}
+
+export function setNativeStopRecord(blockId: string, dateStr: string): void {
+    ScreenTimeModule.setNativeStopRecord(blockId, dateStr);
 }
 
 // Event Handling
