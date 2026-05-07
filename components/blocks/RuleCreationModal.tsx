@@ -9,6 +9,7 @@ interface Rule {
     title: string;
     description: string;
     icon: keyof typeof Ionicons.glyphMap;
+    isDisabled?: boolean;
 }
 
 const RULES: Rule[] = [
@@ -29,6 +30,7 @@ const RULES: Rule[] = [
         title: 'Set Time Limits',
         description: 'Daily usage constraints for specific applications.',
         icon: 'time-outline',
+        isDisabled: true,
     },
 ];
 
@@ -46,11 +48,13 @@ export const RuleCreationModal = ({
 }: RuleCreationModalProps) => {
     const [selectedRule, setSelectedRule] = useState<string | null>(null);
 
-    const handlePress = (id: string) => {
-        setSelectedRule(id);
+    const handlePress = (rule: Rule) => {
+        if (rule.isDisabled) return;
+
+        setSelectedRule(rule.id);
         // Add a slight delay to show the "Tick" selection animation before closing/navigating
         setTimeout(() => {
-            onSelectRule(id);
+            onSelectRule(rule.id);
             // Reset state after navigation completes so it's fresh next time
             setTimeout(() => setSelectedRule(null), 500);
         }, 300);
@@ -68,23 +72,30 @@ export const RuleCreationModal = ({
                 {RULES.map((rule) => (
                     <TouchableOpacity
                         key={rule.id}
-                        onPress={() => handlePress(rule.id)}
-                        activeOpacity={0.7}
-                        className={`flex-row items-center p-5 border-2 mb-3 ${selectedRule === rule.id ? 'border-white bg-white/5' : 'border-white/5 bg-[#121212]'}`}
+                        onPress={() => handlePress(rule)}
+                        activeOpacity={rule.isDisabled ? 1 : 0.7}
+                        className={`flex-row items-center p-5 border-2 mb-3 ${rule.isDisabled ? 'opacity-30 border-white/5 bg-[#050505]' : (selectedRule === rule.id ? 'border-white bg-white/5' : 'border-white/5 bg-[#121212]')}`}
                     >
-                        <View className="w-12 h-12 bg-white/10 items-center justify-center mr-4">
-                            <Ionicons name={rule.icon} size={24} color="white" />
+                        <View className="w-12 h-12 bg-white/5 items-center justify-center mr-4">
+                            <Ionicons name={rule.icon} size={24} color={rule.isDisabled ? "#333" : "white"} />
                         </View>
                         <View className="flex-1 mr-4">
-                            <Text className="text-white font-headline font-black text-sm uppercase tracking-widest">
-                                {rule.title}
-                            </Text>
-                            <Text className="text-white/40 font-label text-[10px] mt-1 leading-tight">
+                            <View className="flex-row items-center gap-2">
+                                <Text className={`font-headline font-black text-sm uppercase tracking-widest ${rule.isDisabled ? 'text-white/20' : 'text-white'}`}>
+                                    {rule.title}
+                                </Text>
+                                {rule.isDisabled && (
+                                    <View className="bg-white/5 px-1.5 py-0.5 border border-white/10">
+                                        <Text className="text-white/20 font-label text-[7px] uppercase tracking-widest">SOON</Text>
+                                    </View>
+                                )}
+                            </View>
+                            <Text className={`font-label text-[10px] mt-1 leading-tight ${rule.isDisabled ? 'text-white/10' : 'text-white/40'}`}>
                                 {rule.description}
                             </Text>
                         </View>
-                        <View className={`w-6 h-6 border-2 items-center justify-center ${selectedRule === rule.id ? 'bg-white border-white' : 'bg-transparent border-white/20'}`}>
-                            {selectedRule === rule.id && (
+                        <View className={`w-6 h-6 border-2 items-center justify-center ${rule.isDisabled ? 'border-white/0' : (selectedRule === rule.id ? 'bg-white border-white' : 'bg-transparent border-white/20')}`}>
+                            {selectedRule === rule.id && !rule.isDisabled && (
                                 <MaterialIcons name="check" size={14} color="black" />
                             )}
                         </View>

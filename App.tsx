@@ -13,7 +13,7 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 // Configure Reanimated Logger to disable strict mode warnings
 configureReanimatedLogger({
   level: ReanimatedLogLevel.warn,
-  strict: false, 
+  strict: false,
 });
 
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
@@ -41,6 +41,7 @@ import { AgreementScreen } from './components/screens/AgreementScreen';
 import { IntentGateScreen } from './components/screens/IntentGateScreen';
 import { addNativeBreakListener } from './modules/screen-time';
 import { PremiumSplash } from './components/ui/PremiumSplash';
+import { TemporalEngine } from './services/TemporalEngine';
 import './global.css';
 
 // Build 0.81.5 has fixed safeAreaView but dependencies might still use it
@@ -57,12 +58,12 @@ const Stack = createStackNavigator();
 const TabNavigator = () => {
   return (
     <Tab.Navigator
-        tabBar={props => <FluidTabBar {...props} />}
-        screenOptions={{
-            headerShown: false,
-            tabBarStyle: { position: 'absolute' }, 
-            freezeOnBlur: true,
-        }}
+      tabBar={props => <FluidTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+        tabBarStyle: { position: 'absolute' },
+        freezeOnBlur: true,
+      }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Blocks" component={BlocksScreen} />
@@ -76,25 +77,25 @@ const TabNavigator = () => {
 const NavigationTree = ({ isFirstLaunch, onCompleteOnboarding }: { isFirstLaunch: boolean, onCompleteOnboarding: () => void }) => {
   return (
     <NavigationContainer
-        theme={{
-            ...DefaultTheme,
-            colors: {
-                ...DefaultTheme.colors,
-                background: 'black',
-            },
-        }}
+      theme={{
+        ...DefaultTheme,
+        colors: {
+          ...DefaultTheme.colors,
+          background: 'black',
+        },
+      }}
     >
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-            {isFirstLaunch && (
-                <Stack.Screen name="Onboarding">
-                  {props => <OnboardingScreen {...props} onFinish={onCompleteOnboarding} />}
-                </Stack.Screen>
-            )}
-            <Stack.Screen name="Main" component={TabNavigator} />
-            <Stack.Screen name="Settings" component={SettingsScreen} />
-            <Stack.Screen name="Agreement" component={AgreementScreen} />
-            <Stack.Screen name="IntentGate" component={IntentGateScreen} options={{ gestureEnabled: false }} />
-        </Stack.Navigator>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {isFirstLaunch && (
+          <Stack.Screen name="Onboarding">
+            {props => <OnboardingScreen {...props} onFinish={onCompleteOnboarding} />}
+          </Stack.Screen>
+        )}
+        <Stack.Screen name="Main" component={TabNavigator} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="Agreement" component={AgreementScreen} />
+        <Stack.Screen name="IntentGate" component={IntentGateScreen} options={{ gestureEnabled: false }} />
+      </Stack.Navigator>
       <BreakOverlay />
     </NavigationContainer>
   );
@@ -117,40 +118,43 @@ export default function App() {
   });
 
   useEffect(() => {
+    // Start the Surgical Temporal Engine for auto-deploying schedules
+    TemporalEngine.start();
+
     async function checkState() {
       try {
         const hasLaunched = await AsyncStorage.getItem('hasLaunched');
         const onboarded = hasLaunched === 'true';
-        setIsFirstLaunch(!onboarded); 
-        
+        setIsFirstLaunch(!onboarded);
+
         const session = await FocusStorageService.getActiveSession();
         setActiveSession(session);
       } catch (error) {
-         console.error('[App] Error checking persistence state:', error);
-         setIsFirstLaunch(false); // Default to home on error for better UX
+        console.error('[App] Error checking persistence state:', error);
+        setIsFirstLaunch(false); // Default to home on error for better UX
       }
     }
     checkState();
-    
+
     // Interval check for session changes
     const interval = setInterval(async () => {
-        const session = await FocusStorageService.getActiveSession();
-        setActiveSession(session);
+      const session = await FocusStorageService.getActiveSession();
+      setActiveSession(session);
     }, 15000);
 
     // Listen for native break requests from the coach overlay
     const subscription = addNativeBreakListener(async (event) => {
-        console.log('[App] Received native break request sync');
-        const session = await FocusStorageService.getActiveSession();
-        if (session && !session.isOnBreak) {
-            const updated = await FocusStorageService.toggleBreak();
-            if (updated) setActiveSession(updated);
-        }
+      const session = await FocusStorageService.getActiveSession();
+      if (session && !session.isOnBreak) {
+        const updated = await FocusStorageService.toggleBreak();
+        if (updated) setActiveSession(updated);
+      }
     });
-    
+
     return () => {
-        subscription.remove();
-        clearInterval(interval);
+      TemporalEngine.stop();
+      subscription.remove();
+      clearInterval(interval);
     };
   }, []);
 
@@ -163,7 +167,7 @@ export default function App() {
   }, []);
 
   if (!fontsLoaded || isFirstLaunch === null || !minSplashReady) {
-      return <PremiumSplash />;
+    return <PremiumSplash />;
   }
 
   const completeOnboarding = async () => {
@@ -182,13 +186,13 @@ export default function App() {
         <BottomSheetModalProvider>
           <BlockingProvider>
             <SelectionProvider>
-              <NavigationTree 
-                isFirstLaunch={Boolean(isFirstLaunch)} 
+              <NavigationTree
+                isFirstLaunch={Boolean(isFirstLaunch)}
                 onCompleteOnboarding={completeOnboarding}
               />
               <GlobalModals />
             </SelectionProvider>
-            <StatusBar style="light" /> 
+            <StatusBar style="light" />
           </BlockingProvider>
         </BottomSheetModalProvider>
       </GestureHandlerRootView>

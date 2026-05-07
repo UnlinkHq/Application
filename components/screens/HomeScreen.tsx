@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Platform, AppState, RefreshControl, Image, InteractionManager, Animated } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Platform, AppState, RefreshControl, Image, InteractionManager, Animated, DeviceEventEmitter, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { useBlocking } from '../../context/BlockingContext';
@@ -19,10 +19,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ConfettiCelebration } from '../ui/ConfettiCelebration';
 import { LiveBrain } from '../ui/LiveBrain';
 
-// Optimized Sub-components
-import { DateStrip } from '../home/DateStrip';
-import { DailyOverview } from '../home/DailyOverview';
-import { AppUsageList } from '../home/AppUsageList';
+// Optimized Sub-components (Memoized for high scroll performance)
+import { DateStrip as OriginalDateStrip } from '../home/DateStrip';
+import { DailyOverview as OriginalDailyOverview } from '../home/DailyOverview';
+import { AppUsageList as OriginalAppUsageList } from '../home/AppUsageList';
+
+const DateStrip = React.memo(OriginalDateStrip);
+const DailyOverview = React.memo(OriginalDailyOverview);
+const AppUsageList = React.memo(OriginalAppUsageList);
 
 const ActiveProtocolStatus = ({
     session,
@@ -35,32 +39,49 @@ const ActiveProtocolStatus = ({
     onEmergencyStop: () => void,
     onToggleBreak: () => void
 }) => {
-    const [now, setNow] = useState(Date.now());
-
-    useEffect(() => {
-        const t = setInterval(() => setNow(Date.now()), 1000);
-        return () => clearInterval(t);
-    }, []);
-
     const formatTime = (totalMs: number) => {
-        const totalSecs = Math.floor(totalMs / 1000);
+        const totalSecs = Math.max(0, Math.floor(totalMs / 1000));
         const h = Math.floor(totalSecs / 3600);
         const m = Math.floor((totalSecs % 3600) / 60);
         const s = totalSecs % 60;
-        return `${h > 0 ? h + ':' : ''}${h > 0 && m < 10 ? '0' + m : m}:${s < 10 ? '0' : ''}${s}`;
+        if (h > 0) return `${h}:${m < 10 ? '0' : ''}${m}`;
+        return `${m}:${s < 10 ? '0' : ''}${s}`;
     };
 
-    const referenceTime = session.isOnBreak && session.breakStartTime ? session.breakStartTime : now;
+    const [remaining, setRemaining] = useState(0);
+    const [isEmergencyModalVisible, setIsEmergencyModalVisible] = useState(false);
+    const [emergencyPin, setEmergencyPin] = useState('');
+    const [emergencyError, setEmergencyError] = useState('');
+
+    const handleEmergencySubmit = () => {
+        if (emergencyPin === '9846') {
+            setIsEmergencyModalVisible(false);
+            setEmergencyPin('');
+            setEmergencyError('');
+            onEmergencyStop();
+        } else {
+            setEmergencyError('Incorrect PIN. Call Shahil (9846786928).');
+        }
+    };
+
+    useEffect(() => {
+        const update = () => {
+            const now = Date.now();
+            const referenceTime = session.isOnBreak && session.breakStartTime ? session.breakStartTime : now;
+            const totalPauseMs = session.accumulatedBreakMs || 0;
+            const elapsedMs = Math.max(0, referenceTime - session.startTime - totalPauseMs);
+            const totalDurationMs = session.durationMins * 60 * 1000;
+            setRemaining(Math.max(0, totalDurationMs - elapsedMs));
+        };
+        update();
+        const t = setInterval(update, 1000);
+        return () => clearInterval(t);
+    }, [session.startTime, session.durationMins, session.isOnBreak, session.breakStartTime, session.accumulatedBreakMs]);
+
     const totalPauseMs = session.accumulatedBreakMs || 0;
-
-    // Elapsed since start
+    const now = Date.now();
+    const referenceTime = session.isOnBreak && session.breakStartTime ? session.breakStartTime : now;
     const elapsedMs = Math.max(0, referenceTime - session.startTime - totalPauseMs);
-
-    // Remaining in session
-    const totalDurationMs = session.durationMins * 60 * 1000;
-    const remainingMs = Math.max(0, totalDurationMs - elapsedMs);
-
-    // Break remaining (if active)
     const breakDurationMs = (session.timedBreaks?.durationMins || 0) * 60 * 1000;
     const breakElapsedMs = session.isOnBreak && session.breakStartTime ? now - session.breakStartTime : 0;
     const breakRemainingMs = Math.max(0, breakDurationMs - breakElapsedMs);
@@ -159,8 +180,8 @@ const ActiveProtocolStatus = ({
                         <View className="w-[1px] bg-white/10 mx-3" />
                         <View className="flex-1">
                             <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Time to Target</Text>
-                            <Text className={`font-headline font-black text-xl ${remainingMs < 300000 && !isOnBreak ? 'text-red-500' : 'text-white'}`}>
-                                {formatTime(remainingMs)}
+                            <Text className={`font-headline font-black text-xl ${remaining < 300000 && !isOnBreak ? 'text-red-500' : 'text-white'}`}>
+                                {formatTime(remaining)}
                             </Text>
                         </View>
                         <View className="w-[1px] bg-white/10 mx-3" />
@@ -198,13 +219,64 @@ const ActiveProtocolStatus = ({
             {/* Mission Override (Dev Only) */}
             <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={onEmergencyStop}
+                onPress={() => setIsEmergencyModalVisible(true)}
                 className="mt-3 h-9 items-center justify-center border border-red-500/10 bg-red-500/5"
             >
                 <Text className="text-red-500/60 font-headline font-black text-[8px] uppercase tracking-[0.25em]">
                     Emergency Force Stop
                 </Text>
             </TouchableOpacity>
+
+            <Modal visible={isEmergencyModalVisible} transparent animationType="fade">
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-black/90 justify-center items-center px-6">
+                    <View className="bg-[#111] border border-white/20 p-6 w-full max-w-sm rounded-xl">
+                        <Text className="text-white font-headline font-black text-xl uppercase tracking-widest mb-2 text-center">Beta Override</Text>
+                        <Text className="text-white/60 font-label text-xs text-center mb-6 leading-5">
+                            This is a beta test emergency override. If this is a real emergency, call Shahil at 9846786928 to get the override PIN.
+                        </Text>
+
+                        <TextInput
+                            className="bg-black border border-white/20 text-white font-headline font-black text-2xl text-center py-4 mb-2 rounded-lg"
+                            placeholder="ENTER PIN"
+                            placeholderTextColor="#333"
+                            keyboardType="number-pad"
+                            secureTextEntry
+                            value={emergencyPin}
+                            onChangeText={(text) => {
+                                setEmergencyPin(text);
+                                setEmergencyError('');
+                            }}
+                            autoFocus
+                        />
+
+                        {!!emergencyError && (
+                            <Text className="text-red-500 font-label text-[10px] uppercase text-center mb-4 tracking-widest">{emergencyError}</Text>
+                        )}
+                        {!emergencyError && <View className="h-4 mb-4" />}
+
+                        <View className="flex-row gap-3">
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                onPress={() => {
+                                    setIsEmergencyModalVisible(false);
+                                    setEmergencyPin('');
+                                    setEmergencyError('');
+                                }}
+                                className="flex-1 py-4 border border-white/20 items-center justify-center rounded-lg"
+                            >
+                                <Text className="text-white/60 font-headline font-black text-[10px] uppercase tracking-widest">Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                onPress={handleEmergencySubmit}
+                                className="flex-1 py-4 border border-red-500 bg-red-500/10 items-center justify-center rounded-lg"
+                            >
+                                <Text className="text-red-500 font-headline font-black text-[10px] uppercase tracking-widest">Force Stop</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </View>
     );
 };
@@ -280,7 +352,8 @@ export const HomeScreen = () => {
                 }
             }
 
-            setActiveSession(session);
+            const active = await FocusStorageService.getActiveSession();
+            setActiveSession(active);
         };
 
         // Priority 1: Instant load from Interactions/Cache
@@ -308,10 +381,13 @@ export const HomeScreen = () => {
             }
         });
 
-        // Instant Sync: Listen for native break toggles
+        // Instant Sync: Listen for native break toggles & data refresh signals
         const { addNativeBreakListener } = require('../../modules/screen-time');
         const nativeSub = addNativeBreakListener?.((event: any) => {
-            console.log('[HomeScreen] Received native break request sync');
+            checkActiveSession();
+        });
+
+        const refreshSub = DeviceEventEmitter.addListener('UNLINK REFRESH DATA', () => {
             checkActiveSession();
         });
 
@@ -319,6 +395,7 @@ export const HomeScreen = () => {
             if (intervalId) clearInterval(intervalId);
             subscription.remove();
             nativeSub?.remove?.();
+            refreshSub.remove();
         };
     }, [selectedDate, isFocused, activeConfigId]);
 
@@ -331,7 +408,6 @@ export const HomeScreen = () => {
             const elapsedBreakMs = Date.now() - activeSession.breakStartTime;
             const remainingBreakMs = Math.max(0, totalBreakMs - elapsedBreakMs);
 
-            console.log(`--- [BREAK_TIMER] RESUMING_IN: ${Math.round(remainingBreakMs / 1000)}s ---`);
 
             if (remainingBreakMs === 0) {
                 handleToggleBreak();

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, Modal } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -15,7 +15,7 @@ export const SecurityConfig = ({
     enabled,
     onEnabledChange
 }: SecurityConfigProps) => {
-    const [isAdminModalVisible, setIsAdminModalVisible] = React.useState(false);
+    const [isAdminModalVisible, setIsAdminModalVisible] = useState(false);
 
     const handleToggle = (value: boolean) => {
         if (value && !isAdminActive()) {
@@ -29,18 +29,18 @@ export const SecurityConfig = ({
 
     return (
         <View className="mt-4">
-            <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-3">GENERAL PROTECTION</Text>
+            <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-3">ADVANCED PROTECTION</Text>
             <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={() => handleToggle(!enabled)}
                 className="border border-white/10 bg-black/40 p-4 flex-row items-center"
             >
                 <View className="w-9 h-9 bg-white/5 items-center justify-center mr-4 border border-white/10">
-                    <Ionicons name="lock-closed-outline" size={18} color="white" />
+                    <Ionicons name="shield-checkmark-outline" size={18} color="white" />
                 </View>
                 <View className="flex-1">
-                    <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">PROTECT UNINSTALL</Text>
-                    <Text className="text-white/40 font-label text-[10px] mt-1">Prevent app removal during session</Text>
+                    <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">STRICT MODE</Text>
+                    <Text className="text-white/40 font-label text-[10px] mt-1 leading-tight">No loopholes. Prevents you from force-stopping or uninstalling the app while a focus session is active.</Text>
                 </View>
                 <View pointerEvents="none">
                     <ModernToggle
@@ -67,8 +67,8 @@ export const SecurityConfig = ({
                                 <MaterialCommunityIcons name="shield-lock-outline" size={32} color="white" />
                             </View>
 
-                            <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">UNINSTALL PROTECTION</Text>
-                            <Text className="text-white/40 font-label text-[9px] uppercase tracking-widest mb-8 text-center italic">LEVEL 02 SECURITY ENFORCEMENT</Text>
+                            <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">STRICT MODE</Text>
+                            <Text className="text-white/40 font-label text-[9px] uppercase tracking-widest mb-8 text-center italic">MAXIMUM SECURITY ENFORCEMENT</Text>
 
                             <View className="bg-white/5 border border-white/10 p-5 mb-8 w-full">
                                 <View className="flex-row items-start mb-4">

@@ -91,6 +91,7 @@ class ScreenTimeModule : Module() {
     Function("setBlockedApps") { packageNames: List<String>, message: String, timeLeft: String ->
       appContext.reactContext?.let { context ->
         val set = packageNames.toSet()
+        Log.d("ScreenTimeModule", "Updating Blocked Apps: ${packageNames.joinToString(", ")}")
         val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
         prefs.edit().apply {
             putStringSet("blocked_apps", set)
@@ -158,6 +159,51 @@ class ScreenTimeModule : Module() {
         val shorts = prefs.getInt("global_shorts_count", 0)
         val date = prefs.getString("global_brainrot_date", "") ?: ""
         return@AsyncFunction mapOf("score" to score, "date" to date, "shortsCount" to shorts)
+    }
+
+    Function("setNativeSchedules") { schedulesJson: String ->
+      appContext.reactContext?.let { context ->
+        val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        prefs.edit().apply {
+            putString("native_schedules", schedulesJson)
+            commit()
+        }
+        Log.d("UnlinkWarden", "Native Schedules Synced: $schedulesJson")
+        UnlinkAccessibilityService.instance?.refreshServiceConfig()
+      }
+      return@Function null
+    }
+
+    Function("setNativeStopRecord") { blockId: String, dateStr: String ->
+      appContext.reactContext?.let { context ->
+        val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        val stopRecords = prefs.getString("native_stop_records", "{}") ?: "{}"
+        val json = org.json.JSONObject(stopRecords)
+        json.put(blockId, dateStr)
+        
+        prefs.edit().apply {
+            putString("native_stop_records", json.toString())
+            commit()
+        }
+        Log.d("UnlinkWarden", "Native Stop Record Updated: $blockId -> $dateStr")
+        UnlinkAccessibilityService.instance?.refreshServiceConfig()
+      }
+      return@Function null
+    }
+
+    Function("setStrictMode") { enabled: Boolean ->
+        appContext.reactContext?.let { context ->
+            val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("strict_mode", enabled).commit()
+            UnlinkAccessibilityService.instance?.refreshServiceConfig()
+        }
+        return@Function null
+    }
+
+    AsyncFunction("getStrictMode") {
+        val context = appContext.reactContext ?: return@AsyncFunction false
+        val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        return@AsyncFunction prefs.getBoolean("strict_mode", false)
     }
 
     Function("updateGlobalBrainrot") { delta: Double ->
@@ -274,6 +320,8 @@ class ScreenTimeModule : Module() {
         val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
         val startTime = System.currentTimeMillis()
         val expiryTime = startTime + (minutes * 60 * 1000L)
+        
+        Log.d("ScreenTimeModule", "Setting Session Duration: $minutes mins, Expiry: $expiryTime")
         
         prefs.edit().apply {
             putLong("session_duration_mins", minutes.toLong())
@@ -556,6 +604,8 @@ class ScreenTimeModule : Module() {
 
     OnCreate {
         val context = appContext.reactContext ?: return@OnCreate
+        scheduleGuardianWorker(context)
+        
         val filter = IntentFilter("com.shahil.unlink.REQUEST_BREAK")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             context.registerReceiver(object : BroadcastReceiver() {
@@ -594,6 +644,23 @@ class ScreenTimeModule : Module() {
         bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 70, outputStream)
         return android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.NO_WRAP)
     } catch (e: Exception) { return null }
+  }
+
+  private fun scheduleGuardianWorker(context: Context) {
+    try {
+      val workRequest = androidx.work.PeriodicWorkRequestBuilder<UnlinkGuardianWorker>(
+        15, java.util.concurrent.TimeUnit.MINUTES
+      ).build()
+
+      androidx.work.WorkManager.getInstance(context).enqueueUniquePeriodicWork(
+        "UnlinkGuardian",
+        androidx.work.ExistingPeriodicWorkPolicy.KEEP,
+        workRequest
+      )
+      Log.d("UnlinkGuardian", "Guardian Worker Scheduled (15m interval)")
+    } catch (e: Exception) {
+      Log.e("UnlinkGuardian", "Failed to schedule guardian: ${e.message}")
+    }
   }
 
   private fun syncBlockingService(context: Context) {

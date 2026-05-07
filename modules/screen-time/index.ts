@@ -46,6 +46,10 @@ interface ScreenTimeModuleInterface {
     setBlockExpiryTime(timestamp: number): void;
     updateGlobalBrainrot(delta: number): void;
     setGlobalBrainrot(score: number): void;
+    setNativeSchedules(schedulesJson: string): void;
+    setNativeStopRecord(blockId: string, dateStr: string): void;
+    setStrictMode(enabled: boolean): void;
+    getStrictMode(): Promise<boolean>;
 
     // iOS Shield functions
     activateShield(): void;
@@ -102,7 +106,11 @@ try {
         getSelectionCount: () => 0,
         setBlockExpiryTime: () => { },
         updateGlobalBrainrot: () => { },
-        setGlobalBrainrot: () => { }
+        setGlobalBrainrot: () => { },
+        setNativeSchedules: () => { },
+        setNativeStopRecord: () => { },
+        setStrictMode: () => { },
+        getStrictMode: async () => false
     };
 }
 
@@ -250,6 +258,23 @@ export function updateGlobalBrainrot(delta: number): void {
 
 export function setGlobalBrainrot(score: number): void {
     ScreenTimeModule.setGlobalBrainrot(score);
+}
+
+export function setNativeSchedules(schedulesJson: string): void {
+    ScreenTimeModule.setNativeSchedules(schedulesJson);
+}
+
+export function setNativeStopRecord(blockId: string, dateStr: string): void {
+    ScreenTimeModule.setNativeStopRecord(blockId, dateStr);
+}
+
+export function setStrictMode(enabled: boolean): void {
+    ScreenTimeModule.setStrictMode(enabled);
+}
+
+export async function getStrictMode(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    return await ScreenTimeModule.getStrictMode();
 }
 
 // Event Handling

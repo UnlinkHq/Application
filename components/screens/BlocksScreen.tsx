@@ -15,9 +15,11 @@ import Animated, {
     FadeInDown
 } from 'react-native-reanimated';
 import * as MediaLibrary from 'expo-media-library';
+import * as Haptics from 'expo-haptics';
 import { FocusStorageService, BlockSession } from '../../services/FocusStorageService';
 import { PermissionBanner } from '../ui/PermissionBanner';
 import { useSelection } from '../../context/SelectionContext';
+import { TemporalEngine } from '../../services/TemporalEngine';
 
 const logoSvg = `<svg width="574" height="200" viewBox="0 0 574 200" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M53.97 135.47C62.12 135.47 68.72 132.99 73.75 128.04C78.78 123.09 81.3 116.53 81.3 108.38V43.16H107.68V107.42C107.68 115.57 106.4 122.93 103.84 129.48C101.28 136.04 97.69 141.63 93.05 146.27C88.41 150.91 82.78 154.46 76.14 156.94C69.51 159.41 62.11 160.66 53.96 160.66C45.81 160.66 38.41 159.42 31.78 156.94C25.14 154.46 19.47 150.91 14.75 146.27C10.03 141.63 6.39003 136.04 3.84003 129.48C1.28003 122.93 0 115.57 0 107.42V43.16H26.38V108.38C26.38 116.53 28.94 123.09 34.05 128.04C39.16 133 45.8 135.47 53.95 135.47H53.97Z" fill="white"/>
@@ -80,11 +82,25 @@ export const BlocksScreen = () => {
     };
 
     const handlePlay = async (block: BlockSession) => {
+        // --- OVERLAP VALIDATION ---
+        const libraryBlocks = await FocusStorageService.getLibraryBlocks();
+        const activeScheduled = libraryBlocks.filter(b =>
+            b.type === 'schedule' &&
+            (b as any).enabled !== false &&
+            TemporalEngine.isCurrentlyInSchedule(b)
+        );
+
+        if (activeScheduled.length > 0) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            const activeTitle = activeScheduled[0].title;
+            setShowLockModal(true); // Reuse lock modal for overlap
+            return;
+        }
+
         const session = { ...block, startTime: Date.now() };
         const previousSession = activeSession;
         setActiveSession(session); // Optimistic update
 
-        console.log('--- [DEBUG] INITIATING_FOCUS_SESSION ---');
         try {
             await FocusStorageService.startSession(session);
             refreshData();
@@ -118,7 +134,6 @@ export const BlocksScreen = () => {
             }
         } catch (assetError) {
             // User denied deletion - this is intended behavior
-            console.log('User denied QR signature deletion. Aborting session removal.');
             // We stop here - the focus session is NOT deleted
         }
     };
@@ -131,7 +146,6 @@ export const BlocksScreen = () => {
         } else {
             // navigation.navigate('EditBlock', { blockId: block.id });
             // For now, let's just toast or log
-            console.log('Editing:', block.id);
         }
     };
 

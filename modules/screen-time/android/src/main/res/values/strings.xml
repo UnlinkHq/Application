@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="accessibility_service_label">Unlink App Blocker</string>
-    <string name="accessibility_service_description">Unlink uses accessibility services to identify and block addictive loops in YouTube and Instagram. This allows you to stay focused on your deep work sessions.</string>
+    <string name="accessibility_service_label">Unlink Surgical Content Filter</string>
+    <string name="accessibility_service_description">Unlink uses accessibility solely to detect Shorts/Reels scrolling in YouTube and Instagram. When detected, it redirects users to their Focus Protocol. No personal data, screen content, messages, or credentials are read, collected, or transmitted. This is a user-requested accessibility enhancement for focus management and impulse-control support.</string>
     <string name="device_admin_description">Enabling this prevents Unlink from being uninstalled during focus sessions.</string>
 </resources>

@@ -45,6 +45,7 @@ import SignatureService from '../../services/SignatureService';
 import { FocusStorageService } from '../../services/FocusStorageService';
 import { TimedBreaksConfig } from './TimedBreaksConfig';
 import { AppSelectionModal } from './AppSelectionModal';
+import { TemporalEngine } from '../../services/TemporalEngine';
 
 const { width } = Dimensions.get('window');
 const DIAL_SIZE = width * 0.5;
@@ -218,19 +219,14 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
         if (Platform.OS === 'ios') {
             setNativeIosCount(getSelectionCount());
         }
-        // Android: Sync Admin status & Accessibility
+        // Android: Sync Accessibility
         if (Platform.OS === 'android') {
-            setBlockUninstall(isAdminActive());
             const health = await getEngineHealth();
             setHasAccessibility(health.accessibility);
         }
     }, []);
 
     useEffect(() => {
-        // Initial sync only on mount for Android
-        if (Platform.OS === 'android') {
-            setBlockUninstall(isAdminActive());
-        }
         syncNativeStatus();
 
         const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
@@ -272,6 +268,18 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
                 "PERMISSION REQUIRED",
                 "PROTECT UNINSTALL REQUIRES DEVICE ADMIN PERMISSION. PLEASE ENABLE IT IN THE SECURITY SECTION.",
                 [{ text: "OK" }]
+            );
+            return;
+        }
+
+        // --- TEMPORAL OVERLAP VALIDATION ---
+        const conflict = await TemporalEngine.checkManualOverlap(duration);
+        if (conflict) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert(
+                "SCHEDULE CONFLICT",
+                `This duration overlaps with your scheduled focus: "${conflict.title}". You can start other blocks at other times, but not overlapping this window.`,
+                [{ text: "UNDERSTOOD" }]
             );
             return;
         }

@@ -12,8 +12,7 @@ const OUTPUT_FILE = path.join(__dirname, '../assets/marketplace.gen.json');
  */
 
 function buildRegistry() {
-  console.log('🏗️  Building Extension Registry...');
-  
+
   if (!fs.existsSync(EXTENSIONS_DIR)) {
     console.error('❌  Extensions directory not found!');
     return;
@@ -24,11 +23,11 @@ function buildRegistry() {
 
   folders.forEach(folder => {
     const manifestPath = path.join(EXTENSIONS_DIR, folder, 'extension.json');
-    
+
     if (fs.existsSync(manifestPath)) {
       try {
         const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-        
+
         // Basic validation
         if (!manifest.id || !manifest.title) {
           console.warn(`⚠️  Skipping ${folder}: Missing ID or Title`);
@@ -39,8 +38,7 @@ function buildRegistry() {
           ...manifest,
           folder // Keep track of the folder for dynamic loading later
         });
-        
-        console.log(`✅  Added Extension: ${manifest.title} (v${manifest.version})`);
+
       } catch (err) {
         console.error(`❌  Error parsing manifest for ${folder}:`, err.message);
       }
@@ -54,8 +52,6 @@ function buildRegistry() {
   }
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(extensions, null, 2));
-  console.log(`\n✨  Marketplace Registry generated at: ${OUTPUT_FILE}`);
-  console.log(`📦  Total Extensions: ${extensions.length}`);
 }
 
 buildRegistry();

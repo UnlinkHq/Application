@@ -17,6 +17,8 @@ export const UnifiedPermissionStep: React.FC<UnifiedPermissionStepProps> = ({ on
     });
     const [isLoading, setIsLoading] = useState(true);
     const [showWhyModal, setShowWhyModal] = useState(false);
+    const [showAccessibilityDisclosure, setShowAccessibilityDisclosure] = useState(false);
+    const [disclosureAccepted, setDisclosureAccepted] = useState(false);
 
     useEffect(() => {
         let isMounted = true;
@@ -59,7 +61,13 @@ export const UnifiedPermissionStep: React.FC<UnifiedPermissionStepProps> = ({ on
 
     const [batteryClickCount, setBatteryClickCount] = useState(0);
     const handleAllowUsage = () => ScreenTimeModule.requestUsageStatsPermission();
-    const handleAllowBackground = () => ScreenTimeModule.requestAccessibilityPermission();
+    const handleAllowBackground = () => {
+        if (!disclosureAccepted) {
+            setShowAccessibilityDisclosure(true);
+        } else {
+            ScreenTimeModule.requestAccessibilityPermission();
+        }
+    };
     const handleAllowOverlay = () => ScreenTimeModule.requestOverlayPermission();
     const handleAllowBattery = () => {
         if (batteryClickCount === 0) {
@@ -125,8 +133,8 @@ export const UnifiedPermissionStep: React.FC<UnifiedPermissionStepProps> = ({ on
                     />
                     <View>
                         <PermissionItem 
-                            title="BACKGROUND PERMISSION"
-                            description="Monitors active apps to trigger surgical interventions."
+                            title="BLOCKING ENGINE (ACCESSIBILITY)"
+                            description="Uses Accessibility Service API to detect distracting app usage (like YouTube Shorts) and trigger the focus overlay."
                             isGranted={permissions.background}
                             onPress={handleAllowBackground}
                         />
@@ -167,22 +175,35 @@ export const UnifiedPermissionStep: React.FC<UnifiedPermissionStepProps> = ({ on
                     </View>
                 </View>
 
+                {/* Prominent Disclosure Section (Required for Play Store) */}
+                <View className="mt-8 p-5 bg-[#111111] border border-white/10">
+                    <View className="flex-row items-center mb-3">
+                        <MaterialIcons name="security" size={16} color="#72fe88" />
+                        <Text className="text-[#72fe88] font-headline font-black text-[10px] uppercase tracking-widest ml-2">
+                            PROMINENT DISCLOSURE
+                        </Text>
+                    </View>
+                    <Text className="text-white/40 font-label text-[10px] leading-relaxed">
+                        Unlink uses the <Text className="text-white">Accessibility Service API</Text> to identify when a target application is launched. This information is used solely to display our focus overlay and block access to distracting content. We <Text className="text-white">do not</Text> collect, store, or transmit any user data processed through this service.
+                    </Text>
+                </View>
+
                 {/* Why Section */}
                 <TouchableOpacity 
                     onPress={() => setShowWhyModal(true)}
-                    className="mt-12 flex-row items-center border border-white/10 p-4 bg-white/5"
+                    className="mt-6 flex-row items-center border border-white/10 p-4 bg-white/5"
                 >
                     <View className="w-6 h-6 border border-white/20 items-center justify-center mr-3">
                         <Text className="text-white font-black text-xs">?</Text>
                     </View>
                     <Text className="text-white/60 font-headline font-black text-[10px] uppercase tracking-widest flex-1">
-                        WHY SHOULD I GIVE THESE PERMISSIONS?
+                        PRIVACY & DATA DETAILS
                     </Text>
                     <MaterialIcons name="chevron-right" size={20} color="rgba(255,255,255,0.4)" />
                 </TouchableOpacity>
 
                 <View className="mt-8 items-center">
-                    <Text className="text-white/20 font-label text-[10px] uppercase tracking-widest">TRUSTED BY 10K+ PRODUCTIVE USERS</Text>
+                    <Text className="text-white/20 font-label text-[10px] uppercase tracking-widest">ENFORCED BY THE SURGICAL ENGINE</Text>
                 </View>
             </ScrollView>
 
@@ -261,6 +282,40 @@ export const UnifiedPermissionStep: React.FC<UnifiedPermissionStepProps> = ({ on
                         className="mt-6 bg-white py-4 items-center"
                     >
                         <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">UNDERSTOOD</Text>
+                    </TouchableOpacity>
+                </View>
+            </BottomSheetWrapper>
+            <BottomSheetWrapper
+                visible={showAccessibilityDisclosure}
+                onClose={() => setShowAccessibilityDisclosure(false)}
+                title="PROMINENT DISCLOSURE"
+                snapPoints={['45%']}
+            >
+                <View className="px-6 py-4">
+                    <View className="flex-row items-center mb-4">
+                        <MaterialIcons name="security" size={24} color="#72fe88" />
+                        <Text className="text-[#72fe88] font-headline font-black text-sm uppercase tracking-widest ml-3">
+                            ACCESSIBILITY API CONSENT
+                        </Text>
+                    </View>
+                    <Text className="text-white/80 font-label text-[11px] uppercase tracking-widest mb-6 leading-relaxed">
+                        Unlink uses the <Text className="text-white font-bold">Accessibility Service API</Text> to identify when a target application is launched. This information is used solely to display our focus overlay and block access to distracting content. 
+                        
+                        We <Text className="text-white font-bold">do not</Text> collect, store, or transmit any user data processed through this service.
+                    </Text>
+
+                    <TouchableOpacity 
+                        onPress={() => {
+                            setDisclosureAccepted(true);
+                            setShowAccessibilityDisclosure(false);
+                            // Give modal time to close before opening system settings
+                            setTimeout(() => {
+                                ScreenTimeModule.requestAccessibilityPermission();
+                            }, 300);
+                        }}
+                        className="bg-white py-4 items-center"
+                    >
+                        <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">I HAVE READ AND ACCEPT</Text>
                     </TouchableOpacity>
                 </View>
             </BottomSheetWrapper>

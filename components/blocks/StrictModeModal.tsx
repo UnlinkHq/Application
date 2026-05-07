@@ -14,6 +14,7 @@ interface StrictModeOption {
     description: string;
     icon: keyof typeof MaterialCommunityIcons.glyphMap;
     color: string;
+    isDisabled?: boolean;
 }
 
 const STRICT_MODES: StrictModeOption[] = [
@@ -43,7 +44,8 @@ const STRICT_MODES: StrictModeOption[] = [
         title: 'Money Challenge (Extreme)',
         description: 'Lose money if you stop the session early.',
         icon: 'cash-lock',
-        color: '#ffffff'
+        color: '#ffffff',
+        isDisabled: true
     }
 ];
 
@@ -76,6 +78,11 @@ export const StrictModeModal = ({
             setSelectedMode(currentMode);
         }
     }, [visible, currentMode]);
+
+    const handleSelectMode = (mode: StrictModeOption) => {
+        if (mode.isDisabled) return;
+        setSelectedMode(mode.id);
+    };
 
     const handleSendVerificationCode = async () => {
         if (!emailAddress || isSendingCode) {
@@ -150,7 +157,7 @@ export const StrictModeModal = ({
         onClose();
     };
 
-    const isConfirmDisabled = selectedMode === 'mom_test' && !isVerified;
+    const isConfirmDisabled = (selectedMode === 'mom_test' && !isVerified) || selectedMode === 'money';
 
     return (
         <BottomSheetWrapper
@@ -172,23 +179,30 @@ export const StrictModeModal = ({
                     {STRICT_MODES.map((mode) => (
                         <TouchableOpacity
                             key={mode.id}
-                            onPress={() => setSelectedMode(mode.id)}
-                            activeOpacity={0.7}
-                            className={`flex-row items-center p-5 border-2 ${selectedMode === mode.id ? 'border-white bg-[#121212]' : 'border-white/5 bg-[#121212]'}`}
+                            onPress={() => handleSelectMode(mode)}
+                            activeOpacity={mode.isDisabled ? 1 : 0.7}
+                            className={`flex-row items-center p-5 border-2 ${mode.isDisabled ? 'opacity-30 border-white/5 bg-[#050505]' : (selectedMode === mode.id ? 'border-white bg-[#121212]' : 'border-white/5 bg-[#121212]')}`}
                         >
-                            <View className="w-12 h-12 bg-white/10 items-center justify-center mr-4">
-                                <MaterialCommunityIcons name={mode.icon} size={24} color={mode.color} />
+                            <View className="w-12 h-12 bg-white/5 items-center justify-center mr-4">
+                                <MaterialCommunityIcons name={mode.icon} size={24} color={mode.isDisabled ? "#333" : mode.color} />
                             </View>
                             <View className="flex-1 mr-4">
-                                <Text className="text-white font-headline font-black text-sm uppercase tracking-widest">
-                                    {mode.title}
-                                </Text>
-                                <Text className="text-white/40 font-label text-[10px] mt-1 leading-tight">
+                                <View className="flex-row items-center gap-2">
+                                    <Text className={`font-headline font-black text-sm uppercase tracking-widest ${mode.isDisabled ? 'text-white/20' : 'text-white'}`}>
+                                        {mode.title}
+                                    </Text>
+                                    {mode.isDisabled && (
+                                        <View className="bg-white/5 px-1.5 py-0.5 border border-white/10">
+                                            <Text className="text-white/20 font-label text-[7px] uppercase tracking-widest">SOON</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text className={`font-label text-[10px] mt-1 leading-tight ${mode.isDisabled ? 'text-white/10' : 'text-white/40'}`}>
                                     {mode.description}
                                 </Text>
                             </View>
-                            <View className={`w-6 h-6 border-2 items-center justify-center ${selectedMode === mode.id ? 'bg-white border-white' : 'bg-transparent border-white/20'}`}>
-                                {selectedMode === mode.id && (
+                            <View className={`w-6 h-6 border-2 items-center justify-center ${mode.isDisabled ? 'border-white/0' : (selectedMode === mode.id ? 'bg-white border-white' : 'bg-transparent border-white/20')}`}>
+                                {selectedMode === mode.id && !mode.isDisabled && (
                                     <MaterialIcons name="check" size={14} color="black" />
                                 )}
                             </View>
@@ -333,7 +347,7 @@ export const StrictModeModal = ({
                     onPress={handleConfirm}
                     disabled={isConfirmDisabled}
                 >
-                    <Text className={`font-headline font-black text-lg uppercase tracking-[0.2em] ${isConfirmDisabled || selectedMode === 'money' ? 'text-white/20' : 'text-black'}`}>
+                    <Text className={`font-headline font-black text-lg uppercase tracking-[0.2em] ${isConfirmDisabled ? 'text-white/20' : 'text-black'}`}>
                         {selectedMode === 'mom_test' && !isVerified ? 'VERIFICATION REQUIRED' : 
                          selectedMode === 'money' ? 'UNDER DEVELOPMENT' : 'Select Protocol'}
                     </Text>
