@@ -17,6 +17,8 @@ class BootReceiver : BroadcastReceiver() {
 
             val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
             val expiryTime = prefs.getLong("block_expiry_time", 0L)
+            val startTime = prefs.getLong("session_start_time", 0L)
+            val durationMins = prefs.getLong("session_duration_mins", 0L)
             val now = System.currentTimeMillis()
 
             if (expiryTime > now) {
@@ -46,10 +48,9 @@ class BootReceiver : BroadcastReceiver() {
             // Hard reboot watchdog: detect if session should have expired during the downtime
             val lastShutdown = prefs.getLong("last_shutdown_watchdog", 0L)
             val shutdownGraceMs = 10_000L
-            if (startTime > 0 && durationMins > 0 && lastShutdown > 0) {
-                val expectedExpiry = startTime + (durationMins * 60 * 1000L)
+            if (expiryTime > 0 && lastShutdown > 0) {
                 val bootTime = System.currentTimeMillis()
-                if (bootTime > expectedExpiry + shutdownGraceMs) {
+                if (bootTime > expiryTime + shutdownGraceMs) {
                     val suspiciousCount = prefs.getInt("suspicious_reboot_count", 0) + 1
                     prefs.edit().putInt("suspicious_reboot_count", suspiciousCount)
                         .putLong("last_suspicious_reboot_time", bootTime).apply()
