@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Platform, AppState, RefreshControl, Image, InteractionManager, Animated, DeviceEventEmitter } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Platform, AppState, RefreshControl, Image, InteractionManager, Animated, DeviceEventEmitter, Modal, TextInput, KeyboardAvoidingView } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import * as Haptics from 'expo-haptics';
 import { useBlocking } from '../../context/BlockingContext';
@@ -49,6 +49,20 @@ const ActiveProtocolStatus = ({
     };
 
     const [remaining, setRemaining] = useState(0);
+    const [isEmergencyModalVisible, setIsEmergencyModalVisible] = useState(false);
+    const [emergencyPin, setEmergencyPin] = useState('');
+    const [emergencyError, setEmergencyError] = useState('');
+
+    const handleEmergencySubmit = () => {
+        if (emergencyPin === '9846') {
+            setIsEmergencyModalVisible(false);
+            setEmergencyPin('');
+            setEmergencyError('');
+            onEmergencyStop();
+        } else {
+            setEmergencyError('Incorrect PIN. Call Shahil (9846786928).');
+        }
+    };
 
     useEffect(() => {
         const update = () => {
@@ -205,13 +219,64 @@ const ActiveProtocolStatus = ({
             {/* Mission Override (Dev Only) */}
             <TouchableOpacity
                 activeOpacity={0.7}
-                onPress={onEmergencyStop}
+                onPress={() => setIsEmergencyModalVisible(true)}
                 className="mt-3 h-9 items-center justify-center border border-red-500/10 bg-red-500/5"
             >
                 <Text className="text-red-500/60 font-headline font-black text-[8px] uppercase tracking-[0.25em]">
                     Emergency Force Stop
                 </Text>
             </TouchableOpacity>
+
+            <Modal visible={isEmergencyModalVisible} transparent animationType="fade">
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-black/90 justify-center items-center px-6">
+                    <View className="bg-[#111] border border-white/20 p-6 w-full max-w-sm rounded-xl">
+                        <Text className="text-white font-headline font-black text-xl uppercase tracking-widest mb-2 text-center">Beta Override</Text>
+                        <Text className="text-white/60 font-label text-xs text-center mb-6 leading-5">
+                            This is a beta test emergency override. If this is a real emergency, call Shahil at 9846786928 to get the override PIN.
+                        </Text>
+
+                        <TextInput
+                            className="bg-black border border-white/20 text-white font-headline font-black text-2xl text-center py-4 mb-2 rounded-lg"
+                            placeholder="ENTER PIN"
+                            placeholderTextColor="#333"
+                            keyboardType="number-pad"
+                            secureTextEntry
+                            value={emergencyPin}
+                            onChangeText={(text) => {
+                                setEmergencyPin(text);
+                                setEmergencyError('');
+                            }}
+                            autoFocus
+                        />
+
+                        {!!emergencyError && (
+                            <Text className="text-red-500 font-label text-[10px] uppercase text-center mb-4 tracking-widest">{emergencyError}</Text>
+                        )}
+                        {!emergencyError && <View className="h-4 mb-4" />}
+
+                        <View className="flex-row gap-3">
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                onPress={() => {
+                                    setIsEmergencyModalVisible(false);
+                                    setEmergencyPin('');
+                                    setEmergencyError('');
+                                }}
+                                className="flex-1 py-4 border border-white/20 items-center justify-center rounded-lg"
+                            >
+                                <Text className="text-white/60 font-headline font-black text-[10px] uppercase tracking-widest">Cancel</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                onPress={handleEmergencySubmit}
+                                className="flex-1 py-4 border border-red-500 bg-red-500/10 items-center justify-center rounded-lg"
+                            >
+                                <Text className="text-red-500 font-headline font-black text-[10px] uppercase tracking-widest">Force Stop</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </View>
     );
 };
@@ -288,7 +353,6 @@ export const HomeScreen = () => {
             }
 
             const active = await FocusStorageService.getActiveSession();
-            console.log(`--- [HOME_SCREEN] ACTIVE_SESSION_CHECK: ${active ? active.title : 'NONE'} ---`);
             setActiveSession(active);
         };
 
@@ -320,12 +384,10 @@ export const HomeScreen = () => {
         // Instant Sync: Listen for native break toggles & data refresh signals
         const { addNativeBreakListener } = require('../../modules/screen-time');
         const nativeSub = addNativeBreakListener?.((event: any) => {
-            console.log('[HomeScreen] Received native break request sync');
             checkActiveSession();
         });
 
         const refreshSub = DeviceEventEmitter.addListener('UNLINK REFRESH DATA', () => {
-            console.log('[HomeScreen] Received refresh signal');
             checkActiveSession();
         });
 
@@ -346,7 +408,6 @@ export const HomeScreen = () => {
             const elapsedBreakMs = Date.now() - activeSession.breakStartTime;
             const remainingBreakMs = Math.max(0, totalBreakMs - elapsedBreakMs);
 
-            console.log(`--- [BREAK_TIMER] RESUMING_IN: ${Math.round(remainingBreakMs / 1000)}s ---`);
 
             if (remainingBreakMs === 0) {
                 handleToggleBreak();

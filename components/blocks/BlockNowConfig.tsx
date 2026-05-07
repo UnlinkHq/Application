@@ -219,19 +219,14 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
         if (Platform.OS === 'ios') {
             setNativeIosCount(getSelectionCount());
         }
-        // Android: Sync Admin status & Accessibility
+        // Android: Sync Accessibility
         if (Platform.OS === 'android') {
-            setBlockUninstall(isAdminActive());
             const health = await getEngineHealth();
             setHasAccessibility(health.accessibility);
         }
     }, []);
 
     useEffect(() => {
-        // Initial sync only on mount for Android
-        if (Platform.OS === 'android') {
-            setBlockUninstall(isAdminActive());
-        }
         syncNativeStatus();
 
         const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {

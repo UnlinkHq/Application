@@ -8,13 +8,12 @@ export class TemporalEngine {
 
     static start() {
         if (this.interval) return;
-        
-        console.log('--- [TEMPORAL_ENGINE] ACTIVATED ---');
+
         // Run every 10 seconds to be highly responsive to schedule boundaries
         this.interval = setInterval(() => {
             this.checkAndDeploySchedules();
         }, 10000);
-        
+
         // Initial run
         this.checkAndDeploySchedules();
         this.syncSchedulesToNative();
@@ -24,10 +23,9 @@ export class TemporalEngine {
         try {
             const library = await FocusStorageService.getLibraryBlocks();
             const schedules = library.filter(b => b.type === 'schedule');
-            
+
             const { setNativeSchedules } = require('../modules/screen-time');
             setNativeSchedules(JSON.stringify(schedules));
-            console.log(`--- [TEMPORAL_ENGINE] NATIVE_SYNC: ${schedules.length} schedules pushed to Android ---`);
         } catch (e) {
             console.error('TemporalEngine: Native sync failed', e);
         }
@@ -42,12 +40,11 @@ export class TemporalEngine {
 
     private static async checkAndDeploySchedules() {
         const activeSession = await FocusStorageService.getActiveSession();
-        
+
         // AUTO_RELEASE_LOGIC: If a scheduled session is active but the window has closed, terminate it.
         if (activeSession && activeSession.type === 'schedule') {
             const isStillInWindow = this.isCurrentlyInSchedule(activeSession);
             if (!isStillInWindow) {
-                console.log(`--- [TEMPORAL_ENGINE] AUTO_RELEASING_SCHEDULE: ${activeSession.title} (Window Closed) ---`);
                 await FocusStorageService.stopSession(true); // Complete session
                 return;
             }
@@ -58,10 +55,6 @@ export class TemporalEngine {
 
         const library = await FocusStorageService.getLibraryBlocks();
         const schedules = library.filter(b => b.type === 'schedule' && (b as any).enabled !== false);
-        
-        if (library.length > 0) {
-            console.log(`--- [TEMPORAL_ENGINE] SCANNING_LIBRARY: ${library.length} blocks, ${schedules.length} schedules found ---`);
-        }
 
         const now = new Date();
         const dayStr = now.toDateString();
@@ -72,27 +65,29 @@ export class TemporalEngine {
                 // Check if this specific window was already manually stopped today
                 const stopRecord = await this.getStopRecord(block.id);
                 if (stopRecord === dayStr) {
-                    console.log(`--- [TEMPORAL_ENGINE] SKIP_DEPLOY: Manual Stop Record Found for Today (${block.title}) ---`);
-                    continue; 
+                    continue;
                 }
 
-                console.log(`--- [TEMPORAL_ENGINE] AUTO_DEPLOYING_SCHEDULE: ${block.title} ---`);
-                
+                const [startH, startM] = block.schedule!.startTime.split(':').map(Number);
                 const [endH, endM] = block.schedule!.endTime.split(':').map(Number);
+                const startMins = startH * 60 + startM;
+                const endMins = endH * 60 + endM;
+                const isMidnightCrossing = endMins <= startMins;
+
                 const endDate = new Date(now);
                 endDate.setHours(endH, endM, 0, 0);
+                if (isMidnightCrossing) {
+                    endDate.setDate(endDate.getDate() + 1);
+                }
                 const diffMs = endDate.getTime() - now.getTime();
                 const durationMins = Math.max(1, Math.ceil(diffMs / (1000 * 60)));
-
-                console.log(`--- [TEMPORAL_ENGINE] CALCULATED_DURATION: ${durationMins}m ---`);
-                console.log(`--- [TEMPORAL_ENGINE] TARGET_APPS: ${block.apps.join(', ')} ---`);
 
                 await FocusStorageService.startSession({
                     ...block,
                     durationMins
                 });
                 DeviceEventEmitter.emit('UNLINK REFRESH DATA');
-                break; 
+                break;
             }
         }
     }
@@ -116,7 +111,7 @@ export class TemporalEngine {
         try {
             const { setNativeStopRecord } = require('../modules/screen-time');
             setNativeStopRecord(id, currentDay);
-        } catch (e) {}
+        } catch (e) { }
     }
 
     public static isCurrentlyInSchedule(block: BlockSession): boolean {
@@ -172,7 +167,7 @@ export class TemporalEngine {
 
             const [startH, startM] = block.schedule.startTime.split(':').map(Number);
             const [endH, endM] = block.schedule.endTime.split(':').map(Number);
-            
+
             const schStart = startH * 60 + startM;
             const schEnd = endH * 60 + endM;
 

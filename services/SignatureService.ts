@@ -36,11 +36,10 @@ const SignatureService = {
 
             // 4. Save file to Media Library
             const asset = await MediaLibrary.createAssetAsync(fileUri);
-            
+
             // 5. Cleanup temporary file
             await FileSystem.deleteAsync(fileUri, { idempotent: true });
 
-            console.log(`--- [SIGNATURE_SERVICE] PROTOCOL_SAVED: ${asset.id} ---`);
             return asset.id;
         } catch (error) {
             console.error('--- [SIGNATURE_SERVICE] DEPLOYMENT_FAILURE ---', error);

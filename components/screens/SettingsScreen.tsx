@@ -18,7 +18,7 @@ export const SettingsScreen = () => {
     const checkStatus = useCallback(async () => {
         const session = await FocusStorageService.getActiveSession();
         setActiveSession(session);
-        
+
         if (Platform.OS === 'android') {
             const active = isAdminActive();
             setIsUninstallProtected(active);
@@ -28,13 +28,13 @@ export const SettingsScreen = () => {
     useFocusEffect(
         useCallback(() => {
             checkStatus();
-            
+
             const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
                 if (nextAppState === 'active') {
                     checkStatus();
                 }
             });
-            
+
             return () => subscription.remove();
         }, [checkStatus])
     );
@@ -125,8 +125,8 @@ export const SettingsScreen = () => {
                                 <Text className="font-label text-sm uppercase tracking-widest text-white">Prevent Uninstall</Text>
                                 {isSessionLocking && (
                                     <View className="flex-row items-center mt-1">
-                                         <MaterialIcons name="lock" size={10} color="#72fe88" />
-                                         <Text className="text-[#72fe88] font-label text-[8px] uppercase ml-1">LOCKED BY ACTIVE SESSION</Text>
+                                        <MaterialIcons name="lock" size={10} color="#72fe88" />
+                                        <Text className="text-[#72fe88] font-label text-[8px] uppercase ml-1">LOCKED BY ACTIVE SESSION</Text>
                                     </View>
                                 )}
                             </View>
@@ -135,16 +135,16 @@ export const SettingsScreen = () => {
                             <View className={`w-4 h-4 ${isUninstallProtected || isSessionLocking ? 'bg-[#72fe88]' : 'bg-white'}`} />
                         </View>
                     </TouchableOpacity>
-                    <SettingsItem 
-                        icon="branding-watermark" 
-                        label="Customize Block Screen" 
+                    <SettingsItem
+                        icon="branding-watermark"
+                        label="Customize Block Screen"
                         rightElement={
                             <View className="bg-blue-500/10 px-1.5 py-0.5 border border-blue-500/20">
                                 <Text className="text-blue-500 font-label text-[8px] font-black tracking-widest">BETA</Text>
                             </View>
                         }
-                        onPress={() => { }} 
-                        isLast 
+                        onPress={() => { }}
+                        isLast
                     />
                 </View>
 
@@ -175,22 +175,20 @@ export const SettingsScreen = () => {
                         "Unlink is a labor of love to help us reclaim our focus. We are building this journey together—if you want to see the hard work behind the scenes, join our social channels."
                     </Text>
                     <View className="flex-row gap-4">
-                        <TouchableOpacity 
-                            activeOpacity={0.7} 
+                        <TouchableOpacity
+                            activeOpacity={0.7}
                             className="flex-row items-center gap-2 p-2"
                             onPress={() => {
-                                console.log('Opening Telegram...');
                                 Linking.openURL('https://t.me/shahileeee').catch(err => console.error("Couldn't load page", err));
                             }}
                         >
                             <FontAwesome5 name="telegram-plane" size={18} color="white" />
                             <Text className="text-white font-label text-[10px] uppercase underline tracking-tighter">@shahileeee</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity 
-                            activeOpacity={0.7} 
+                        <TouchableOpacity
+                            activeOpacity={0.7}
                             className="flex-row items-center gap-2 p-2"
                             onPress={() => {
-                                console.log('Opening Instagram...');
                                 Linking.openURL('https://instagram.com/_shahilee').catch(err => console.error("Couldn't load page", err));
                             }}
                         >

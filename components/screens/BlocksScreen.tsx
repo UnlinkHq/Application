@@ -15,6 +15,7 @@ import Animated, {
     FadeInDown
 } from 'react-native-reanimated';
 import * as MediaLibrary from 'expo-media-library';
+import * as Haptics from 'expo-haptics';
 import { FocusStorageService, BlockSession } from '../../services/FocusStorageService';
 import { PermissionBanner } from '../ui/PermissionBanner';
 import { useSelection } from '../../context/SelectionContext';
@@ -83,9 +84,9 @@ export const BlocksScreen = () => {
     const handlePlay = async (block: BlockSession) => {
         // --- OVERLAP VALIDATION ---
         const libraryBlocks = await FocusStorageService.getLibraryBlocks();
-        const activeScheduled = libraryBlocks.filter(b => 
-            b.type === 'schedule' && 
-            (b as any).enabled !== false && 
+        const activeScheduled = libraryBlocks.filter(b =>
+            b.type === 'schedule' &&
+            (b as any).enabled !== false &&
             TemporalEngine.isCurrentlyInSchedule(b)
         );
 
@@ -93,7 +94,6 @@ export const BlocksScreen = () => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
             const activeTitle = activeScheduled[0].title;
             setShowLockModal(true); // Reuse lock modal for overlap
-            console.log(`--- [BLOCKS_SCREEN] BLOCKED_BY_SCHEDULE: ${activeTitle} ---`);
             return;
         }
 
@@ -101,7 +101,6 @@ export const BlocksScreen = () => {
         const previousSession = activeSession;
         setActiveSession(session); // Optimistic update
 
-        console.log('--- [DEBUG] INITIATING_FOCUS_SESSION ---');
         try {
             await FocusStorageService.startSession(session);
             refreshData();
@@ -135,7 +134,6 @@ export const BlocksScreen = () => {
             }
         } catch (assetError) {
             // User denied deletion - this is intended behavior
-            console.log('User denied QR signature deletion. Aborting session removal.');
             // We stop here - the focus session is NOT deleted
         }
     };
@@ -148,7 +146,6 @@ export const BlocksScreen = () => {
         } else {
             // navigation.navigate('EditBlock', { blockId: block.id });
             // For now, let's just toast or log
-            console.log('Editing:', block.id);
         }
     };
 

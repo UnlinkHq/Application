@@ -16,10 +16,9 @@ const SDKProviderInstance: ScreenBreakSDK = {
     todayTotalMinutes: 0,
     appUsage: {},
   },
-  
+
   visuals: {
     setGrayscale: async (level: number) => {
-      console.log(`[SDK] Setting Grayscale to: ${level}`);
       // Send the request over the bridge to the Android Accessibility Service
       if (NativeModules.ScreenBreak) {
         NativeModules.ScreenBreak.setGrayscale(level);
@@ -28,10 +27,8 @@ const SDKProviderInstance: ScreenBreakSDK = {
       }
     },
     setBlueLightFilter: async (enabled: boolean) => {
-      console.log(`[SDK] Blue Light Filter: ${enabled}`);
     },
     openAccessibilitySettings: async () => {
-      console.log(`[SDK] Opening Accessibility Settings`);
       if (NativeModules.ScreenBreak && NativeModules.ScreenBreak.openAccessibilitySettings) {
         NativeModules.ScreenBreak.openAccessibilitySettings();
       } else {
@@ -46,17 +43,15 @@ const SDKProviderInstance: ScreenBreakSDK = {
       return false;
     }
   },
-  
+
   challenges: {
     triggerChallenge: async (id: string) => {
-      console.log(`[SDK] Triggering Challenge: ${id}`);
       return true;
     },
     blockApp: async (bundleId: string) => {
-      console.log(`[SDK] Blocking App: ${bundleId}`);
     }
   },
-  
+
   onUpdate: (callback) => {
     listeners.push(callback);
     return () => {

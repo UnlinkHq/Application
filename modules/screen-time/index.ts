@@ -48,6 +48,8 @@ interface ScreenTimeModuleInterface {
     setGlobalBrainrot(score: number): void;
     setNativeSchedules(schedulesJson: string): void;
     setNativeStopRecord(blockId: string, dateStr: string): void;
+    setStrictMode(enabled: boolean): void;
+    getStrictMode(): Promise<boolean>;
 
     // iOS Shield functions
     activateShield(): void;
@@ -106,7 +108,9 @@ try {
         updateGlobalBrainrot: () => { },
         setGlobalBrainrot: () => { },
         setNativeSchedules: () => { },
-        setNativeStopRecord: () => { }
+        setNativeStopRecord: () => { },
+        setStrictMode: () => { },
+        getStrictMode: async () => false
     };
 }
 
@@ -262,6 +266,15 @@ export function setNativeSchedules(schedulesJson: string): void {
 
 export function setNativeStopRecord(blockId: string, dateStr: string): void {
     ScreenTimeModule.setNativeStopRecord(blockId, dateStr);
+}
+
+export function setStrictMode(enabled: boolean): void {
+    ScreenTimeModule.setStrictMode(enabled);
+}
+
+export async function getStrictMode(): Promise<boolean> {
+    if (Platform.OS !== 'android') return false;
+    return await ScreenTimeModule.getStrictMode();
 }
 
 // Event Handling

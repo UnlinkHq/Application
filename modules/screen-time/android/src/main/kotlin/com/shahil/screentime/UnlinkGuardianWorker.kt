@@ -71,8 +71,15 @@ class UnlinkGuardianWorker(context: Context, workerParams: WorkerParameters) :
                 val startMins = parseTimeToMinutes(schedule.optString("startTime", ""))
                 val endMins = parseTimeToMinutes(schedule.optString("endTime", ""))
 
-                if (currentMinutes in startMins until endMins) {
-                    return true
+                if (endMins <= startMins) {
+                    // Midnight crossing schedule
+                    if (currentMinutes >= startMins || currentMinutes < endMins) {
+                        return true
+                    }
+                } else {
+                    if (currentMinutes in startMins until endMins) {
+                        return true
+                    }
                 }
             }
         } catch (e: Exception) {

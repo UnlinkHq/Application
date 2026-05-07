@@ -57,8 +57,6 @@ export class FocusStorageService {
     // --- Active Session Management ---
 
     static async startSession(rawSession: any): Promise<void> {
-        console.log('--- [STORAGE_ENGINE] DEPLOYING_PROTOCOL ---');
-        console.log(JSON.stringify(rawSession, null, 2));
 
         // 1. Instantly migrate/harden the session so there's no missing data
         const session = FocusStorageService.migrateSession(rawSession);
@@ -73,7 +71,6 @@ export class FocusStorageService {
     private static async syncNativeLayer(session: BlockSession): Promise<void> {
         
         if (Platform.OS === 'android') {
-            console.log(`--- [NATIVE_SYNC] SYNCHRONIZING_PROTOCOL: ${session.id} ---`);
             ScreenTime.setBlockingSuspended(false);
 
             // Send config BEFORE blocks so the background service is ready
@@ -89,21 +86,34 @@ export class FocusStorageService {
                     igFinite: session.scrollingProtocol?.instagram?.finiteFeed ?? true
                 }
             });
-            ScreenTime.setUninstallProtection(session.strictnessConfig?.isUninstallProtected ?? false);
-            
             // Calculate duration based on session type
             let durationMins = session.durationMins || 0;
             if (session.type === 'schedule' && session.schedule) {
                 try {
                     const now = new Date();
                     const [endH, endM] = session.schedule.endTime.split(':').map(Number);
-                    const endDate = new Date(now);
+                    const [startH, startM] = session.schedule.startTime.split(':').map(Number);
+                    
+                    let endDate = new Date(now);
                     endDate.setHours(endH, endM, 0, 0);
                     
+                    // If end time is before start time, it means it ends the next day
+                    const startTotalMins = startH * 60 + startM;
+                    const endTotalMins = endH * 60 + endM;
+                    
+                    if (endTotalMins <= startTotalMins) {
+                        // Ends tomorrow. If we are currently in the late-night part (after midnight), 
+                        // now.getHours() will be small. If we are in the pre-midnight part, it will be large.
+                        if (now.getHours() >= startH) {
+                            endDate.setDate(endDate.getDate() + 1);
+                        }
+                    } else if (endDate.getTime() < now.getTime()) {
+                        // This case handles when the calculated end date is already in the past for a same-day schedule
+                        // (should not happen if isCurrentlyInSchedule is true, but for safety)
+                    }
+                    
                     const diffMs = endDate.getTime() - now.getTime();
-                    // Use Math.ceil to ensure we cover the entire window and don't expire prematurely
                     durationMins = Math.max(1, Math.ceil(diffMs / (1000 * 60)));
-                    console.log(`--- [NATIVE_SYNC] SCHEDULE_REMAINING: ${durationMins}m ---`);
                 } catch (e) {
                     console.error('Temporal Calculation Failure:', e);
                 }
@@ -118,13 +128,12 @@ export class FocusStorageService {
                 hardBlockedApps = hardBlockedApps.filter((app: string) => app !== 'com.instagram.android');
             }
 
-            console.log(`--- [NATIVE_SYNC] FINAL_DURATION_TO_NATIVE: ${durationMins}m ---`);
-            console.log(`--- [NATIVE_SYNC] FINAL_APPS_TO_NATIVE: ${hardBlockedApps.join(', ')} ---`);
-            
             ScreenTime.setSessionDuration(durationMins);
             ScreenTime.setBlockedApps(hardBlockedApps, "FORCE_FOCUS_ACTIVE", "");
             const breaksLeft = (session.timedBreaks?.allowedCount || 0) - (session.timedBreaks?.usedCount || 0);
             ScreenTime.setBreaksRemaining(Math.max(0, breaksLeft));
+            const strictModeActive = session.strictnessConfig?.isUninstallProtected || false;
+            ScreenTime.setStrictMode(strictModeActive);
         }
 
         if (Platform.OS === 'ios') {
@@ -150,7 +159,6 @@ export class FocusStorageService {
                     const baseReward = -(durationMins / 10); 
                     const finalReward = isSurgical ? baseReward * 2 : baseReward;
 
-                    console.log(`--- [REWARD_ENGINE] SESSION_COMPLETED: ${finalReward}% brain improvement ---`);
                     ScreenTime.updateGlobalBrainrot(finalReward);
                     
                     // Unified Feedback
@@ -164,7 +172,6 @@ export class FocusStorageService {
                 } else {
                     // PENALTY_LOGIC: Manual stop penalty
                     const penalty = 3.0;
-                    console.log(`--- [PENALTY_ENGINE] SESSION_ABORTED: +${penalty}% brain rot ---`);
                     ScreenTime.updateGlobalBrainrot(penalty);
 
                     // Unified Feedback
@@ -184,7 +191,7 @@ export class FocusStorageService {
         if (Platform.OS === 'android') {
             ScreenTime.setBlockingSuspended(false);
             ScreenTime.stopBlockingService();
-            ScreenTime.setUninstallProtection(false);
+            ScreenTime.setStrictMode(false);
         } else {
             ScreenTime.deactivateShield();
         }
@@ -216,7 +223,6 @@ export class FocusStorageService {
             
             // PENALTY_LOGIC: Slight brainrot increase for taking a break
             ScreenTime.updateGlobalBrainrot(2.0); // +2% rot penalty
-            console.log('--- [PENALTY_ENGINE] BREAK_TAKEN: +2.0% brain rot ---');
 
             // Feedback for Break
             await AsyncStorage.setItem('@unlink_gamification_feedback', JSON.stringify({
@@ -288,8 +294,7 @@ export class FocusStorageService {
                         const { TemporalUtils } = require('../utils/TemporalUtils');
                         const isStillInWindow = TemporalUtils.isCurrentlyInSchedule(session);
                         if (!isStillInWindow) {
-                            console.log(`--- [STORAGE_ENGINE] AUTO_RELEASING_SCHEDULE: ${session.title} (Window Closed) ---`);
-                            await FocusStorageService.stopSession(true); 
+                            await FocusStorageService.stopSession(true);
                             return null;
                         }
                     }
@@ -299,7 +304,6 @@ export class FocusStorageService {
                     const breakElapsed = Date.now() - session.breakStartTime;
 
                     if (breakElapsed >= breakDurationMs) {
-                        console.log('--- [AUTO_LOCK] BREAK_EXPIRED_PROTOCOL_RE_ENFORCED ---');
                         const locked = await FocusStorageService.applyToggleBreak(session);
                         return locked || null;
                     }
@@ -323,9 +327,6 @@ export class FocusStorageService {
     }
 
     static async saveBlock(block: BlockSession): Promise<void> {
-        console.log('--- [STORAGE_ENGINE] PERSISTING_NEW_BLOCK_PROTOCOL ---');
-        console.log(JSON.stringify(block, null, 2));
-        
         const library = await this.getLibraryBlocks();
         const exists = library.findIndex(b => b.id === block.id);
 
@@ -367,8 +368,18 @@ export class FocusStorageService {
             durationMins: session.durationMins || (session.type === 'schedule' && session.schedule ? (() => {
                 const now = new Date();
                 const [endH, endM] = session.schedule.endTime.split(':').map(Number);
-                const endDate = new Date(now);
+                const [startH, startM] = session.schedule.startTime.split(':').map(Number);
+                
+                let endDate = new Date(now);
                 endDate.setHours(endH, endM, 0, 0);
+                
+                const startTotalMins = startH * 60 + startM;
+                const endTotalMins = endH * 60 + endM;
+                
+                if (endTotalMins <= startTotalMins && now.getHours() >= startH) {
+                    endDate.setDate(endDate.getDate() + 1);
+                }
+                
                 const diffMs = endDate.getTime() - now.getTime();
                 return Math.max(1, Math.ceil(diffMs / (1000 * 60)));
             })() : 60),

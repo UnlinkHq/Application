@@ -191,6 +191,21 @@ class ScreenTimeModule : Module() {
       return@Function null
     }
 
+    Function("setStrictMode") { enabled: Boolean ->
+        appContext.reactContext?.let { context ->
+            val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+            prefs.edit().putBoolean("strict_mode", enabled).commit()
+            UnlinkAccessibilityService.instance?.refreshServiceConfig()
+        }
+        return@Function null
+    }
+
+    AsyncFunction("getStrictMode") {
+        val context = appContext.reactContext ?: return@AsyncFunction false
+        val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        return@AsyncFunction prefs.getBoolean("strict_mode", false)
+    }
+
     Function("updateGlobalBrainrot") { delta: Double ->
         appContext.reactContext?.let { context ->
             val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)

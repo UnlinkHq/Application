@@ -10,22 +10,24 @@ export class TemporalUtils {
         const currentDay = dayNames[now.getDay()];
 
         if (!block.schedule.days.includes(currentDay)) {
-            console.log(`--- [TEMPORAL_UTILS] DAY_MISMATCH: ${currentDay} not in ${block.schedule.days.join(', ')} for ${block.title} ---`);
             return false;
         }
 
         const currentTime = now.getHours() * 60 + now.getMinutes();
         const [startH, startM] = block.schedule.startTime.split(':').map(Number);
         const [endH, endM] = block.schedule.endTime.split(':').map(Number);
-        
+
         const startTimeInMins = startH * 60 + startM;
         const endTimeInMins = endH * 60 + endM;
 
-        const isInWindow = currentTime >= startTimeInMins && currentTime < endTimeInMins;
+        // Handle midnight crossing (e.g., 22:00-02:00 where end < start)
+        const isInWindow = endTimeInMins <= startTimeInMins
+            ? currentTime >= startTimeInMins || currentTime < endTimeInMins
+            : currentTime >= startTimeInMins && currentTime < endTimeInMins;
+
         if (isInWindow) {
-            console.log(`--- [TEMPORAL_UTILS] WINDOW_MATCH: ${currentTime} mins inside ${startTimeInMins}-${endTimeInMins} ---`);
         }
-        
+
         return isInWindow;
     }
 }

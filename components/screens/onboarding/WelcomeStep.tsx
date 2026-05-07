@@ -12,7 +12,6 @@ export const WelcomeStep: React.FC<WelcomeStepProps> = ({ onNext }) => {
     try {
       await Notifications.requestPermissionsAsync();
     } catch (e) {
-      console.log('Permission request failed or ignored', e);
     }
     onNext();
   };

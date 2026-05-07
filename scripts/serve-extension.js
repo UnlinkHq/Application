@@ -36,12 +36,11 @@ const server = http.createServer((req, res) => {
   }
 
   const filePath = path.join(EXTENSION_PATH, req.url === '/' ? 'extension.json' : req.url);
-  
+
   if (fs.existsSync(filePath)) {
     const content = fs.readFileSync(filePath);
     res.setHeader('Content-Type', filePath.endsWith('.json') ? 'application/json' : 'text/javascript');
     res.end(content);
-    console.log(`📡  Served: ${req.url}`);
   } else {
     res.statusCode = 404;
     res.end('Not Found');
@@ -50,8 +49,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀  Extension Dev Server running!`);
-  console.log(`🔗  Manifest URL: http://localhost:${PORT}/extension.json`);
-  console.log(`📱  For phone testing, use your Local IP: http://<YOUR_IP>:${PORT}/`);
-  console.log(`\nPress Ctrl+C to stop.`);
+
 });
