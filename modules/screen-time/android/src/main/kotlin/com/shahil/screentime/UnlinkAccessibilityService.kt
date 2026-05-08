@@ -401,10 +401,11 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
 
         // ── 1. Self-protection (Main thread for instant response) ─────────────
         if (isStrictModeEnabled && (isBlockActive("com.shahil.unlink") || isBlockingSuspended)) {
-            if (pkg == "com.android.settings" || 
-                pkg.contains("settings", ignoreCase = true) ||
-                pkg.contains("packageinstaller", ignoreCase = true)) {
-                
+            val isSettings = pkg == "com.android.settings" || pkg.contains("settings", ignoreCase = true)
+            val isPackageInstaller = pkg.contains("packageinstaller", ignoreCase = true)
+            val isMiuiSecurity = pkg == "com.miui.securitycenter" || pkg.contains("securitycenter", ignoreCase = true)
+            
+            if (isSettings || isPackageInstaller || isMiuiSecurity) {
                 val root = rootInActiveWindow
                 val nowCheck = System.currentTimeMillis()
                 if (nowCheck - lastSelfProtectCheckTime > 300L) { // Debounce checks (300ms)
@@ -551,23 +552,22 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
             return true
         }
 
-        val isAccessPage = findTextNodesSafely(node, "Accessibility") ||
-                           findTextNodesSafely(node, "Downloaded apps") ||
-                           findTextNodesSafely(node, "Installed services")
-
-        if (isAccessPage && hasClickableToggle(node)) {
-            Log.d(TAG, "SELF_PROTECT: Detected Unlink Accessibility/Permission toggle.")
+        val isSensitiveAccessPage = (findTextNodesSafely(node, "Unlink") || findTextNodesSafely(node, "com.shahil.unlink")) &&
+                                     hasClickableToggle(node)
+ 
+        if (isSensitiveAccessPage) {
+            Log.d(TAG, "SELF_PROTECT: Detected Sensitive/Accessibility toggle for Unlink.")
             return true
         }
-
-        val onPermPage = listOf("Display over other apps", "Usage access", "Modify system settings")
-            .any { findTextNodesSafely(node, it) }
-
+ 
+        val onPermPage = listOf("Display over other apps", "Usage access", "Modify system settings", "Accessibility")
+             .any { findTextNodesSafely(node, it) }
+ 
         if (onPermPage && hasClickableToggle(node)) {
             Log.d(TAG, "SELF_PROTECT: Detected Unlink Permission sub-page toggle.")
             return true
         }
-
+ 
         return false
     }
 
@@ -680,7 +680,10 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
     fun refreshServiceConfig() {
         bgHandler.post {
             refreshFromDiskInternal()
-            mainHandler.post { performSecurityCheck() }
+            mainHandler.post { 
+                performSecurityCheck()
+                updateWallContent()
+            }
         }
         try {
             serviceInfo?.apply {
