@@ -170,6 +170,10 @@ class ScreenTimeModule : Module() {
         }
         Log.d("UnlinkWarden", "Native Schedules Synced: $schedulesJson")
         UnlinkAccessibilityService.instance?.refreshServiceConfig()
+        // Ensure FallbackBlockingService is running if a schedule window is currently active
+        syncBlockingService(context)
+        // Schedule the exact wakeup alarm for the next start/end of a schedule
+        ScheduleManager.scheduleNextAlarm(context)
       }
       return@Function null
     }
@@ -187,6 +191,8 @@ class ScreenTimeModule : Module() {
         }
         Log.d("UnlinkWarden", "Native Stop Record Updated: $blockId -> $dateStr")
         UnlinkAccessibilityService.instance?.refreshServiceConfig()
+        // Re-evaluate service state — if all schedules are stopped, service can be torn down
+        syncBlockingService(context)
       }
       return@Function null
     }
@@ -352,11 +358,12 @@ class ScreenTimeModule : Module() {
       return@Function null
     }
 
-    Function("setBlockingSuspended") { suspended: Boolean ->
+    Function("setBlockingSuspended") { suspended: Boolean, durationMs: Double? ->
       appContext.reactContext?.let { context ->
         val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
         prefs.edit().apply {
             putBoolean("is_blocking_suspended", suspended)
+            if (durationMs != null) putLong("break_duration_ms", durationMs.toLong())
             commit()
         }
         
@@ -605,7 +612,11 @@ class ScreenTimeModule : Module() {
     OnCreate {
         val context = appContext.reactContext ?: return@OnCreate
         scheduleGuardianWorker(context)
-        
+        // Ensure FallbackBlockingService is running on every app launch if a session or
+        // schedule window is currently active. This closes the gap where the service was
+        // killed by an OEM and the app is reopened during an active schedule.
+        syncBlockingService(context)
+
         val filter = IntentFilter("com.shahil.unlink.REQUEST_BREAK")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             context.registerReceiver(object : BroadcastReceiver() {
@@ -620,6 +631,45 @@ class ScreenTimeModule : Module() {
                 }
             }, filter)
         }
+    }
+
+    AsyncFunction("checkXiaomiBackgroundPopups") { promise: Promise ->
+      val context = appContext.reactContext ?: return@AsyncFunction promise.resolve(true)
+      if (!Build.MANUFACTURER.contains("Xiaomi", ignoreCase = true)) {
+          return@AsyncFunction promise.resolve(true)
+      }
+      
+      try {
+          val ops = context.getSystemService(Context.APP_OPS_SERVICE) as android.app.AppOpsManager
+          val method = ops.javaClass.getMethod("checkOp", Int::class.javaPrimitiveType, Int::class.javaPrimitiveType, String::class.java)
+          // OP_BACKGROUND_START_ACTIVITY is 10021 on MIUI
+          val result = method.invoke(ops, 10021, Process.myUid(), context.packageName) as Int
+          promise.resolve(result == android.app.AppOpsManager.MODE_ALLOWED)
+      } catch (e: Exception) {
+          promise.resolve(true)
+      }
+    }
+
+    AsyncFunction("openXiaomiPermissions") { promise: Promise ->
+      val context = appContext.reactContext ?: return@AsyncFunction promise.resolve(false)
+      try {
+          val intent = Intent("miui.intent.action.APP_PERM_EDITOR")
+          intent.setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity")
+          intent.putExtra("extra_pkgname", context.packageName)
+          intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+          context.startActivity(intent)
+          promise.resolve(true)
+      } catch (e: Exception) {
+          try {
+              val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+              intent.data = android.net.Uri.parse("package:${context.packageName}")
+              intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+              context.startActivity(intent)
+              promise.resolve(true)
+          } catch (e2: Exception) {
+              promise.resolve(false)
+          }
+      }
     }
   }
 
@@ -667,9 +717,10 @@ class ScreenTimeModule : Module() {
     val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
     val expiryTime = prefs.getLong("block_expiry_time", 0L)
     val isSessionActive = expiryTime > System.currentTimeMillis()
-    
+    val isScheduleActive = isAnyScheduleActiveNow(prefs)
+
     val intent = Intent(context, FallbackBlockingService::class.java)
-    if (isSessionActive) {
+    if (isSessionActive || isScheduleActive) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.startForegroundService(intent)
         } else {
@@ -678,5 +729,35 @@ class ScreenTimeModule : Module() {
     } else {
         context.stopService(intent)
     }
+  }
+
+  /** Lightweight schedule check used to decide whether to start FallbackBlockingService. */
+  private fun isAnyScheduleActiveNow(prefs: android.content.SharedPreferences): Boolean {
+    val schedulesJson = prefs.getString("native_schedules", null) ?: return false
+    return try {
+        val array = org.json.JSONArray(schedulesJson)
+        val cal = java.util.Calendar.getInstance()
+        val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+        val today = dayNames[cal.get(java.util.Calendar.DAY_OF_WEEK) - 1]
+        val nowMins = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
+        val stopsJson = org.json.JSONObject(prefs.getString("native_stop_records", "{}") ?: "{}")
+        for (i in 0 until array.length()) {
+            val block = array.getJSONObject(i)
+            if (block.optString("type") != "schedule") continue
+            if (!block.optBoolean("enabled", true)) continue
+            val id = block.optString("id")
+            if (stopsJson.optString(id) == today) continue
+            val sched = block.optJSONObject("schedule") ?: continue
+            val daysArr = sched.optJSONArray("days") ?: continue
+            var dayMatch = false
+            for (j in 0 until daysArr.length()) { if (daysArr.getString(j) == today) { dayMatch = true; break } }
+            if (!dayMatch) continue
+            val startMins = run { val p = sched.optString("startTime", "").split(":"); if (p.size >= 2) (p[0].toIntOrNull() ?: 0) * 60 + (p[1].toIntOrNull() ?: 0) else 0 }
+            val endMins = run { val p = sched.optString("endTime", "").split(":"); if (p.size >= 2) (p[0].toIntOrNull() ?: 0) * 60 + (p[1].toIntOrNull() ?: 0) else 0 }
+            val inWindow = if (endMins <= startMins) nowMins >= startMins || nowMins < endMins else nowMins >= startMins && nowMins < endMins
+            if (inWindow) return true
+        }
+        false
+    } catch (e: Exception) { false }
   }
 }

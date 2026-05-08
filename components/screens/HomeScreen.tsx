@@ -167,8 +167,8 @@ const ActiveProtocolStatus = ({
                         </View>
                         <View className="w-[1px] bg-white/10 mx-3" />
                         <View className="flex-1">
-                            <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Protocol</Text>
-                            <Text className="text-[#72fe88] font-headline font-black text-[9px] uppercase mt-1">Recurring</Text>
+                            <Text className="text-white/30 font-label text-[8px] uppercase tracking-widest mb-1">Breaks Left</Text>
+                            <Text className="text-white font-headline font-black text-xl">{breaksLeft}</Text>
                         </View>
                     </>
                 ) : (
@@ -384,7 +384,13 @@ export const HomeScreen = () => {
         // Instant Sync: Listen for native break toggles & data refresh signals
         const { addNativeBreakListener } = require('../../modules/screen-time');
         const nativeSub = addNativeBreakListener?.((event: any) => {
-            checkActiveSession();
+            FocusStorageService.getActiveSession().then(session => {
+                if (session && !session.isOnBreak) {
+                    handleToggleBreak();
+                } else {
+                    checkActiveSession();
+                }
+            });
         });
 
         const refreshSub = DeviceEventEmitter.addListener('UNLINK REFRESH DATA', () => {

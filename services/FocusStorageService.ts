@@ -237,7 +237,8 @@ export class FocusStorageService {
         }
 
         if (Platform.OS === 'android') {
-            ScreenTime.setBlockingSuspended(isOnBreak);
+            const breakDurationMs = (session.timedBreaks?.durationMins || 15) * 60 * 1000;
+            ScreenTime.setBlockingSuspended(isOnBreak, breakDurationMs);
             // TRIGGER_RESYNC: When re-locking, push the apps and refreshed expiry back to native explicitly
             if (!isOnBreak) {
                 let hardBlockedApps = session.apps || [];

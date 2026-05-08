@@ -166,17 +166,17 @@ class FallbackBlockingService : Service() {
     }
 
     private fun checkForegroundApp() {
-        if (isBlockingSuspended || System.currentTimeMillis() >= blockExpiryTime) {
-            if (!isBlockingSuspended && blockExpiryTime in 1..System.currentTimeMillis()) {
-                handler.post { setWallVisibility(false) }
-                return
-            }
-            if (!isBlockedBySchedule("__DUMMY__")) {
-                handler.post { setWallVisibility(false) }
-                return
-            }
+        val time = System.currentTimeMillis()
+        val isManualSessionActive = !isBlockingSuspended && blockExpiryTime > time
+        val isAnyScheduleActive = isAnyScheduleCurrentlyActive()
+
+        // If neither a manual session nor a schedule is active, hide the wall and bail.
+        if (!isManualSessionActive && !isAnyScheduleActive) {
+            handler.post { setWallVisibility(false) }
+            return
         }
 
+        // If the Accessibility Service is alive it handles enforcement — fallback steps aside.
         if (UnlinkAccessibilityService.instance != null) {
             handler.post { setWallVisibility(false) }
             return
@@ -185,10 +185,8 @@ class FallbackBlockingService : Service() {
         if (cachedUsageStatsManager == null) {
             cachedUsageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as android.app.usage.UsageStatsManager
         }
-        val time = System.currentTimeMillis()
 
         val events = cachedUsageStatsManager!!.queryEvents(time - 30_000, time)
-
         val event = android.app.usage.UsageEvents.Event()
         var topPackage: String? = null
 
@@ -206,13 +204,37 @@ class FallbackBlockingService : Service() {
                 return
             }
 
-            val manualBlock = !isBlockingSuspended && blockExpiryTime > time &&
+            val manualBlock = isManualSessionActive &&
                     currentBlockedApps.any { topPackage.contains(it, ignoreCase = true) }
             val scheduleBlock = isBlockedBySchedule(topPackage)
             val isBlocked = manualBlock || scheduleBlock
 
             handler.post { setWallVisibility(isBlocked) }
         }
+    }
+
+    /**
+     * Returns true if ANY schedule is currently active (regardless of which app).
+     * Used to decide whether the fallback service should even bother polling.
+     */
+    private fun isAnyScheduleCurrentlyActive(): Boolean {
+        if (cachedSchedules.isEmpty()) return false
+        val cal = Calendar.getInstance()
+        val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+        val today = dayNames[cal.get(Calendar.DAY_OF_WEEK) - 1]
+        val nowMins = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+        for (sched in cachedSchedules) {
+            if (!sched.enabled) continue
+            if (cachedStopRecords[sched.id] == today) continue
+            if (!sched.days.contains(today)) continue
+            val inWindow = if (sched.endTimeMins <= sched.startTimeMins) {
+                nowMins >= sched.startTimeMins || nowMins < sched.endTimeMins
+            } else {
+                nowMins >= sched.startTimeMins && nowMins < sched.endTimeMins
+            }
+            if (inWindow) return true
+        }
+        return false
     }
 
     private fun setWallVisibility(visible: Boolean) {
@@ -285,8 +307,12 @@ class FallbackBlockingService : Service() {
             val serviceChannel = NotificationChannel(
                 CHANNEL_ID,
                 "Unlink Fallback Protection",
-                NotificationManager.IMPORTANCE_LOW
-            )
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Required for unbreakable focus protection"
+                setShowBadge(false)
+                enableVibration(false)
+            }
             val manager = getSystemService(NotificationManager::class.java)
             manager.createNotificationChannel(serviceChannel)
         }
@@ -294,14 +320,38 @@ class FallbackBlockingService : Service() {
 
     private fun createNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Unlink Focus Protection")
-            .setContentText("Unlink is protecting your focus")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setContentTitle("Unlink Focus Protection Active")
+            .setContentText("Focus Engine is running in high-persistence mode")
+            .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setOngoing(true)
             .build()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
+
+    /**
+     * Xiaomi/MIUI (and other aggressive OEM ROMs) fires onTaskRemoved even when
+     * android:stopWithTask="false" is set.  We schedule an immediate self-restart
+     * via AlarmManager so the service resumes within ~1 second of being swiped away.
+     */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.d("UnlinkFallback", "onTaskRemoved — scheduling self-restart for OEM survival")
+        val restartIntent = Intent(applicationContext, FallbackBlockingService::class.java)
+        val pending = android.app.PendingIntent.getService(
+            applicationContext, 1,
+            restartIntent,
+            android.app.PendingIntent.FLAG_ONE_SHOT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+        alarmManager.setExactAndAllowWhileIdle(
+            android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
+            android.os.SystemClock.elapsedRealtime() + 1_000L,
+            pending
+        )
+    }
 
     override fun onDestroy() {
         pollingExecutor?.shutdownNow()

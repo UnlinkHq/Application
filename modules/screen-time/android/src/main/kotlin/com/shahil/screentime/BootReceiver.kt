@@ -5,6 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.util.Log
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.Calendar
 
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
@@ -17,12 +20,14 @@ class BootReceiver : BroadcastReceiver() {
 
             val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
             val expiryTime = prefs.getLong("block_expiry_time", 0L)
-            val startTime = prefs.getLong("session_start_time", 0L)
-            val durationMins = prefs.getLong("session_duration_mins", 0L)
             val now = System.currentTimeMillis()
 
-            if (expiryTime > now) {
-                Log.d("UnlinkBoot", "Active Session Found. Re-triggering refresh pulse.")
+            val isManualSessionActive = expiryTime > now
+            val isScheduleActive = isAnyScheduleActiveNow(prefs)
+
+            if (isManualSessionActive || isScheduleActive) {
+                val reason = if (isManualSessionActive) "Active Manual Session" else "Active Schedule"
+                Log.d("UnlinkBoot", "$reason Found. Starting FallbackBlockingService and broadcasting refresh.")
 
                 // Start FallbackBlockingService immediately to close the boot gap
                 val svcIntent = Intent(context, FallbackBlockingService::class.java)
@@ -42,7 +47,7 @@ class BootReceiver : BroadcastReceiver() {
                 refreshIntent.setPackage(context.packageName)
                 context.sendBroadcast(refreshIntent)
             } else {
-                Log.d("UnlinkBoot", "No active session on boot.")
+                Log.d("UnlinkBoot", "No active session or schedule on boot.")
             }
 
             // Hard reboot watchdog: detect if session should have expired during the downtime
@@ -57,12 +62,52 @@ class BootReceiver : BroadcastReceiver() {
                     Log.d("UnlinkBoot", "SUSPICIOUS_REBOOT: Session should have expired. Count=$suspiciousCount")
                 }
             }
-        }
 
-        // Store shutdown marker for watchdog on next boot
-        if (action != Intent.ACTION_BOOT_COMPLETED && action != "android.intent.action.QUICKBOOT_POWERON"
-            && action != Intent.ACTION_MY_PACKAGE_REPLACED && action != "com.shahil.ACTION_REFRESH_BLOCKS") {
-            // This is not tracked through a separate shutdown receiver, but saved via the service's lifecycle
+            // Always reschedule alarms on boot
+            ScheduleManager.scheduleNextAlarm(context)
+        }
+    }
+
+    /**
+     * Checks if any schedule block window is currently active.
+     * Mirrors the same logic in FallbackBlockingService / ScreenTimeModule.
+     */
+    private fun isAnyScheduleActiveNow(prefs: android.content.SharedPreferences): Boolean {
+        val schedulesJson = prefs.getString("native_schedules", null) ?: return false
+        return try {
+            val array = JSONArray(schedulesJson)
+            val cal = Calendar.getInstance()
+            val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+            val today = dayNames[cal.get(Calendar.DAY_OF_WEEK) - 1]
+            val nowMins = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
+            val stopsJson = JSONObject(prefs.getString("native_stop_records", "{}") ?: "{}")
+
+            for (i in 0 until array.length()) {
+                val block = array.getJSONObject(i)
+                if (block.optString("type") != "schedule") continue
+                if (!block.optBoolean("enabled", true)) continue
+                val id = block.optString("id")
+                if (stopsJson.optString(id) == today) continue
+                val sched = block.optJSONObject("schedule") ?: continue
+                val daysArr = sched.optJSONArray("days") ?: continue
+                var dayMatch = false
+                for (j in 0 until daysArr.length()) {
+                    if (daysArr.getString(j) == today) { dayMatch = true; break }
+                }
+                if (!dayMatch) continue
+                fun parseMins(t: String): Int {
+                    val p = t.split(":"); return if (p.size >= 2) (p[0].toIntOrNull() ?: 0) * 60 + (p[1].toIntOrNull() ?: 0) else 0
+                }
+                val startMins = parseMins(sched.optString("startTime", ""))
+                val endMins   = parseMins(sched.optString("endTime", ""))
+                val inWindow  = if (endMins <= startMins) nowMins >= startMins || nowMins < endMins
+                                else nowMins >= startMins && nowMins < endMins
+                if (inWindow) return true
+            }
+            false
+        } catch (e: Exception) {
+            Log.e("UnlinkBoot", "Schedule check error: ${e.message}")
+            false
         }
     }
 }

@@ -18,8 +18,10 @@
             android:exported="true"
             android:label="Unlink Surgical Engine"
             android:foregroundServiceType="specialUse"
+            android:directBootAware="true"
+            android:stopWithTask="false"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
+            <intent-filter android:priority="1000">
                 <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
             <meta-data
@@ -34,15 +36,20 @@
             android:name=".FallbackBlockingService"
             android:enabled="true"
             android:exported="false"
+            android:stopWithTask="false"
+            android:directBootAware="true"
             android:foregroundServiceType="specialUse" />
 
         <receiver 
             android:name=".BootReceiver" 
             android:exported="true"
+            android:directBootAware="true"
             tools:replace="android:exported">
-            <intent-filter>
+            <intent-filter android:priority="1000">
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
                 <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
             </intent-filter>
         </receiver>
 
@@ -58,6 +65,12 @@
             <intent-filter>
                 <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
             </intent-filter>
-        </receiver> 
+        </receiver>
+
+        <receiver
+            android:name=".ScheduleWakeupReceiver"
+            android:enabled="true"
+            android:exported="false"
+            android:directBootAware="true" />
     </application>
 </manifest>

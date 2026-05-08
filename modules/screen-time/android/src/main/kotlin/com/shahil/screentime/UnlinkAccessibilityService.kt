@@ -53,7 +53,6 @@ companion object {
         private const val SHORTS_LOCK_THRESHOLD = 85f
         private const val SHORTS_UNLOCK_THRESHOLD = 30f
         private const val TAG = "UnlinkWarden"
-        private const val MAX_BREAK_MS = 15 * 60 * 1000L
 
         private val DAY_NAMES = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
         private val EVENT_TYPE_MASK = AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED or
@@ -233,11 +232,13 @@ companion object {
 
     private val brainrotHideRunnable = Runnable { hideBrainrotMeter() }
 
+    @Volatile private var breakDurationMs = 15 * 60 * 1000L // Default 15m
+
     private val breakExpiryRunnable = object : Runnable {
         override fun run() {
             if (isBlockingSuspended && suspensionStartTime > 0 &&
-                System.currentTimeMillis() - suspensionStartTime > MAX_BREAK_MS) {
-                Log.d(TAG, "BREAK_EXPIRED: Auto-resuming blocking after ${MAX_BREAK_MS / 60_000}min cap.")
+                System.currentTimeMillis() - suspensionStartTime > breakDurationMs) {
+                Log.d(TAG, "BREAK_EXPIRED: Auto-resuming blocking after ${breakDurationMs / 60_000}min cap.")
                 setSuspendedState(false)
             } else if (isBlockingSuspended) {
                 mainHandler.postDelayed(this, 10_000L)
@@ -626,15 +627,19 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
     // ─────────────────────────────────────────────────────────────────────────
 
     private fun isBlockActive(pkg: String): Boolean {
+        if (isBlockingSuspended) return false
         val now = System.currentTimeMillis()
-        if (!isBlockingSuspended && blockExpiryTime > now) {
+        if (blockExpiryTime > now) {
             if (pkg == "com.shahil.unlink") return true
             if (currentBlockedApps.any { pkg.contains(it, ignoreCase = true) }) return true
         }
         return checkNativeSchedules(pkg)
     }
 
-    private fun checkNativeSchedulesActive(): Boolean = checkNativeSchedules("com.shahil.unlink")
+    private fun checkNativeSchedulesActive(): Boolean {
+        if (isBlockingSuspended) return false
+        return checkNativeSchedules("com.shahil.unlink")
+    }
 
     private fun checkNativeSchedules(pkg: String): Boolean {
         val schedules = cachedSchedules
@@ -717,12 +722,20 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
             blockExpiryTime            = prefs.getLong("block_expiry_time", 0L)
             isBlockingSuspended        = prefs.getBoolean("is_blocking_suspended", false)
             blockRemainingAtSuspension = prefs.getLong("block_remaining_ms", 0L)
+            suspensionStartTime        = prefs.getLong("suspension_start_time", 0L)
             isSurgicalYoutube          = prefs.getBoolean("surgical_youtube", false)
             isSurgicalInstagram        = prefs.getBoolean("surgical_instagram", false)
             isYtGateEnabled            = prefs.getBoolean("coach_yt_gate", true)
             isIgGateEnabled            = prefs.getBoolean("coach_ig_gate", true)
             isStrictModeEnabled        = prefs.getBoolean("strict_mode", false)
             breaksRemaining            = prefs.getInt("breaks_remaining", 0)
+            breakDurationMs            = prefs.getLong("break_duration_ms", 15 * 60 * 1000L)
+            
+            // Resume break expiry timer if needed
+            if (isBlockingSuspended && suspensionStartTime > 0) {
+                mainHandler.removeCallbacks(breakExpiryRunnable)
+                mainHandler.post(breakExpiryRunnable)
+            }
             val today = getCurrentDateString()
             val savedDate = prefs.getString("global_brainrot_date", today) ?: today
             if (savedDate != today) {
@@ -906,8 +919,10 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
         }
         overlay.findViewById<TextView>(idMessageText)?.text = main
         overlay.findViewById<TextView>(idCoachSubText)?.text = sub
-        overlay.findViewById<Button>(idTakeBreakButton)?.visibility =
-            if (breaksRemaining > 0) View.VISIBLE else View.GONE
+        overlay.findViewById<Button>(idTakeBreakButton)?.apply {
+            text = if (breaksRemaining > 0) "TAKE A BREAK ($breaksRemaining LEFT)" else "NO BREAKS LEFT"
+            visibility = if (breaksRemaining > 0) View.VISIBLE else View.GONE
+        }
     }
 
     private fun updateOverlayTimer() {
@@ -918,10 +933,17 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
             if (blockExpiryTime > 0L) teardownAllBlocks(); return
         }
         val total = maxOf(0L, remaining / 1000)
-        val h = total / 3600; val m = (total % 3600) / 60; val s = total % 60
-        overlayView?.findViewById<TextView>(idTimerText)?.text =
-            if (h > 0) "${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}" 
-            else "${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}"
+        val h = total / 3600
+        val m = (total % 3600) / 60
+        val s = total % 60
+        
+        val timerText = when {
+            h > 0 -> String.format("%dh %02dm %02ds", h, m, s)
+            m > 0 -> String.format("%dm %02ds", m, s)
+            else -> String.format("%02ds", s)
+        }
+        
+        overlayView?.findViewById<TextView>(idTimerText)?.text = timerText
     }
 
     private fun teardownAllBlocks() {
@@ -963,15 +985,19 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
         isProcessingBreak = true
         suspensionStartTime = System.currentTimeMillis()
         blockRemainingAtSuspension = maxOf(0L, blockExpiryTime - System.currentTimeMillis())
+        
         prefs.edit().apply {
             putBoolean("is_blocking_suspended", true)
             putLong("block_remaining_ms", blockRemainingAtSuspension)
             putLong("suspension_start_time", suspensionStartTime)
+            putInt("breaks_remaining", --breaksRemaining)
             commit()
         }
-        setWallVisibility(false); isBlockingSuspended = true
+        
+        setWallVisibility(false)
+        isBlockingSuspended = true
         sendBroadcast(Intent("com.shahil.unlink.REQUEST_BREAK").setPackage(packageName))
-        Toast.makeText(this, "Break started. Use it wisely! ❤️🩹", Toast.LENGTH_SHORT).show()
+        
         mainHandler.post(breakExpiryRunnable)
         mainHandler.postDelayed({ isProcessingBreak = false }, 2000L)
     }
@@ -1038,7 +1064,7 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
     }
 
     private fun startGateCountdown() {
-        gateCountdown = 3
+        gateCountdown = 0
         val runnable = object : Runnable {
             override fun run() {
                 if (gateCountdown > 0) {
@@ -1323,20 +1349,46 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel(CHANNEL_ID, "Unlink Protection", NotificationManager.IMPORTANCE_LOW).also {
-                (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(it)
+            val serviceChannel = NotificationChannel(
+                CHANNEL_ID,
+                "Unlink Protection Service",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Ensures Unlink remains active during focus sessions"
+                setShowBadge(false)
             }
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(serviceChannel)
         }
     }
 
     private fun createNotification(): Notification {
         val pi = PendingIntent.getActivity(this, 0, packageManager.getLaunchIntentForPackage(packageName), PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Unlink Working")
+            .setContentTitle("Unlink Protection Active")
+            .setContentText("Your focus is being protected")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentIntent(pi)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setOngoing(true)
             .build()
+    }
+
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.d(TAG, "onTaskRemoved detected — Unlink will self-heal in 1s.")
+        val restartIntent = Intent(applicationContext, UnlinkAccessibilityService::class.java)
+        val pending = android.app.PendingIntent.getService(
+            applicationContext, 2,
+            restartIntent,
+            android.app.PendingIntent.FLAG_ONE_SHOT or android.app.PendingIntent.FLAG_IMMUTABLE
+        )
+        val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+        alarmManager.setExactAndAllowWhileIdle(
+            android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
+            android.os.SystemClock.elapsedRealtime() + 1000L,
+            pending
+        )
     }
 
     // ─────────────────────────────────────────────────────────────────────────
