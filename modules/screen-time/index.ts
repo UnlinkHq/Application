@@ -37,7 +37,7 @@ interface ScreenTimeModuleInterface {
     setSurgicalConfig(config: any): void;
     setUninstallProtection(enabled: boolean): void;
     setSessionDuration(minutes: number): void;
-    setBlockingSuspended(suspended: boolean): void;
+    setBlockingSuspended(suspended: boolean, durationMs?: number): void;
     setSessionData(startTime: number, durationMins: number): void;
     setBreaksRemaining(count: number): void;
     getAppIcon(packageName: string): Promise<string>;
@@ -175,8 +175,8 @@ export function setSessionDuration(minutes: number): void {
     ScreenTimeModule.setSessionDuration(Math.floor(minutes));
 }
 
-export function setBlockingSuspended(suspended: boolean): void {
-    ScreenTimeModule.setBlockingSuspended(suspended);
+export function setBlockingSuspended(suspended: boolean, durationMs?: number): void {
+    ScreenTimeModule.setBlockingSuspended(suspended, durationMs);
 }
 
 export function setSessionData(startTime: number, durationMins: number): void {
