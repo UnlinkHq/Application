@@ -138,13 +138,22 @@ class FallbackBlockingService : Service() {
         if (cachedSchedules.isEmpty()) return false
         val cal = Calendar.getInstance()
         val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-        val today = dayNames[cal.get(Calendar.DAY_OF_WEEK) - 1]
+        val todayDayName = dayNames[cal.get(Calendar.DAY_OF_WEEK) - 1]
+        val todayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
+        val yesterdayDayName = dayNames[(cal.get(Calendar.DAY_OF_WEEK) - 2 + 7) % 7]
+        val yesterdayCal = cal.clone() as Calendar
+        yesterdayCal.add(Calendar.DAY_OF_YEAR, -1)
+        val yesterdayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", yesterdayCal.get(Calendar.YEAR), yesterdayCal.get(Calendar.MONTH) + 1, yesterdayCal.get(Calendar.DAY_OF_MONTH))
         val nowMins = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
         for (sched in cachedSchedules) {
             if (!sched.enabled) continue
-            if (cachedStopRecords[sched.id] == today) continue
-            if (!sched.days.contains(today)) continue
-            val inWindow = if (sched.endTimeMins <= sched.startTimeMins) {
+            val isMidnightCrossing = sched.endTimeMins <= sched.startTimeMins
+            val isPostMidnight = isMidnightCrossing && nowMins < sched.endTimeMins
+            val effectiveDayName = if (isPostMidnight) yesterdayDayName else todayDayName
+            val effectiveDateStr = if (isPostMidnight) yesterdayDateStr else todayDateStr
+            if (cachedStopRecords[sched.id] == effectiveDateStr) continue
+            if (!sched.days.contains(effectiveDayName)) continue
+            val inWindow = if (isMidnightCrossing) {
                 nowMins >= sched.startTimeMins || nowMins < sched.endTimeMins
             } else {
                 nowMins >= sched.startTimeMins && nowMins < sched.endTimeMins
@@ -221,13 +230,22 @@ class FallbackBlockingService : Service() {
         if (cachedSchedules.isEmpty()) return false
         val cal = Calendar.getInstance()
         val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-        val today = dayNames[cal.get(Calendar.DAY_OF_WEEK) - 1]
+        val todayDayName = dayNames[cal.get(Calendar.DAY_OF_WEEK) - 1]
+        val todayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
+        val yesterdayDayName = dayNames[(cal.get(Calendar.DAY_OF_WEEK) - 2 + 7) % 7]
+        val yesterdayCal = cal.clone() as Calendar
+        yesterdayCal.add(Calendar.DAY_OF_YEAR, -1)
+        val yesterdayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", yesterdayCal.get(Calendar.YEAR), yesterdayCal.get(Calendar.MONTH) + 1, yesterdayCal.get(Calendar.DAY_OF_MONTH))
         val nowMins = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
         for (sched in cachedSchedules) {
             if (!sched.enabled) continue
-            if (cachedStopRecords[sched.id] == today) continue
-            if (!sched.days.contains(today)) continue
-            val inWindow = if (sched.endTimeMins <= sched.startTimeMins) {
+            val isMidnightCrossing = sched.endTimeMins <= sched.startTimeMins
+            val isPostMidnight = isMidnightCrossing && nowMins < sched.endTimeMins
+            val effectiveDayName = if (isPostMidnight) yesterdayDayName else todayDayName
+            val effectiveDateStr = if (isPostMidnight) yesterdayDateStr else todayDateStr
+            if (cachedStopRecords[sched.id] == effectiveDateStr) continue
+            if (!sched.days.contains(effectiveDayName)) continue
+            val inWindow = if (isMidnightCrossing) {
                 nowMins >= sched.startTimeMins || nowMins < sched.endTimeMins
             } else {
                 nowMins >= sched.startTimeMins && nowMins < sched.endTimeMins
@@ -346,11 +364,19 @@ class FallbackBlockingService : Service() {
             android.app.PendingIntent.FLAG_ONE_SHOT or android.app.PendingIntent.FLAG_IMMUTABLE
         )
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
-        alarmManager.setExactAndAllowWhileIdle(
-            android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
-            android.os.SystemClock.elapsedRealtime() + 1_000L,
-            pending
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+            alarmManager.setAndAllowWhileIdle(
+                android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                android.os.SystemClock.elapsedRealtime() + 1_000L,
+                pending
+            )
+        } else {
+            alarmManager.setExactAndAllowWhileIdle(
+                android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                android.os.SystemClock.elapsedRealtime() + 1_000L,
+                pending
+            )
+        }
     }
 
     override fun onDestroy() {

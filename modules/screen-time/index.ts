@@ -50,6 +50,8 @@ interface ScreenTimeModuleInterface {
     setNativeStopRecord(blockId: string, dateStr: string): void;
     setStrictMode(enabled: boolean): void;
     getStrictMode(): Promise<boolean>;
+    canScheduleExactAlarms(): boolean;
+    requestExactAlarmPermission(): void;
 
     // iOS Shield functions
     activateShield(): void;
@@ -110,7 +112,9 @@ try {
         setNativeSchedules: () => { },
         setNativeStopRecord: () => { },
         setStrictMode: () => { },
-        getStrictMode: async () => false
+        getStrictMode: async () => false,
+        canScheduleExactAlarms: () => true,
+        requestExactAlarmPermission: () => { }
     };
 }
 
@@ -282,4 +286,12 @@ const emitter = new EventEmitter(ScreenTimeModule as any);
 
 export function addNativeBreakListener(listener: (event: any) => void): any {
   return (emitter as any).addListener('onNativeBreakToggle', listener);
+}
+
+export function canScheduleExactAlarms(): boolean {
+    return ScreenTimeModule.canScheduleExactAlarms();
+}
+
+export function requestExactAlarmPermission(): void {
+    ScreenTimeModule.requestExactAlarmPermission();
 }

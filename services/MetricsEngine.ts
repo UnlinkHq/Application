@@ -22,7 +22,11 @@ export class MetricsEngine {
                 sessionsCompleted: 0
             };
         }
-        return JSON.parse(data);
+        try {
+            return JSON.parse(data);
+        } catch {
+            return { bypassCount: 0, lastBypassTimestamp: null, weakestHour: null, points: 0, sessionsCompleted: 0 };
+        }
     }
 
     static async recordBypass(): Promise<void> {

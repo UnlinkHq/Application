@@ -22,7 +22,14 @@ import expo.modules.kotlin.modules.ModuleDefinition
 import java.util.Calendar
 
 class ScreenTimeModule : Module() {
-  
+
+  private var breakRequestReceiver: BroadcastReceiver? = null
+
+  companion object {
+    @Volatile private var cachedAppList: List<Map<String, Any>>? = null
+    @Volatile private var cachedPackageSet: Set<String> = emptySet()
+  }
+
   override fun definition() = ModuleDefinition {
     Name("ScreenTime")
     Events("onNativeBreakToggle")
@@ -589,14 +596,23 @@ class ScreenTimeModule : Module() {
       val packageManager = context.packageManager
       val mainIntent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
       val resolvedActivities = packageManager.queryIntentActivities(mainIntent, 0)
-      
+
+      // Build the current package set to check against the cache
+      val currentPackageSet = resolvedActivities.mapTo(mutableSetOf()) { it.activityInfo.packageName }
+
+      // Cache hit: return instantly if installed apps haven't changed
+      val cached = cachedAppList
+      if (cached != null && currentPackageSet == cachedPackageSet) {
+          return@AsyncFunction cached
+      }
+
+      // Cache miss: encode icons — runs on background thread (AsyncFunction)
       val appList = mutableListOf<Map<String, Any>>()
       val addedPackages = mutableSetOf<String>()
-      
+
       for (resolveInfo in resolvedActivities) {
         val packageName = resolveInfo.activityInfo.packageName
         if (addedPackages.contains(packageName)) continue
-        
         try {
             val applicationInfo = packageManager.getApplicationInfo(packageName, 0)
             val label = packageManager.getApplicationLabel(applicationInfo).toString()
@@ -606,31 +622,59 @@ class ScreenTimeModule : Module() {
             addedPackages.add(packageName)
         } catch (e: Exception) {}
       }
+
+      cachedAppList = appList
+      cachedPackageSet = currentPackageSet
       return@AsyncFunction appList
     }
 
     OnCreate {
         val context = appContext.reactContext ?: return@OnCreate
         scheduleGuardianWorker(context)
-        // Ensure FallbackBlockingService is running on every app launch if a session or
-        // schedule window is currently active. This closes the gap where the service was
-        // killed by an OEM and the app is reopened during an active schedule.
         syncBlockingService(context)
 
+        breakRequestReceiver = object : BroadcastReceiver() {
+            override fun onReceive(ctx: Context?, intent: Intent?) {
+                this@ScreenTimeModule.sendEvent("onNativeBreakToggle", mapOf("suspended" to true))
+            }
+        }
         val filter = IntentFilter("com.shahil.unlink.REQUEST_BREAK")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.registerReceiver(object : BroadcastReceiver() {
-                override fun onReceive(context: Context?, intent: Intent?) {
-                    this@ScreenTimeModule.sendEvent("onNativeBreakToggle", mapOf("suspended" to true))
-                }
-            }, filter, Context.RECEIVER_NOT_EXPORTED)
+            context.registerReceiver(breakRequestReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {
-            context.registerReceiver(object : BroadcastReceiver() {
-                override fun onReceive(context: Context?, intent: Intent?) {
-                    this@ScreenTimeModule.sendEvent("onNativeBreakToggle", mapOf("suspended" to true))
-                }
-            }, filter)
+            context.registerReceiver(breakRequestReceiver, filter)
         }
+    }
+
+    OnDestroy {
+        breakRequestReceiver?.let { receiver ->
+            try { appContext.reactContext?.unregisterReceiver(receiver) } catch (_: Exception) {}
+            breakRequestReceiver = null
+        }
+    }
+
+    Function("canScheduleExactAlarms") {
+        val context = appContext.reactContext ?: return@Function false
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
+            return@Function alarmManager.canScheduleExactAlarms()
+        }
+        return@Function true
+    }
+
+    Function("requestExactAlarmPermission") {
+        val context = appContext.reactContext ?: return@Function null
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                val intent = Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM)
+                intent.data = android.net.Uri.parse("package:${context.packageName}")
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                context.startActivity(intent)
+            } catch (e: Exception) {
+                Log.e("ScreenTimeModule", "Cannot open exact alarm settings: ${e.message}")
+            }
+        }
+        return@Function null
     }
 
     AsyncFunction("checkXiaomiBackgroundPopups") { promise: Promise ->
@@ -683,16 +727,26 @@ class ScreenTimeModule : Module() {
 
   private fun bitmapToBase64(drawable: android.graphics.drawable.Drawable): String? {
     try {
-        val bitmap = if (drawable is android.graphics.drawable.BitmapDrawable) drawable.bitmap else {
-            val b = android.graphics.Bitmap.createBitmap(drawable.intrinsicWidth.takeIf { it > 0 } ?: 1, drawable.intrinsicHeight.takeIf { it > 0 } ?: 1, android.graphics.Bitmap.Config.ARGB_8888)
-            val canvas = android.graphics.Canvas(b)
-            drawable.setBounds(0, 0, canvas.width, canvas.height)
-            drawable.draw(canvas)
-            b
+        val isBitmapDrawable = drawable is android.graphics.drawable.BitmapDrawable
+        val bitmap = if (isBitmapDrawable) {
+            (drawable as android.graphics.drawable.BitmapDrawable).bitmap
+        } else {
+            android.graphics.Bitmap.createBitmap(
+                drawable.intrinsicWidth.takeIf { it > 0 } ?: 1,
+                drawable.intrinsicHeight.takeIf { it > 0 } ?: 1,
+                android.graphics.Bitmap.Config.ARGB_8888
+            ).also { b ->
+                val canvas = android.graphics.Canvas(b)
+                drawable.setBounds(0, 0, canvas.width, canvas.height)
+                drawable.draw(canvas)
+            }
         }
         val outputStream = java.io.ByteArrayOutputStream()
         bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 70, outputStream)
-        return android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.NO_WRAP)
+        val result = android.util.Base64.encodeToString(outputStream.toByteArray(), android.util.Base64.NO_WRAP)
+        // Only recycle bitmaps we created — never recycle a BitmapDrawable's backing bitmap
+        if (!isBitmapDrawable) bitmap.recycle()
+        return result
     } catch (e: Exception) { return null }
   }
 
@@ -738,7 +792,12 @@ class ScreenTimeModule : Module() {
         val array = org.json.JSONArray(schedulesJson)
         val cal = java.util.Calendar.getInstance()
         val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-        val today = dayNames[cal.get(java.util.Calendar.DAY_OF_WEEK) - 1]
+        val todayDayName = dayNames[cal.get(java.util.Calendar.DAY_OF_WEEK) - 1]
+        val todayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH) + 1, cal.get(java.util.Calendar.DAY_OF_MONTH))
+        val yesterdayDayName = dayNames[(cal.get(java.util.Calendar.DAY_OF_WEEK) - 2 + 7) % 7]
+        val yesterdayCal = cal.clone() as java.util.Calendar
+        yesterdayCal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+        val yesterdayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", yesterdayCal.get(java.util.Calendar.YEAR), yesterdayCal.get(java.util.Calendar.MONTH) + 1, yesterdayCal.get(java.util.Calendar.DAY_OF_MONTH))
         val nowMins = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
         val stopsJson = org.json.JSONObject(prefs.getString("native_stop_records", "{}") ?: "{}")
         for (i in 0 until array.length()) {
@@ -746,15 +805,19 @@ class ScreenTimeModule : Module() {
             if (block.optString("type") != "schedule") continue
             if (!block.optBoolean("enabled", true)) continue
             val id = block.optString("id")
-            if (stopsJson.optString(id) == today) continue
             val sched = block.optJSONObject("schedule") ?: continue
             val daysArr = sched.optJSONArray("days") ?: continue
-            var dayMatch = false
-            for (j in 0 until daysArr.length()) { if (daysArr.getString(j) == today) { dayMatch = true; break } }
-            if (!dayMatch) continue
             val startMins = run { val p = sched.optString("startTime", "").split(":"); if (p.size >= 2) (p[0].toIntOrNull() ?: 0) * 60 + (p[1].toIntOrNull() ?: 0) else 0 }
             val endMins = run { val p = sched.optString("endTime", "").split(":"); if (p.size >= 2) (p[0].toIntOrNull() ?: 0) * 60 + (p[1].toIntOrNull() ?: 0) else 0 }
-            val inWindow = if (endMins <= startMins) nowMins >= startMins || nowMins < endMins else nowMins >= startMins && nowMins < endMins
+            val isMidnightCrossing = endMins <= startMins
+            val isPostMidnight = isMidnightCrossing && nowMins < endMins
+            val effectiveDayName = if (isPostMidnight) yesterdayDayName else todayDayName
+            val effectiveDateStr = if (isPostMidnight) yesterdayDateStr else todayDateStr
+            if (stopsJson.optString(id) == effectiveDateStr) continue
+            var dayMatch = false
+            for (j in 0 until daysArr.length()) { if (daysArr.getString(j) == effectiveDayName) { dayMatch = true; break } }
+            if (!dayMatch) continue
+            val inWindow = if (isMidnightCrossing) nowMins >= startMins || nowMins < endMins else nowMins >= startMins && nowMins < endMins
             if (inWindow) return true
         }
         false

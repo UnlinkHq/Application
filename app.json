@@ -34,9 +34,17 @@
         "backgroundColor": "#000000"
       },
       "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.CAMERA",
         "android.permission.PACKAGE_USAGE_STATS",
         "android.permission.QUERY_ALL_PACKAGES",
-        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
+        "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.VIBRATE",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_SPECIAL_USE",
+        "android.permission.SCHEDULE_EXACT_ALARM"
       ],
       "package": "com.unlink",
       "navigationBar": {

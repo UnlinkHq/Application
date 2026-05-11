@@ -147,9 +147,26 @@ export class FocusStorageService {
             try {
                 const session = JSON.parse(sessionData);
                 
-                if (session.type === 'schedule') {
+                if (session.type === 'schedule' && !wasCompleted) {
                     const { TemporalEngine } = require('./TemporalEngine');
-                    await TemporalEngine.recordManualStop(session.id);
+                    // For midnight-crossing schedules stopped in the post-midnight window,
+                    // record yesterday's date so the stop-check (which also uses yesterday) matches.
+                    let effectiveDate: string | undefined;
+                    const sched = session.schedule;
+                    if (sched?.startTime && sched?.endTime) {
+                        const now = new Date();
+                        const nowMins = now.getHours() * 60 + now.getMinutes();
+                        const [sH, sM] = sched.startTime.split(':').map(Number);
+                        const [eH, eM] = sched.endTime.split(':').map(Number);
+                        const startMins = sH * 60 + sM;
+                        const endMins = eH * 60 + eM;
+                        if (endMins <= startMins && nowMins < endMins) {
+                            const yesterday = new Date(now);
+                            yesterday.setDate(yesterday.getDate() - 1);
+                            effectiveDate = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+                        }
+                    }
+                    await TemporalEngine.recordManualStop(session.id, effectiveDate);
                 }
 
                 if (wasCompleted) {
@@ -323,8 +340,12 @@ export class FocusStorageService {
     static async getLibraryBlocks(): Promise<BlockSession[]> {
         const data = await AsyncStorage.getItem(LIBRARY_BLOCKS_KEY);
         if (!data) return [];
-        const items = JSON.parse(data);
-        return items.map((item: any) => FocusStorageService.migrateSession(item));
+        try {
+            const items = JSON.parse(data);
+            return items.map((item: any) => FocusStorageService.migrateSession(item));
+        } catch {
+            return [];
+        }
     }
 
     static async saveBlock(block: BlockSession): Promise<void> {

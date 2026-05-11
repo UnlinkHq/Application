@@ -4,6 +4,7 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import Animated, { FadeIn, FadeInDown, useSharedValue, useAnimatedStyle, withTiming, runOnJS, cancelAnimation, Easing } from 'react-native-reanimated';
 import { MetricsEngine, UserMetrics } from '../../services/MetricsEngine';
 import { FocusStorageService, BlockSession } from '../../services/FocusStorageService';
+import { sendFocusSessionUnlockCode } from '../../services/ResendService';
 import * as ScreenTime from '../../modules/screen-time';
 import { Camera, CameraView } from 'expo-camera';
 
@@ -115,38 +116,12 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
         setIsEmailSending(true);
 
         try {
-            const apiKey = 're_N6uTZ7U8_5xDH88K6JuekUqNDGTwrL4pZ';
-            const response = await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`,
-                },
-                body: JSON.stringify({
-                    from: 'Unlink <auth@getunlink.com>',
-                    to: [email],
-                    subject: 'MOM TEST: UNLINK VERIFICATION CODE',
-                    html: `
-                        <div style="font-family: sans-serif; padding: 20px; color: #000;">
-                            <h2 style="letter-spacing: 2px;">UNLINK PROTOCOL</h2>
-                            <p>Your verification code to terminate the focus session is:</p>
-                            <h1 style="font-size: 48px; letter-spacing: 15px; margin: 30px 0;">${newOtp}</h1>
-                            <p style="color: #666; font-size: 12px;">This code was requested via the Mom Test protocol.</p>
-                        </div>
-                    `
-                })
-            });
-
-            if (response.ok) {
-                setGeneratedOtp(newOtp);
-                setShowOtpInput(true);
-                setEmailCooldown(60); // 60s cooldown
-            } else {
-                const err = await response.json();
-                alert(`API ERROR: ${err.message || 'FAILED TO SEND EMAIL'}`);
-            }
-        } catch (error) {
-            alert("NETWORK ERROR: CHECK CONNECTION");
+            await sendFocusSessionUnlockCode(email, newOtp);
+            setGeneratedOtp(newOtp);
+            setShowOtpInput(true);
+            setEmailCooldown(60);
+        } catch (error: any) {
+            alert(`API ERROR: ${error.message || 'FAILED TO SEND EMAIL'}`);
         } finally {
             setIsEmailSending(false);
         }

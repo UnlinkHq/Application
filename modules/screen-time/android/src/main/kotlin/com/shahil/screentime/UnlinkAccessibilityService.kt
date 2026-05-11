@@ -647,21 +647,30 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
 
         val cal = THREAD_CAL.get()
         cal.timeInMillis = System.currentTimeMillis()
-        val today = DAY_NAMES[cal.get(java.util.Calendar.DAY_OF_WEEK) - 1]
+        val todayDayName = DAY_NAMES[cal.get(java.util.Calendar.DAY_OF_WEEK) - 1]
+        val todayDateStr = THREAD_DATE_FMT.get()!!.format(cal.time)
+        val yesterdayDayName = DAY_NAMES[(cal.get(java.util.Calendar.DAY_OF_WEEK) - 2 + 7) % 7]
+        val yesterdayCal = cal.clone() as java.util.Calendar
+        yesterdayCal.add(java.util.Calendar.DAY_OF_YEAR, -1)
+        val yesterdayDateStr = THREAD_DATE_FMT.get()!!.format(yesterdayCal.time)
         val nowMins = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
         val stops = cachedStopRecords
 
         for (schedule in schedules) {
             if (!schedule.enabled) continue
-            if (stops[schedule.id] == today) continue
-            if (!schedule.days.contains(today)) continue
-            val inWindow = if (schedule.endTimeMins <= schedule.startTimeMins) {
+            val isMidnightCrossing = schedule.endTimeMins <= schedule.startTimeMins
+            val isPostMidnight = isMidnightCrossing && nowMins < schedule.endTimeMins
+            val effectiveDayName = if (isPostMidnight) yesterdayDayName else todayDayName
+            val effectiveDateStr = if (isPostMidnight) yesterdayDateStr else todayDateStr
+            if (stops[schedule.id] == effectiveDateStr) continue
+            if (!schedule.days.contains(effectiveDayName)) continue
+            val inWindow = if (isMidnightCrossing) {
                 nowMins >= schedule.startTimeMins || nowMins < schedule.endTimeMins
             } else {
                 nowMins >= schedule.startTimeMins && nowMins < schedule.endTimeMins
             }
             if (!inWindow) continue
-            
+
             if (pkg == "com.shahil.unlink") return true
             if (schedule.appPackages.any { pkg.contains(it, ignoreCase = true) }) return true
         }
@@ -1387,11 +1396,19 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
             android.app.PendingIntent.FLAG_ONE_SHOT or android.app.PendingIntent.FLAG_IMMUTABLE
         )
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
-        alarmManager.setExactAndAllowWhileIdle(
-            android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
-            android.os.SystemClock.elapsedRealtime() + 1000L,
-            pending
-        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+            alarmManager.setAndAllowWhileIdle(
+                android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                android.os.SystemClock.elapsedRealtime() + 1000L,
+                pending
+            )
+        } else {
+            alarmManager.setExactAndAllowWhileIdle(
+                android.app.AlarmManager.ELAPSED_REALTIME_WAKEUP,
+                android.os.SystemClock.elapsedRealtime() + 1000L,
+                pending
+            )
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────────

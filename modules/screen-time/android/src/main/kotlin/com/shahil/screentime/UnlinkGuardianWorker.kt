@@ -42,37 +42,46 @@ class UnlinkGuardianWorker(context: Context, workerParams: WorkerParameters) :
             
             val calendar = Calendar.getInstance()
             val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-            val currentDay = dayNames[calendar.get(Calendar.DAY_OF_WEEK) - 1]
+            val currentDayName = dayNames[calendar.get(Calendar.DAY_OF_WEEK) - 1]
+            val currentDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1, calendar.get(Calendar.DAY_OF_MONTH))
+            val yesterdayDayName = dayNames[(calendar.get(Calendar.DAY_OF_WEEK) - 2 + 7) % 7]
+            val yesterdayCal = calendar.clone() as Calendar
+            yesterdayCal.add(Calendar.DAY_OF_YEAR, -1)
+            val yesterdayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", yesterdayCal.get(Calendar.YEAR), yesterdayCal.get(Calendar.MONTH) + 1, yesterdayCal.get(Calendar.DAY_OF_MONTH))
             val currentMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
-            
+
             val stopRecordsStr = prefs.getString("native_stop_records", "{}") ?: "{}"
             val stopRecordsJson = JSONObject(stopRecordsStr)
 
             for (i in 0 until schedulesArray.length()) {
                 val block = schedulesArray.getJSONObject(i)
                 val id = block.optString("id")
-                
+
                 if (block.optString("type") != "schedule") continue
                 if (block.optBoolean("enabled", true) == false) continue
-                if (stopRecordsJson.optString(id) == currentDay) continue
 
                 val schedule = block.optJSONObject("schedule") ?: continue
                 val daysArray = schedule.optJSONArray("days") ?: continue
-                
+
+                val startMins = parseTimeToMinutes(schedule.optString("startTime", ""))
+                val endMins = parseTimeToMinutes(schedule.optString("endTime", ""))
+                val isMidnightCrossing = endMins <= startMins
+                val isPostMidnight = isMidnightCrossing && currentMinutes < endMins
+                val effectiveDayName = if (isPostMidnight) yesterdayDayName else currentDayName
+                val effectiveDateStr = if (isPostMidnight) yesterdayDateStr else currentDateStr
+
+                if (stopRecordsJson.optString(id) == effectiveDateStr) continue
+
                 var dayMatch = false
                 for (j in 0 until daysArray.length()) {
-                    if (daysArray.getString(j) == currentDay) {
+                    if (daysArray.getString(j) == effectiveDayName) {
                         dayMatch = true
                         break
                     }
                 }
                 if (!dayMatch) continue
 
-                val startMins = parseTimeToMinutes(schedule.optString("startTime", ""))
-                val endMins = parseTimeToMinutes(schedule.optString("endTime", ""))
-
-                if (endMins <= startMins) {
-                    // Midnight crossing schedule
+                if (isMidnightCrossing) {
                     if (currentMinutes >= startMins || currentMinutes < endMins) {
                         return true
                     }
@@ -91,7 +100,7 @@ class UnlinkGuardianWorker(context: Context, workerParams: WorkerParameters) :
     private fun parseTimeToMinutes(timeStr: String): Int {
         val parts = timeStr.split(":")
         if (parts.size < 2) return 0
-        return parts[0].toInt() * 60 + parts[1].toInt()
+        return (parts[0].toIntOrNull() ?: 0) * 60 + (parts[1].toIntOrNull() ?: 0)
     }
 
     private fun ensureServiceRunning() {

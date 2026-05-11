@@ -5,6 +5,7 @@ import { BottomSheetWrapper } from '../ui/BottomSheetWrapper';
 import Animated, { FadeIn, FadeInDown, Layout } from 'react-native-reanimated';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import { ModernToggle } from '../ui/ModernToggle';
+import { sendSetupVerificationCode } from '../../services/ResendService';
 
 export type StrictModeLevel = 'normal' | 'qr_code' | 'mom_test' | 'money';
 
@@ -94,38 +95,11 @@ export const StrictModeModal = ({
         const code = Math.floor(1000 + Math.random() * 9000).toString();
         
         try {
-            const apiKey = 're_N6uTZ7U8_5xDH88K6JuekUqNDGTwrL4pZ';
-            const response = await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`,
-                },
-                body: JSON.stringify({
-                    from: 'Unlink <auth@getunlink.com>',
-                    to: [emailAddress],
-                    subject: 'MOM TEST: SETUP VERIFICATION CODE',
-                    html: `
-                        <div style="font-family: sans-serif; padding: 20px; color: #000;">
-                            <h2 style="letter-spacing: 2px;">UNLINK SETUP</h2>
-                            <p>You have been chosen as a Trusted Contact for an Unlink Focus Session.</p>
-                            <p>Use this code to verify your identity:</p>
-                            <h1 style="font-size: 32px; letter-spacing: 10px; margin: 20px 0;">${code}</h1>
-                            <p style="color: #666; font-size: 11px;">If you didn't expect this, please ignore this email.</p>
-                        </div>
-                    `
-                })
-            });
-
-            if (response.ok) {
-                setSetupCode(code);
-                setVerificationStep('verify');
-            } else {
-                const err = await response.json();
-                alert(`API ERROR: ${err.message || 'FAILED TO SEND'}`);
-            }
-        } catch (error) {
-            alert("NETWORK ERROR: CHECK CONNECTION");
+            await sendSetupVerificationCode(emailAddress, code);
+            setSetupCode(code);
+            setVerificationStep('verify');
+        } catch (error: any) {
+            alert(`API ERROR: ${error.message || 'FAILED TO SEND'}`);
         } finally {
             setIsSendingCode(false);
         }

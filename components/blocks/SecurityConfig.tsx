@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Modal } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, Modal, AppState } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import { ModernToggle } from '../ui/ModernToggle';
@@ -16,6 +16,16 @@ export const SecurityConfig = ({
     onEnabledChange
 }: SecurityConfigProps) => {
     const [isAdminModalVisible, setIsAdminModalVisible] = useState(false);
+
+    // When user returns from the Android OS admin grant dialog, read the real outcome
+    useEffect(() => {
+        const sub = AppState.addEventListener('change', (state) => {
+            if (state === 'active') {
+                onEnabledChange(isAdminActive());
+            }
+        });
+        return () => sub.remove();
+    }, [onEnabledChange]);
 
     const handleToggle = (value: boolean) => {
         if (value && !isAdminActive()) {
@@ -92,8 +102,9 @@ export const SecurityConfig = ({
                             <TouchableOpacity
                                 onPress={() => {
                                     setIsAdminModalVisible(false);
-                                    onEnabledChange(true);
                                     requestAdmin();
+                                    // onEnabledChange is called by the AppState listener
+                                    // once the user returns from the OS dialog with the real outcome
                                 }}
                                 className="w-full h-14 bg-white items-center justify-center mb-3"
                             >

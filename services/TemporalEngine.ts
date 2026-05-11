@@ -57,22 +57,30 @@ export class TemporalEngine {
         const schedules = library.filter(b => b.type === 'schedule' && (b as any).enabled !== false);
 
         const now = new Date();
-        const dayStr = now.toDateString();
+        const dayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const yesterday = new Date(now);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
 
         for (const block of schedules) {
             const isInWindow = this.isCurrentlyInSchedule(block);
             if (isInWindow) {
-                // Check if this specific window was already manually stopped today
+                // Check if this specific window was already manually stopped today (or yesterday for midnight-crossing)
                 const stopRecord = await this.getStopRecord(block.id);
-                if (stopRecord === dayStr) {
+                const nowMins = now.getHours() * 60 + now.getMinutes();
+                const [endH, endM] = block.schedule!.endTime.split(':').map(Number);
+                const [startH, startM] = block.schedule!.startTime.split(':').map(Number);
+                const endMinsCheck = endH * 60 + endM;
+                const startMinsCheck = startH * 60 + startM;
+                const isMidnightCrossingCheck = endMinsCheck <= startMinsCheck;
+                const stopCheckDay = (isMidnightCrossingCheck && nowMins < endMinsCheck) ? yesterdayStr : dayStr;
+                if (stopRecord === stopCheckDay) {
                     continue;
                 }
 
-                const [startH, startM] = block.schedule!.startTime.split(':').map(Number);
-                const [endH, endM] = block.schedule!.endTime.split(':').map(Number);
-                const startMins = startH * 60 + startM;
-                const endMins = endH * 60 + endM;
-                const isMidnightCrossing = endMins <= startMins;
+                const startMins = startMinsCheck;
+                const endMins = endMinsCheck;
+                const isMidnightCrossing = isMidnightCrossingCheck;
 
                 const endDate = new Date(now);
                 endDate.setHours(endH, endM, 0, 0);
@@ -100,17 +108,15 @@ export class TemporalEngine {
         }
     }
 
-    public static async recordManualStop(id: string) {
-        // Mark this schedule as manually stopped for the current day
-        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const currentDay = dayNames[new Date().getDay()];
-        const today = new Date().toDateString();
-        await AsyncStorage.setItem(`@unlink_stop_record_${id}`, today);
+    public static async recordManualStop(id: string, effectiveDateOverride?: string) {
+        const d = new Date();
+        const dateStr = effectiveDateOverride ||
+            `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        await AsyncStorage.setItem(`@unlink_stop_record_${id}`, dateStr);
 
-        // Sync to native so the accessibility service also knows to skip today
         try {
             const { setNativeStopRecord } = require('../modules/screen-time');
-            setNativeStopRecord(id, currentDay);
+            setNativeStopRecord(id, dateStr);
         } catch (e) { }
     }
 

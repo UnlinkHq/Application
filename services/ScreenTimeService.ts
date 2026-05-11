@@ -3,7 +3,6 @@ import * as ScreenTimeModule from '../modules/screen-time';
 import { DailyUsage, HourlyUsage, AppUsage } from '../utils/screenTimeData';
 
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minute cache for maximum smoothness
-let appCache: { [packageName: string]: { label: string; icon: string } } | null = null;
 let usageCache: { [timestamp: number]: { data: DailyUsage; fetchedAt: number } } = {};
 
 export const ScreenTimeService = {
@@ -18,8 +17,6 @@ export const ScreenTimeService = {
     },
 
     async getInstalledApps(): Promise<{ [packageName: string]: { label: string; icon: string } }> {
-        if (appCache) return appCache;
-
         if (Platform.OS !== 'android') return {};
 
         try {
@@ -31,7 +28,6 @@ export const ScreenTimeService = {
                     icon: app.icon
                 };
             });
-            appCache = map;
             return map;
         } catch (e) {
             console.error("Failed to get installed apps", e);

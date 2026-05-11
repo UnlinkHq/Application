@@ -14,7 +14,8 @@ class BootReceiver : BroadcastReceiver() {
         val action = intent.action
         if (action == Intent.ACTION_BOOT_COMPLETED ||
             action == "android.intent.action.QUICKBOOT_POWERON" ||
-            action == Intent.ACTION_MY_PACKAGE_REPLACED) {
+            action == Intent.ACTION_MY_PACKAGE_REPLACED ||
+            action == "android.intent.action.LOCKED_BOOT_COMPLETED") {
 
             Log.d("UnlinkBoot", "Survival Event Detected: $action. Resuming Focus Engine...")
 
@@ -78,7 +79,12 @@ class BootReceiver : BroadcastReceiver() {
             val array = JSONArray(schedulesJson)
             val cal = Calendar.getInstance()
             val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-            val today = dayNames[cal.get(Calendar.DAY_OF_WEEK) - 1]
+            val todayDayName = dayNames[cal.get(Calendar.DAY_OF_WEEK) - 1]
+            val todayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
+            val yesterdayDayName = dayNames[(cal.get(Calendar.DAY_OF_WEEK) - 2 + 7) % 7]
+            val yesterdayCal = cal.clone() as Calendar
+            yesterdayCal.add(Calendar.DAY_OF_YEAR, -1)
+            val yesterdayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", yesterdayCal.get(Calendar.YEAR), yesterdayCal.get(Calendar.MONTH) + 1, yesterdayCal.get(Calendar.DAY_OF_MONTH))
             val nowMins = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
             val stopsJson = JSONObject(prefs.getString("native_stop_records", "{}") ?: "{}")
 
@@ -87,21 +93,25 @@ class BootReceiver : BroadcastReceiver() {
                 if (block.optString("type") != "schedule") continue
                 if (!block.optBoolean("enabled", true)) continue
                 val id = block.optString("id")
-                if (stopsJson.optString(id) == today) continue
                 val sched = block.optJSONObject("schedule") ?: continue
                 val daysArr = sched.optJSONArray("days") ?: continue
-                var dayMatch = false
-                for (j in 0 until daysArr.length()) {
-                    if (daysArr.getString(j) == today) { dayMatch = true; break }
-                }
-                if (!dayMatch) continue
                 fun parseMins(t: String): Int {
                     val p = t.split(":"); return if (p.size >= 2) (p[0].toIntOrNull() ?: 0) * 60 + (p[1].toIntOrNull() ?: 0) else 0
                 }
                 val startMins = parseMins(sched.optString("startTime", ""))
                 val endMins   = parseMins(sched.optString("endTime", ""))
-                val inWindow  = if (endMins <= startMins) nowMins >= startMins || nowMins < endMins
-                                else nowMins >= startMins && nowMins < endMins
+                val isMidnightCrossing = endMins <= startMins
+                val isPostMidnight = isMidnightCrossing && nowMins < endMins
+                val effectiveDayName = if (isPostMidnight) yesterdayDayName else todayDayName
+                val effectiveDateStr = if (isPostMidnight) yesterdayDateStr else todayDateStr
+                if (stopsJson.optString(id) == effectiveDateStr) continue
+                var dayMatch = false
+                for (j in 0 until daysArr.length()) {
+                    if (daysArr.getString(j) == effectiveDayName) { dayMatch = true; break }
+                }
+                if (!dayMatch) continue
+                val inWindow = if (isMidnightCrossing) nowMins >= startMins || nowMins < endMins
+                               else nowMins >= startMins && nowMins < endMins
                 if (inWindow) return true
             }
             false

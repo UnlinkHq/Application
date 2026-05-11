@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Modal, TextInput, ActivityIndicator, Styl
 import { Ionicons, MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { BlockSession } from '../../services/FocusStorageService';
+import { sendMomTestUnlockCode } from '../../services/ResendService';
 
 interface MomTestUnlockModalProps {
     visible: boolean;
@@ -46,43 +47,13 @@ export const MomTestUnlockModal = ({
         setIsSending(true);
 
         try {
-            // Hardcoded for now as per developer instructions, will migrate to ENV in production
-            const apiKey = 're_N6uTZ7U8_5xDH88K6JuekUqNDGTwrL4pZ';
-            const response = await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`,
-                },
-                body: JSON.stringify({
-                    from: 'Unlink <auth@getunlink.com>',
-                    to: [email],
-                    subject: 'MOM TEST: UNLOCK VERIFICATION CODE',
-                    html: `
-                        <div style="font-family: sans-serif; padding: 20px; color: #000; border: 1px solid #eee;">
-                            <h2 style="letter-spacing: 2px; text-transform: uppercase;">Unlink_Protocol</h2>
-                            <p>A request has been made to terminate an active focus session.</p>
-                            <p>Please provide this code to the user <b>only</b> if they have completed their original intent:</p>
-                            <div style="background: #f9f9f9; padding: 20px; text-align: center; margin: 20px 0;">
-                                <h1 style="font-size: 48px; letter-spacing: 15px; margin: 0; color: #000;">${newOtp}</h1>
-                            </div>
-                            <p style="color: #666; font-size: 11px; text-transform: uppercase;">Mode: AirTight Lockdown (Mom Test)</p>
-                        </div>
-                    `
-                })
-            });
-
-            if (response.ok) {
-                setGeneratedOtp(newOtp);
-                setShowOtpInput(true);
-                setCooldown(60);
-                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            } else {
-                const err = await response.json();
-                alert(`API ERROR: ${err.message || 'FAILED TO SEND'}`);
-            }
-        } catch (error) {
-            alert("NETWORK ERROR: CHECK COMMUNICATION CHANNELS");
+            await sendMomTestUnlockCode(email, newOtp);
+            setGeneratedOtp(newOtp);
+            setShowOtpInput(true);
+            setCooldown(60);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } catch (error: any) {
+            alert(`API ERROR: ${error.message || 'FAILED TO SEND'}`);
         } finally {
             setIsSending(false);
         }
