@@ -92,7 +92,7 @@ export const StrictModeModal = ({
         }
 
         setIsSendingCode(true);
-        const code = Math.floor(1000 + Math.random() * 9000).toString();
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
         
         try {
             await sendSetupVerificationCode(emailAddress, code);
@@ -248,10 +248,10 @@ export const StrictModeModal = ({
                                             <TextInput
                                                 value={enteredSetupCode}
                                                 onChangeText={setEnteredSetupCode}
-                                                placeholder="----"
+                                                placeholder="------"
                                                 placeholderTextColor="rgba(255,255,255,0.2)"
                                                 keyboardType="number-pad"
-                                                maxLength={4}
+                                                maxLength={6}
                                                 className="flex-1 h-14 bg-black border border-white/20 px-4 text-white font-headline font-black text-xl text-center"
                                             />
                                             <TouchableOpacity

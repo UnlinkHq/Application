@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform, Modal } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import SignatureService from '../../services/SignatureService';
 import * as Haptics from 'expo-haptics';
 
@@ -12,6 +12,7 @@ interface SignatureDeploymentModalProps {
     onSuccess: (assetId: string) => void;
     onCancel: () => void;
     title?: string;
+    blockType?: 'block_now' | 'schedule';
 }
 
 export const SignatureDeploymentModal = ({
@@ -19,7 +20,8 @@ export const SignatureDeploymentModal = ({
     qrData,
     onSuccess,
     onCancel,
-    title = "PROTOCOL SIGNATURE"
+    title = "PROTOCOL SIGNATURE",
+    blockType
 }: SignatureDeploymentModalProps) => {
     const qrRef = useRef<any>(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -61,11 +63,23 @@ export const SignatureDeploymentModal = ({
                 <View className="w-full bg-[#0a0a0a] border border-white/20 p-8 items-center">
                     {/* Header Section */}
                     <View className="flex-row items-center justify-between w-full mb-6">
-                        <View className="flex-1">
-                            <Text className="text-white font-headline font-black text-xl uppercase tracking-widest">{title}</Text>
-                            <Text className="text-[#72fe88] font-label text-[10px] uppercase tracking-widest font-bold mt-1">
-                                AUTOMATIC GALLERY STORAGE ACTIVE
-                            </Text>
+                        <View className="flex-row items-center flex-1">
+                            {blockType && (
+                                <MaterialCommunityIcons
+                                    name={blockType === 'schedule' ? 'calendar-clock' : 'shield'}
+                                    size={20}
+                                    color="white"
+                                    style={{ marginRight: 10 }}
+                                />
+                            )}
+                            <View className="flex-1">
+                                <Text className="text-white font-headline font-black text-xl uppercase tracking-widest" numberOfLines={1}>
+                                    {title.length > 18 ? title.substring(0, 15) + '...' : title}
+                                </Text>
+                                <Text className="text-[#72fe88] font-label text-[10px] uppercase tracking-widest font-bold mt-1">
+                                    AUTOMATIC GALLERY STORAGE ACTIVE
+                                </Text>
+                            </View>
                         </View>
                         <TouchableOpacity onPress={onCancel} className="p-2">
                             <Ionicons name="close" size={24} color="rgba(255,255,255,0.4)" />

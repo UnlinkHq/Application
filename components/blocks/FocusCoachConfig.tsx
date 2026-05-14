@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, Switch, Platform, Modal } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { ModernToggle } from '../ui/ModernToggle';
 import { requestAccessibilityPermission } from '../../modules/screen-time';
@@ -10,15 +10,9 @@ export interface ScrollingProtocolConfig {
     enabled: boolean;
     youtube: {
         enabled: boolean;
-        intentGate: boolean;
-        hideShorts: boolean;
-        finiteFeed: boolean;
     };
     instagram: {
         enabled: boolean;
-        intentGate: boolean;
-        dmSafeZone: boolean;
-        finiteFeed: boolean;
     };
 }
 
@@ -41,18 +35,6 @@ export const FocusCoachConfig = ({
         onConfigChange({ ...config, ...updates });
     };
 
-    const updateYoutube = (updates: Partial<ScrollingProtocolConfig['youtube']>) => {
-        updateConfig({
-            youtube: { ...config.youtube, ...updates }
-        });
-    };
-
-    const updateInstagram = (updates: Partial<ScrollingProtocolConfig['instagram']>) => {
-        updateConfig({
-            instagram: { ...config.instagram, ...updates }
-        });
-    };
-
     const handleMainToggle = () => {
         if (Platform.OS === 'android' && !hasAccessibility && !config.enabled) {
             setPendingAction(() => () => updateConfig({ enabled: true }));
@@ -65,26 +47,20 @@ export const FocusCoachConfig = ({
 
     const handleYoutubeToggle = (v: boolean) => {
         if (Platform.OS === 'android' && v && !hasAccessibility) {
-            setPendingAction(() => () => updateYoutube({ enabled: true, intentGate: true, hideShorts: true, finiteFeed: true }));
+            setPendingAction(() => () => onConfigChange({ ...config, youtube: { enabled: true } }));
             setShowAccessibilityDisclosure(true);
             return;
         }
-        updateYoutube({ 
-            enabled: v,
-            ...(v ? { intentGate: true, hideShorts: true, finiteFeed: true } : {})
-        });
+        onConfigChange({ ...config, youtube: { enabled: v } });
     };
 
     const handleInstagramToggle = (v: boolean) => {
         if (Platform.OS === 'android' && v && !hasAccessibility) {
-            setPendingAction(() => () => updateInstagram({ enabled: true, intentGate: true, dmSafeZone: true, finiteFeed: true }));
+            setPendingAction(() => () => onConfigChange({ ...config, instagram: { enabled: true } }));
             setShowAccessibilityDisclosure(true);
             return;
         }
-        updateInstagram({ 
-            enabled: v,
-            ...(v ? { intentGate: true, dmSafeZone: true, finiteFeed: true } : {})
-        });
+        onConfigChange({ ...config, instagram: { enabled: v } });
     };
 
     return (
@@ -123,7 +99,7 @@ export const FocusCoachConfig = ({
                     <Animated.View entering={FadeInDown.duration(400)} className="p-1">
                         {/* YouTube Section */}
                         <View className="mb-1 p-3">
-                            <View className="flex-row items-center mb-3">
+                            <View className="flex-row items-center">
                                 <MaterialCommunityIcons name="youtube" size={18} color="#FF0000" />
                                 <Text className="text-white/40 font-headline font-black text-[9px] uppercase ml-2 tracking-widest">SCROLLING YOUTUBE</Text>
                                 <View className="flex-1 h-[1px] bg-white/5 ml-3" />
@@ -134,42 +110,11 @@ export const FocusCoachConfig = ({
                                     thumbColor="#FFF"
                                 />
                             </View>
-
-                            {config.youtube.enabled && (
-                                <View className="ml-7 gap-3">
-                                    <TouchableOpacity
-                                        onPress={() => updateYoutube({ intentGate: !config.youtube.intentGate })}
-                                        className="flex-row items-center justify-between"
-                                    >
-                                        <Text className={`text-[10px] font-headline font-black uppercase ${config.youtube.intentGate ? 'text-white' : 'text-white/20'}`}>[ ] 3S CALM INTENT GATE</Text>
-                                        <Ionicons name={config.youtube.intentGate ? "checkbox" : "square-outline"} size={16} color={config.youtube.intentGate ? "white" : "rgba(255,255,255,0.2)"} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => updateYoutube({ hideShorts: !config.youtube.hideShorts })}
-                                        className="flex-row items-center justify-between"
-                                    >
-                                        <Text className={`text-[10px] font-headline font-black uppercase ${config.youtube.hideShorts ? 'text-white' : 'text-white/20'}`}>[ ] HIDE SHORTS SHELF (GPU)</Text>
-                                        <Ionicons name={config.youtube.hideShorts ? "checkbox" : "square-outline"} size={16} color={config.youtube.hideShorts ? "white" : "rgba(255,255,255,0.2)"} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => updateYoutube({ finiteFeed: !config.youtube.finiteFeed })}
-                                        className="flex-row items-center justify-between"
-                                    >
-                                        <Text className={`text-[10px] font-headline font-black uppercase ${config.youtube.finiteFeed ? 'text-white' : 'text-white/20'}`}>[ ] AUTONOMOUS FINITE FEED</Text>
-                                        <Ionicons name={config.youtube.finiteFeed ? "checkbox" : "square-outline"} size={16} color={config.youtube.finiteFeed ? "white" : "rgba(255,255,255,0.2)"} />
-                                    </TouchableOpacity>
-
-                                    <View className="mt-1 flex-row items-center gap-2">
-                                        <MaterialCommunityIcons name="brain" size={14} color="rgba(255,255,255,0.3)" />
-                                        <Text className="text-[8px] text-white/30 font-label uppercase">Intelligent BrainRot Detection Active</Text>
-                                    </View>
-                                </View>
-                            )}
                         </View>
 
                         {/* Instagram Section */}
                         <View className="mb-1 p-3">
-                            <View className="flex-row items-center mb-3">
+                            <View className="flex-row items-center">
                                 <MaterialCommunityIcons name="instagram" size={18} color="#E1306C" />
                                 <Text className="text-white/40 font-headline font-black text-[9px] uppercase ml-2 tracking-widest">SCROLLING INSTAGRAM</Text>
                                 <View className="flex-1 h-[1px] bg-white/5 ml-3" />
@@ -180,37 +125,6 @@ export const FocusCoachConfig = ({
                                     thumbColor="#FFF"
                                 />
                             </View>
-
-                            {config.instagram.enabled && (
-                                <View className="ml-7 gap-3">
-                                    <TouchableOpacity
-                                        onPress={() => updateInstagram({ intentGate: !config.instagram.intentGate })}
-                                        className="flex-row items-center justify-between"
-                                    >
-                                        <Text className={`text-[10px] font-headline font-black uppercase ${config.instagram.intentGate ? 'text-white' : 'text-white/20'}`}>[ ] 3S CALM INTENT GATE</Text>
-                                        <Ionicons name={config.instagram.intentGate ? "checkbox" : "square-outline"} size={16} color={config.instagram.intentGate ? "white" : "rgba(255,255,255,0.2)"} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => updateInstagram({ dmSafeZone: !config.instagram.dmSafeZone })}
-                                        className="flex-row items-center justify-between"
-                                    >
-                                        <Text className={`text-[10px] font-headline font-black uppercase ${config.instagram.dmSafeZone ? 'text-white' : 'text-white/20'}`}>[ ] DM SAFE-ZONE PROTOCOL</Text>
-                                        <Ionicons name={config.instagram.dmSafeZone ? "checkbox" : "square-outline"} size={16} color={config.instagram.dmSafeZone ? "white" : "rgba(255,255,255,0.2)"} />
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        onPress={() => updateInstagram({ finiteFeed: !config.instagram.finiteFeed })}
-                                        className="flex-row items-center justify-between"
-                                    >
-                                        <Text className={`text-[10px] font-headline font-black uppercase ${config.instagram.finiteFeed ? 'text-white' : 'text-white/20'}`}>[ ] AUTONOMOUS FINITE FEED</Text>
-                                        <Ionicons name={config.instagram.finiteFeed ? "checkbox" : "square-outline"} size={16} color={config.instagram.finiteFeed ? "white" : "rgba(255,255,255,0.2)"} />
-                                    </TouchableOpacity>
-
-                                    <View className="mt-1 flex-row items-center gap-2">
-                                        <MaterialCommunityIcons name="brain" size={14} color="rgba(255,255,255,0.3)" />
-                                        <Text className="text-[8px] text-white/30 font-label uppercase">Intelligent BrainRot Detection Active</Text>
-                                    </View>
-                                </View>
-                            )}
                         </View>
                     </Animated.View>
                 )}

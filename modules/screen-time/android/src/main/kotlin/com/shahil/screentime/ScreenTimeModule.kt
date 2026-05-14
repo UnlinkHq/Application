@@ -50,34 +50,42 @@ class ScreenTimeModule : Module() {
         val packageNames = config["apps"] as? List<String> ?: emptyList()
         val durationMins = (config["durationMins"] as? Double ?: 0.0).toLong()
         val surgicalFlagsMap = config["surgicalFlags"] as? Map<String, Any>
-        val surgicalYoutube = (surgicalFlagsMap?.get("youtube") as? Boolean) ?: (config["surgicalYoutube"] as? Boolean ?: false)
-        val surgicalInstagram = (surgicalFlagsMap?.get("instagram") as? Boolean) ?: (config["surgicalInstagram"] as? Boolean ?: false)
-        val message = config["message"] as? String ?: "FOCUS_PROTOCOL_ENGAGED"
-        
+        val surgicalYoutube = (surgicalFlagsMap?.get("youtube") as? Boolean) ?: false
+        val surgicalInstagram = (surgicalFlagsMap?.get("instagram") as? Boolean) ?: false
+        val breakDurationMs = (config["breakDurationMs"] as? Double ?: (15 * 60 * 1000).toDouble()).toLong()
+        val strictMode = config["strictMode"] as? Boolean ?: false
+
         val set = packageNames.toSet()
         val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
-        
+
         val startTime = System.currentTimeMillis()
         val expiryTime = if (durationMins > 0) startTime + (durationMins * 60 * 1000L) else 0L
 
+        // Single atomic commit — no race conditions possible
         prefs.edit().apply {
             putStringSet("blocked_apps", set)
-            putString("focus_message", message)
+            putString("focus_message", "FOCUS_PROTOCOL_ENGAGED")
             putBoolean("surgical_youtube", surgicalYoutube)
             putBoolean("surgical_instagram", surgicalInstagram)
+            putBoolean("coach_yt_gate", true)
+            putBoolean("coach_yt_shelf", true)
+            putBoolean("coach_yt_finite", true)
+            putBoolean("coach_ig_gate", true)
+            putBoolean("coach_ig_dms", true)
+            putBoolean("coach_ig_finite", true)
+            putLong("break_duration_ms", breakDurationMs)
+            putBoolean("strict_mode", strictMode)
             putLong("block_expiry_time", expiryTime)
             putLong("session_start_time", startTime)
             putBoolean("is_blocking_suspended", false)
             putInt("breaks_remaining", (config["breaksRemaining"] as? Double ?: 0.0).toInt())
             commit()
         }
-        
+
         syncBlockingService(context)
-        
-        // Broadcast to Accessibility Service
         UnlinkAccessibilityService.instance?.refreshServiceConfig()
         UnlinkAccessibilityService.instance?.setSuspendedState(false)
-        
+
         val intent = Intent("com.shahil.unlink.SYNC_LIST")
         intent.setPackage(context.packageName)
         context.sendBroadcast(intent)

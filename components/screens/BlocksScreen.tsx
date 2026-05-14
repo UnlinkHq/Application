@@ -16,7 +16,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import * as MediaLibrary from 'expo-media-library';
 import * as Haptics from 'expo-haptics';
-import { FocusStorageService, BlockSession } from '../../services/FocusStorageService';
+import { FocusStorageService, BlockSession, SessionHistoryEntry } from '../../services/FocusStorageService';
 import { PermissionBanner } from '../ui/PermissionBanner';
 import { useSelection } from '../../context/SelectionContext';
 import { TemporalEngine } from '../../services/TemporalEngine';
@@ -38,14 +38,19 @@ export const BlocksScreen = () => {
     const { openSelection } = useSelection();
     const [activeSession, setActiveSession] = useState<BlockSession | null>(null);
     const [library, setLibrary] = useState<BlockSession[]>([]);
+    const [history, setHistory] = useState<SessionHistoryEntry[]>([]);
+    const [streak, setStreak] = useState(0);
 
     const refreshData = useCallback(async () => {
-        const [active, lib] = await Promise.all([
+        const [active, lib, hist] = await Promise.all([
             FocusStorageService.getActiveSession(),
-            FocusStorageService.getLibraryBlocks()
+            FocusStorageService.getLibraryBlocks(),
+            FocusStorageService.getSessionHistory(),
         ]);
         setActiveSession(active);
         setLibrary(lib);
+        setHistory(hist);
+        setStreak(FocusStorageService.getStreak(hist));
     }, []);
 
     useFocusEffect(
@@ -211,6 +216,28 @@ export const BlocksScreen = () => {
                             </View>
                         )}
                     </View>
+
+                    {/* Section: SESSION_HISTORY */}
+                    {history.length > 0 && (
+                        <View className="px-4 mt-10">
+                            <View className="flex-row items-center justify-between mb-6">
+                                <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.3em]">
+                                    SESSION HISTORY
+                                </Text>
+                                {streak > 0 && (
+                                    <View className="flex-row items-center bg-white/5 border border-white/10 px-3 py-1">
+                                        <MaterialCommunityIcons name="fire" size={12} color="#FF6B35" />
+                                        <Text className="text-white font-headline font-black text-[10px] ml-1">
+                                            {streak} DAY STREAK
+                                        </Text>
+                                    </View>
+                                )}
+                            </View>
+                            {history.slice(0, 10).map((entry) => (
+                                <HistoryRow key={`${entry.id}-${entry.completedAt}`} entry={entry} />
+                            ))}
+                        </View>
+                    )}
                 </ScrollView>
 
 
@@ -241,6 +268,43 @@ export const BlocksScreen = () => {
                     </View>
                 )}
             </SafeAreaView>
+        </View>
+    );
+};
+
+const HistoryRow = ({ entry }: { entry: SessionHistoryEntry }) => {
+    const date = new Date(entry.completedAt);
+    const dayStr = date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+    const h = Math.floor(entry.durationMins / 60);
+    const m = entry.durationMins % 60;
+    const durationStr = h > 0 ? `${h}h ${m}m` : `${m}m`;
+
+    return (
+        <View className="flex-row items-center py-3 border-b border-white/5">
+            <View className={`w-8 h-8 items-center justify-center mr-3 ${entry.wasCompleted ? 'bg-[#72fe88]/10' : 'bg-white/5'}`}>
+                <MaterialCommunityIcons
+                    name={entry.wasCompleted ? 'check' : 'close'}
+                    size={14}
+                    color={entry.wasCompleted ? '#72fe88' : 'rgba(255,255,255,0.3)'}
+                />
+            </View>
+            <View className="flex-1">
+                <Text className="text-white font-headline font-black text-[11px] uppercase tracking-wide" numberOfLines={1}>
+                    {entry.title}
+                </Text>
+                <Text className="text-white/30 font-label text-[9px] uppercase tracking-widest mt-0.5">
+                    {dayStr}
+                </Text>
+            </View>
+            <View className="items-end">
+                <Text className="text-white/60 font-headline font-black text-[10px]">{durationStr}</Text>
+                <MaterialCommunityIcons
+                    name={entry.type === 'schedule' ? 'calendar-clock' : 'shield'}
+                    size={10}
+                    color="rgba(255,255,255,0.2)"
+                    style={{ marginTop: 2 }}
+                />
+            </View>
         </View>
     );
 };

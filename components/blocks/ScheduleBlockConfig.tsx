@@ -76,8 +76,8 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
     // -- Scrolling States --
     const [scrollingConfig, setScrollingConfig] = useState<ScrollingProtocolConfig>({
         enabled: false,
-        youtube: { enabled: false, intentGate: true, hideShorts: true, finiteFeed: true },
-        instagram: { enabled: false, intentGate: true, dmSafeZone: true, finiteFeed: true }
+        youtube: { enabled: false },
+        instagram: { enabled: false }
     });
 
     // -- Strict Mode States --
@@ -150,6 +150,12 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
 
     // -- Deployment Logic --
     const handleConfirm = async () => {
+        if (!title.trim()) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert("NAME REQUIRED", "PLEASE NAME YOUR SCHEDULE TO PROCEED.");
+            return;
+        }
+
         const hasAppsSelected = Platform.OS === 'ios' ? nativeIosCount > 0 : selectedApps.length > 0;
 
         if (!hasAppsSelected) {
@@ -176,7 +182,7 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
 
         const schedulePayload = {
             id: `sched_${Math.random().toString(36).substring(7)}`,
-            title: title || "SCHEDULED FOCUS",
+            title: title.trim(),
             type: 'schedule',
             enabled: isEnabled,
             apps: selectedApps.map(a => a.id),
@@ -437,7 +443,8 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
             <SignatureDeploymentModal
                 visible={isQrModalVisible}
                 qrData={generatedQrData}
-                title="SCHEDULE SIGNATURE"
+                title={title}
+                blockType="schedule"
                 onCancel={() => {
                     setIsQrModalVisible(false);
                     setIsQrSaving(false);
@@ -447,6 +454,7 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
                         ...pendingPayload,
                         strictnessConfig: {
                             ...pendingPayload.strictnessConfig,
+                            qrCodeData: generatedQrData,
                             assetId
                         }
                     };

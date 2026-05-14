@@ -43,7 +43,7 @@ export const MomTestUnlockModal = ({
             return;
         }
 
-        const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
+        const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
         setIsSending(true);
 
         try {
@@ -138,7 +138,7 @@ export const MomTestUnlockModal = ({
                                     placeholder="----"
                                     placeholderTextColor="rgba(255,255,255,0.1)"
                                     keyboardType="number-pad"
-                                    maxLength={4}
+                                    maxLength={6}
                                     autoFocus
                                     className="flex-1 h-16 bg-white/5 border border-white/20 text-white font-headline font-black text-3xl text-center"
                                 />

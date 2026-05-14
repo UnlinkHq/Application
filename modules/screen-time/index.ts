@@ -32,6 +32,14 @@ interface ScreenTimeModuleInterface {
     }>;
 
     // Blocking & Dashboard Functions
+    startFocusProtocol(config: {
+        apps: string[];
+        durationMins: number;
+        surgicalFlags: { youtube: boolean; instagram: boolean };
+        breaksRemaining: number;
+        breakDurationMs: number;
+        strictMode: boolean;
+    }): void;
     setBlockedApps(packageNames: string[], message: string, timeLeft: string): Promise<void>;
     setSurgicalFlags(youtubeShorts: boolean, instagramReels: boolean, studyMode?: boolean): void;
     setSurgicalConfig(config: any): void;
@@ -92,6 +100,7 @@ try {
             batteryExempt: false,
             isEnforcing: false
         }),
+        startFocusProtocol: () => { },
         setBlockedApps: async () => { },
         setSurgicalFlags: () => { },
         setSurgicalConfig: () => { },
@@ -157,6 +166,17 @@ export async function hasOverlayPermission(): Promise<boolean> {
 
 export function requestOverlayPermission(): void {
     ScreenTimeModule.requestOverlayPermission();
+}
+
+export function startFocusProtocol(config: {
+    apps: string[];
+    durationMins: number;
+    surgicalFlags: { youtube: boolean; instagram: boolean };
+    breaksRemaining: number;
+    breakDurationMs: number;
+    strictMode: boolean;
+}): void {
+    ScreenTimeModule.startFocusProtocol(config);
 }
 
 export function setBlockedApps(packageNames: string[], message: string, timeLeft: string): void {

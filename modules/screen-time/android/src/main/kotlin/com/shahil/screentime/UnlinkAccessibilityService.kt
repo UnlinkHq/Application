@@ -50,6 +50,7 @@ companion object {
 
         private const val CHANNEL_ID = "unlink_protection_channel"
         private const val NOTIFICATION_ID = 1001
+        private const val BREAK_WARNING_NOTIF_ID = 1002
         private const val SHORTS_LOCK_THRESHOLD = 85f
         private const val SHORTS_UNLOCK_THRESHOLD = 30f
         private const val TAG = "UnlinkWarden"
@@ -163,6 +164,9 @@ companion object {
     @Volatile private var cachedSchedules: List<NativeSchedule> = emptyList()
     @Volatile private var cachedStopRecords: Map<String, String> = emptyMap()
 
+    // Usage stats cached off-thread so updateWallContent() never blocks main thread
+    @Volatile private var cachedUsageText: String? = null
+
     // ─── Views ────────────────────────────────────────────────────────────────
     private var windowManager: WindowManager? = null
     private var overlayView: View? = null
@@ -195,6 +199,12 @@ companion object {
             if (blockExpiryTime in 1..now && !isBlockingSuspended) {
                 Log.d(TAG, "Session expired. Tearing down.")
                 teardownAllBlocks()
+            }
+            // Periodic multi-window scan: catches blocked apps sitting in a background
+            // split-screen pane that haven't fired TYPE_WINDOW_STATE_CHANGED yet.
+            // Runs every 10s — same cadence as this heartbeat, zero event overhead.
+            if (!isBlockingSuspended && (blockExpiryTime > now || checkNativeSchedulesActive())) {
+                checkAllWindowsForBlockedApps()
             }
             mainHandler.postDelayed(this, 10_000L)
         }
@@ -244,6 +254,10 @@ companion object {
                 mainHandler.postDelayed(this, 10_000L)
             }
         }
+    }
+
+    private val breakWarningRunnable = Runnable {
+        showBreakWarningNotification()
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -630,9 +644,14 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
         if (isBlockingSuspended) return false
         val now = System.currentTimeMillis()
         if (blockExpiryTime > now) {
+            // A JS session is active — it is the single source of truth.
+            // Never fall through to schedule enforcement here; that would allow
+            // a schedule with different apps to interfere with the active session.
             if (pkg == "com.shahil.unlink") return true
-            if (currentBlockedApps.any { pkg.contains(it, ignoreCase = true) }) return true
+            return currentBlockedApps.any { pkg.contains(it, ignoreCase = true) }
         }
+        // No active JS session — use native schedules for background resilience
+        // (handles the case where the app was killed mid-schedule window).
         return checkNativeSchedules(pkg)
     }
 
@@ -716,8 +735,16 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
                 .putLong("suspension_start_time", suspensionStartTime).commit()
             setWallVisibility(false); hideIntentGate()
             mainHandler.post(breakExpiryRunnable)
+            // Schedule "break ending soon" notification 2 min before break expires
+            val warningDelay = breakDurationMs - 2 * 60_000L
+            if (warningDelay > 0L) {
+                mainHandler.postDelayed(breakWarningRunnable, warningDelay)
+            }
         } else if (!isBlockingSuspended && wasSuspended) {
             mainHandler.removeCallbacks(breakExpiryRunnable)
+            mainHandler.removeCallbacks(breakWarningRunnable)
+            (getSystemService(NOTIFICATION_SERVICE) as? NotificationManager)
+                ?.cancel(BREAK_WARNING_NOTIF_ID)
             suspensionStartTime = 0L
             val saved = prefs.getLong("block_remaining_ms", 0L)
             if (saved > 0L) {
@@ -873,7 +900,15 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
             val isShowing = view.parent != null
             if (visible == isShowing) return@post
             if (visible) {
-                vibrate(20); updateWallContent()
+                vibrate(20)
+                // Fetch usage stats on background thread — never block the main thread
+                val pkgForStats = lastForegroundPackage
+                bgHandler.post {
+                    val text = getTodayUsageText(pkgForStats)
+                    cachedUsageText = text
+                    mainHandler.post { updateWallContent() }
+                }
+                updateWallContent() // show wall immediately with cached value; refreshes once bg fetch returns
                 if (android.provider.Settings.canDrawOverlays(this)) {
                     try {
                         windowManager?.addView(view, view.layoutParams as WindowManager.LayoutParams)
@@ -921,13 +956,14 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
         }
         overlay.findViewById<TextView>(idRotStatusText)?.text =
             "Your Brain is at ${globalBrainrotScore.toInt()}% Rot"
+        val usageStats = cachedUsageText
         val (main, sub) = when {
             globalBrainrotScore >= 60f ->
-                "You've been scrolling heavily today." to "This break is saving your brain from further damage."
+                "You've been scrolling heavily today." to (usageStats ?: "This break is saving your brain from further damage.")
             isCurrentlyInShortsMode ->
-                "Shorts & Reels are locked to protect you." to "DMs are still open if you need them."
+                "Shorts & Reels are locked to protect you." to (usageStats ?: "DMs are still open if you need them.")
             else ->
-                "You chose to protect your focus today." to "Your brain is already starting to feel clearer ❤️🩹"
+                "You chose to protect your focus today." to (usageStats ?: "Your brain is already starting to feel clearer ❤️🩹")
         }
         overlay.findViewById<TextView>(idMessageText)?.text = main
         overlay.findViewById<TextView>(idCoachSubText)?.text = sub
@@ -1209,6 +1245,59 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
         Toast.makeText(this, "SHORTS LOCKED: Brain will heal when you stay out of Reels/Shorts.", Toast.LENGTH_LONG).show()
         performGlobalAction(GLOBAL_ACTION_BACK)
         isCurrentlyInShortsMode = false; hideBrainrotMeter(); mainHandler.removeCallbacks(watchTimeRunnable)
+    }
+
+    private fun getTodayUsageText(pkg: String?): String? {
+        if (pkg.isNullOrEmpty()) return null
+        return try {
+            val usm = getSystemService(USAGE_STATS_SERVICE) as UsageStatsManager
+            val cal = THREAD_CAL.get()
+            cal.timeInMillis = System.currentTimeMillis()
+            cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+            cal.set(java.util.Calendar.MINUTE, 0)
+            cal.set(java.util.Calendar.SECOND, 0)
+            cal.set(java.util.Calendar.MILLISECOND, 0)
+            val totalMs = usm.queryAndAggregateUsageStats(cal.timeInMillis, System.currentTimeMillis())[pkg]?.totalTimeInForeground ?: 0L
+            val totalMins = totalMs / 60_000L
+            if (totalMins < 1L) return null
+            val appName = try { packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() } catch (_: Exception) { return null }
+            val h = totalMins / 60; val m = totalMins % 60
+            if (h > 0L) "You've spent ${h}h ${m}m on $appName today." else "You've spent ${m}m on $appName today."
+        } catch (_: Exception) { null }
+    }
+
+    private fun showBreakWarningNotification() {
+        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val intent = packageManager.getLaunchIntentForPackage(packageName)
+        val pi = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+        val notif = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
+            .setContentTitle("Break Ending in 2 Minutes")
+            .setContentText("Your break is almost over. Get ready to refocus.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pi)
+            .setAutoCancel(true)
+            .build()
+        nm.notify(BREAK_WARNING_NOTIF_ID, notif)
+    }
+
+    private fun checkAllWindowsForBlockedApps() {
+        if (isBlockingSuspended) return
+        try {
+            val allWindows = windows ?: return
+            for (window in allWindows) {
+                val root = window.root ?: continue
+                val pkg = root.packageName?.toString()
+                root.recycle()
+                if (pkg == null || pkg == packageName || isLauncherOrHomePackage(pkg)) continue
+                if (isBlockActive(pkg)) {
+                    Log.d(TAG, "SPLIT_SCREEN: $pkg in secondary window — blocking.")
+                    setWallVisibility(true)
+                    lastForegroundPackage = pkg
+                    return
+                }
+            }
+        } catch (_: Exception) {}
     }
 
     private fun detectPiPBypass(): String? {

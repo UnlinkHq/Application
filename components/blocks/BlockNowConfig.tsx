@@ -201,8 +201,8 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
     const [isAppSelectionVisible, setIsAppSelectionVisible] = useState(false);
     const [scrollingConfig, setScrollingConfig] = useState<ScrollingProtocolConfig>({
         enabled: false,
-        youtube: { enabled: false, intentGate: true, hideShorts: true, finiteFeed: true },
-        instagram: { enabled: false, intentGate: true, dmSafeZone: true, finiteFeed: true }
+        youtube: { enabled: false },
+        instagram: { enabled: false }
     });
     const [isStrictModeVisible, setIsStrictModeVisible] = useState(false);
     const [isFamilyPickerVisible, setIsFamilyPickerVisible] = useState(false);
@@ -251,6 +251,12 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
 
 
     const handleInitiate = async () => {
+        if (!title.trim()) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            Alert.alert("NAME REQUIRED", "PLEASE NAME YOUR SESSION TO PROCEED.");
+            return;
+        }
+
         const hasApps = Platform.OS === 'ios' ? nativeIosCount > 0 : selectedApps.length > 0;
         const hasSurgical = scrollingConfig.youtube.enabled || scrollingConfig.instagram.enabled;
 
@@ -286,7 +292,7 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
 
         const sessionPayload = {
             id: Math.random().toString(36).substring(7),
-            title: title || "ALLOW FOCUS SESSION",
+            title: title.trim(),
             type: 'block_now' as const,
             durationMins: duration,
             apps: selectedApps.map(a => a.id),
@@ -477,13 +483,15 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
             <SignatureDeploymentModal
                 visible={isQrModalVisible}
                 qrData={generatedQrData}
-                title="FOCUS SIGNATURE"
+                title={title}
+                blockType="block_now"
                 onCancel={() => setIsQrModalVisible(false)}
                 onSuccess={async (assetId) => {
                     const finalSession = {
                         ...pendingSession,
                         strictnessConfig: {
                             ...pendingSession.strictnessConfig,
+                            qrCodeData: generatedQrData,
                             assetId
                         }
                     };

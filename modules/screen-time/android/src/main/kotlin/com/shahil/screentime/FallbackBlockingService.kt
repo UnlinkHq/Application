@@ -361,7 +361,7 @@ class FallbackBlockingService : Service() {
         val pending = android.app.PendingIntent.getService(
             applicationContext, 1,
             restartIntent,
-            android.app.PendingIntent.FLAG_ONE_SHOT or android.app.PendingIntent.FLAG_IMMUTABLE
+            android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
         )
         val alarmManager = getSystemService(Context.ALARM_SERVICE) as android.app.AlarmManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {

@@ -1,16 +1,23 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import ScreenTime from '../modules/screen-time';
+import ScreenTime, { startFocusProtocol } from '../modules/screen-time';
 
 const ACTIVE_SESSION_KEY = '@unlink_active_session';
 const LIBRARY_BLOCKS_KEY = '@unlink_library_blocks';
+const SESSION_HISTORY_KEY = '@unlink_session_history';
+
+export interface SessionHistoryEntry {
+    id: string;
+    title: string;
+    type: 'block_now' | 'schedule';
+    durationMins: number;
+    apps: string[];
+    completedAt: number;
+    wasCompleted: boolean;
+}
 
 export interface ScrollingAppConfig {
     enabled: boolean;
-    intentGate: boolean;
-    hideShorts?: boolean; // YouTube specific
-    dmSafeZone?: boolean; // Instagram specific
-    finiteFeed: boolean;
 }
 
 export interface BlockSession {
@@ -69,58 +76,8 @@ export class FocusStorageService {
     }
 
     private static async syncNativeLayer(session: BlockSession): Promise<void> {
-        
         if (Platform.OS === 'android') {
-            ScreenTime.setBlockingSuspended(false);
-
-            // Send config BEFORE blocks so the background service is ready
-            ScreenTime.setSurgicalConfig({
-                youtube: session.scrollingProtocol?.youtube?.enabled || false,
-                instagram: session.scrollingProtocol?.instagram?.enabled || false,
-                config: {
-                    ytGate: session.scrollingProtocol?.youtube?.intentGate ?? true,
-                    ytShelf: session.scrollingProtocol?.youtube?.hideShorts ?? true,
-                    ytFinite: session.scrollingProtocol?.youtube?.finiteFeed ?? true,
-                    igGate: session.scrollingProtocol?.instagram?.intentGate ?? true,
-                    igDMs: session.scrollingProtocol?.instagram?.dmSafeZone ?? true,
-                    igFinite: session.scrollingProtocol?.instagram?.finiteFeed ?? true
-                }
-            });
-            // Calculate duration based on session type
-            let durationMins = session.durationMins || 0;
-            if (session.type === 'schedule' && session.schedule) {
-                try {
-                    const now = new Date();
-                    const [endH, endM] = session.schedule.endTime.split(':').map(Number);
-                    const [startH, startM] = session.schedule.startTime.split(':').map(Number);
-                    
-                    let endDate = new Date(now);
-                    endDate.setHours(endH, endM, 0, 0);
-                    
-                    // If end time is before start time, it means it ends the next day
-                    const startTotalMins = startH * 60 + startM;
-                    const endTotalMins = endH * 60 + endM;
-                    
-                    if (endTotalMins <= startTotalMins) {
-                        // Ends tomorrow. If we are currently in the late-night part (after midnight), 
-                        // now.getHours() will be small. If we are in the pre-midnight part, it will be large.
-                        if (now.getHours() >= startH) {
-                            endDate.setDate(endDate.getDate() + 1);
-                        }
-                    } else if (endDate.getTime() < now.getTime()) {
-                        // This case handles when the calculated end date is already in the past for a same-day schedule
-                        // (should not happen if isCurrentlyInSchedule is true, but for safety)
-                    }
-                    
-                    const diffMs = endDate.getTime() - now.getTime();
-                    durationMins = Math.max(1, Math.ceil(diffMs / (1000 * 60)));
-                } catch (e) {
-                    console.error('Temporal Calculation Failure:', e);
-                }
-            }
             let hardBlockedApps = session.apps || [];
-
-            // Exclude apps from hard blocking if their surgical (scrolling) protocol is enabled
             if (session.scrollingProtocol?.youtube?.enabled) {
                 hardBlockedApps = hardBlockedApps.filter((app: string) => app !== 'com.google.android.youtube');
             }
@@ -128,12 +85,42 @@ export class FocusStorageService {
                 hardBlockedApps = hardBlockedApps.filter((app: string) => app !== 'com.instagram.android');
             }
 
-            ScreenTime.setSessionDuration(durationMins);
-            ScreenTime.setBlockedApps(hardBlockedApps, "FORCE_FOCUS_ACTIVE", "");
-            const breaksLeft = (session.timedBreaks?.allowedCount || 0) - (session.timedBreaks?.usedCount || 0);
-            ScreenTime.setBreaksRemaining(Math.max(0, breaksLeft));
-            const strictModeActive = session.strictnessConfig?.isUninstallProtected || false;
-            ScreenTime.setStrictMode(strictModeActive);
+            let durationMins = session.durationMins || 0;
+            if (session.type === 'schedule' && session.schedule) {
+                try {
+                    const now = new Date();
+                    const [endH, endM] = session.schedule.endTime.split(':').map(Number);
+                    const [startH, startM] = session.schedule.startTime.split(':').map(Number);
+                    let endDate = new Date(now);
+                    endDate.setHours(endH, endM, 0, 0);
+                    const startTotalMins = startH * 60 + startM;
+                    const endTotalMins = endH * 60 + endM;
+                    if (endTotalMins <= startTotalMins && now.getHours() >= startH) {
+                        endDate.setDate(endDate.getDate() + 1);
+                    }
+                    durationMins = Math.max(1, Math.ceil((endDate.getTime() - now.getTime()) / 60000));
+                } catch (e) {
+                    console.error('Temporal Calculation Failure:', e);
+                }
+            }
+
+            const breaksLeft = Math.max(0, (session.timedBreaks?.allowedCount || 0) - (session.timedBreaks?.usedCount || 0));
+            const breakDurationMs = (session.timedBreaks?.durationMins || 15) * 60 * 1000;
+
+            // Single atomic write: all session state committed in one native call.
+            // Eliminates every race condition that existed when calling setBlockedApps,
+            // setSessionDuration, setSurgicalConfig, and setStrictMode separately.
+            startFocusProtocol({
+                apps: hardBlockedApps,
+                durationMins,
+                surgicalFlags: {
+                    youtube: session.scrollingProtocol?.youtube?.enabled || false,
+                    instagram: session.scrollingProtocol?.instagram?.enabled || false,
+                },
+                breaksRemaining: breaksLeft,
+                breakDurationMs,
+                strictMode: session.strictnessConfig?.isUninstallProtected || false,
+            });
         }
 
         if (Platform.OS === 'ios') {
@@ -203,6 +190,14 @@ export class FocusStorageService {
             }
         }
 
+        // Write to session history before clearing
+        if (sessionData) {
+            try {
+                const session = JSON.parse(sessionData);
+                await FocusStorageService.appendSessionHistory(session, wasCompleted);
+            } catch (_) {}
+        }
+
         await AsyncStorage.removeItem(ACTIVE_SESSION_KEY);
 
         if (Platform.OS === 'android') {
@@ -256,7 +251,9 @@ export class FocusStorageService {
         if (Platform.OS === 'android') {
             const breakDurationMs = (session.timedBreaks?.durationMins || 15) * 60 * 1000;
             ScreenTime.setBlockingSuspended(isOnBreak, breakDurationMs);
-            // TRIGGER_RESYNC: When re-locking, push the apps and refreshed expiry back to native explicitly
+            // TRIGGER_RESYNC: When re-locking, push the apps and refreshed expiry back to native explicitly.
+            // setBlockedApps must come before setBlockExpiryTime so the service reads the correct
+            // blocked_apps when the expiry update triggers a refresh.
             if (!isOnBreak) {
                 let hardBlockedApps = session.apps || [];
                 if (session.scrollingProtocol?.youtube?.enabled) hardBlockedApps = hardBlockedApps.filter(app => app !== 'com.google.android.youtube');
@@ -379,6 +376,47 @@ export class FocusStorageService {
         } catch (e) {}
     }
 
+    // --- Session History ---
+
+    static async getSessionHistory(): Promise<SessionHistoryEntry[]> {
+        const data = await AsyncStorage.getItem(SESSION_HISTORY_KEY);
+        if (!data) return [];
+        try { return JSON.parse(data); } catch { return []; }
+    }
+
+    private static async appendSessionHistory(session: BlockSession, wasCompleted: boolean): Promise<void> {
+        const history = await FocusStorageService.getSessionHistory();
+        const entry: SessionHistoryEntry = {
+            id: session.id,
+            title: session.title,
+            type: session.type,
+            durationMins: session.durationMins || 0,
+            apps: session.apps || [],
+            completedAt: Date.now(),
+            wasCompleted,
+        };
+        const updated = [entry, ...history].slice(0, 60);
+        await AsyncStorage.setItem(SESSION_HISTORY_KEY, JSON.stringify(updated));
+    }
+
+    static getStreak(history: SessionHistoryEntry[]): number {
+        const completedDays = new Set(
+            history
+                .filter(e => e.wasCompleted)
+                .map(e => {
+                    const d = new Date(e.completedAt);
+                    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+                })
+        );
+        let streak = 0;
+        const check = new Date();
+        while (completedDays.has(`${check.getFullYear()}-${check.getMonth()}-${check.getDate()}`)) {
+            streak++;
+            check.setDate(check.getDate() - 1);
+        }
+        return streak;
+    }
+
     static migrateSession(session: any): BlockSession {
         const sp = session.scrollingProtocol || {};
         const yt = sp.youtube || {};
@@ -412,15 +450,9 @@ export class FocusStorageService {
                 enabled: sp.enabled || false,
                 youtube: {
                     enabled: yt.enabled || false,
-                    intentGate: yt.intentGate ?? true,
-                    hideShorts: yt.hideShorts ?? true,
-                    finiteFeed: yt.finiteFeed ?? true
                 },
                 instagram: {
                     enabled: ig.enabled || false,
-                    intentGate: ig.intentGate ?? true,
-                    dmSafeZone: ig.dmSafeZone ?? true,
-                    finiteFeed: ig.finiteFeed ?? true
                 }
             },
             strictnessConfig: session.strictnessConfig || {
