@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Switch } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { UToggle } from '../ui/UToggle';
 
 export const ScheduleBuilder = () => {
   const [isScheduleEnabled, setIsScheduleEnabled] = useState(false);
@@ -19,11 +20,7 @@ export const ScheduleBuilder = () => {
     <View className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 my-4">
       <View className="flex-row justify-between items-center mb-4">
         <Text className="text-lg font-bold">Planned Schedule</Text>
-        <Switch
-          value={isScheduleEnabled}
-          onValueChange={setIsScheduleEnabled}
-          trackColor={{ false: '#e2e2e2', true: '#000' }}
-        />
+        <UToggle value={isScheduleEnabled} onValueChange={setIsScheduleEnabled} />
       </View>
 
       {isScheduleEnabled && (

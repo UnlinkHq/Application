@@ -1,5 +1,6 @@
 import React, { useMemo, useCallback } from 'react';
-import { View, Text, Switch, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity } from 'react-native';
+import { UToggle } from './ui/UToggle';
 import { useBlocking } from '../context/BlockingContext';
 import { AppSelector } from './settings/AppSelector';
 import { ScheduleBuilder } from './settings/ScheduleBuilder';
@@ -78,11 +79,7 @@ const DashboardHeader = React.memo(({
             Prevent unlocking during breaks
           </Text>
         </View>
-        <Switch
-          value={isStrict}
-          onValueChange={setStrict}
-          trackColor={{ false: '#e2e2e2', true: '#000' }}
-        />
+        <UToggle value={isStrict} onValueChange={setStrict} />
       </View>
 
       <ScheduleBuilder />

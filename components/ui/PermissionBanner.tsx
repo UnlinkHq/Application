@@ -9,7 +9,6 @@ import {
   requestUsageStatsPermission, 
   requestBatteryOptimizationExemption 
 } from '../../modules/screen-time';
-import { ModernToggle } from './ModernToggle';
 import { FocusStorageService } from '../../services/FocusStorageService';
 
 export const PermissionBanner = () => {

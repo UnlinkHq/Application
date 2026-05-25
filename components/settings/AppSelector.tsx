@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react';
-import { View, Text, Switch, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity } from 'react-native';
+import { UToggle } from '../ui/UToggle';
 
 const MOCK_APPS = [
   { id: '1', name: 'Instagram', category: 'Social', icon: '📷' },
@@ -18,11 +19,7 @@ const AppRow = React.memo(({ item, isSelected, onToggle }: { item: any; isSelect
         <Text className="text-gray-500 text-sm">{item.category}</Text>
       </View>
     </View>
-    <Switch
-      value={isSelected}
-      onValueChange={() => onToggle(item.id)}
-      trackColor={{ false: '#e2e2e2', true: '#000' }}
-    />
+    <UToggle value={isSelected} onValueChange={() => onToggle(item.id)} />
   </View>
 ));
 

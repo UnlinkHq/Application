@@ -1,5 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Switch, Linking, Platform, AppState, AppStateStatus } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, AppState, AppStateStatus } from 'react-native';
+import { UToggle } from '../ui/UToggle';
+import { UBadge } from '../ui/UBadge';
+import { USectionHeader } from '../ui/USectionHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useBlocking } from '../../context/BlockingContext';
@@ -60,12 +63,7 @@ export const SettingsScreen = () => {
         }
     };
 
-    const SectionHeader = ({ title }: { title: string }) => (
-        <View className="flex-row items-center gap-2 mb-6">
-            <Text className="font-label text-[10px] uppercase tracking-widest text-zinc-500">{title}</Text>
-            <View className="h-[1px] flex-1 bg-white/20" />
-        </View>
-    );
+    const SectionHeader = ({ title }: { title: string }) => <USectionHeader title={title} />;
 
     const SettingsItem = ({ icon, label, rightElement, onPress, isLast = false }: {
         icon: string, label: string, rightElement?: React.ReactNode, onPress?: () => void, isLast?: boolean
@@ -131,17 +129,18 @@ export const SettingsScreen = () => {
                                 )}
                             </View>
                         </View>
-                        <View className={`w-12 h-6 border ${isSessionLocking ? 'border-[#72fe88]' : 'border-white'} flex justify-center px-1 ${isUninstallProtected || isSessionLocking ? 'items-end' : 'items-start'}`}>
-                            <View className={`w-4 h-4 ${isUninstallProtected || isSessionLocking ? 'bg-[#72fe88]' : 'bg-white'}`} />
-                        </View>
+                        <UToggle
+                            value={isUninstallProtected || isSessionLocking}
+                            onValueChange={handleToggleUninstall}
+                            activeColor={isSessionLocking ? '#72fe88' : '#FFFFFF'}
+                            disabled={isSessionLocking}
+                        />
                     </TouchableOpacity>
                     <SettingsItem
                         icon="branding-watermark"
                         label="Customize Block Screen"
                         rightElement={
-                            <View className="bg-blue-500/10 px-1.5 py-0.5 border border-blue-500/20">
-                                <Text className="text-blue-500 font-label text-[8px] font-black tracking-widest">BETA</Text>
-                            </View>
+                            <UBadge label="BETA" variant="beta" />
                         }
                         onPress={() => { }}
                         isLast

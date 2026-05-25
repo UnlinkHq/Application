@@ -130,6 +130,8 @@ export class FocusStorageService {
 
     static async stopSession(wasCompleted: boolean = false): Promise<void> {
         const sessionData = await AsyncStorage.getItem(ACTIVE_SESSION_KEY);
+        // Idempotency guard: if already stopped, bail out immediately to prevent duplicate history
+        if (!sessionData) return;
         if (sessionData) {
             try {
                 const session = JSON.parse(sessionData);
@@ -303,16 +305,8 @@ export class FocusStorageService {
                         await FocusStorageService.stopSession(true); // MARK_AS_COMPLETED
                         return null;
                     }
-
-                    // AUTO_RELEASE_LOGIC: If a scheduled session is active but the window has closed, terminate it.
-                    if (session.type === 'schedule') {
-                        const { TemporalUtils } = require('../utils/TemporalUtils');
-                        const isStillInWindow = TemporalUtils.isCurrentlyInSchedule(session);
-                        if (!isStillInWindow) {
-                            await FocusStorageService.stopSession(true);
-                            return null;
-                        }
-                    }
+                    // Schedule auto-release is handled exclusively by TemporalEngine
+                    // to prevent duplicate history entries from concurrent getActiveSession() calls.
                 } else if (session.isOnBreak && session.breakStartTime) {
                     // AUTO_EXPIRY_CHECK: If break duration is exceeded, re-engage the block automatically
                     const breakDurationMs = (session.timedBreaks?.durationMins || 0) * 60 * 1000;

@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, TouchableOpacity, TextInput } from 'react-native';
 import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomSheetWrapper } from '../ui/BottomSheetWrapper';
-import Animated, { FadeIn, FadeInDown, Layout } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
-import { ModernToggle } from '../ui/ModernToggle';
 import { sendSetupVerificationCode } from '../../services/ResendService';
 
 export type StrictModeLevel = 'normal' | 'qr_code' | 'mom_test' | 'money';
@@ -57,6 +56,7 @@ interface StrictModeModalProps {
     onConfirm: (mode: StrictModeLevel, config?: any) => void;
 }
 
+
 export const StrictModeModal = ({
     visible,
     onClose,
@@ -65,14 +65,16 @@ export const StrictModeModal = ({
 }: StrictModeModalProps) => {
     const [selectedMode, setSelectedMode] = useState<StrictModeLevel>(currentMode);
 
-    // Sub-options state
-    const [emailAddress, setEmailAddress] = useState('');
     // Mom Test Verification States
     const [isVerified, setIsVerified] = useState(false);
+    const [verifiedEmail, setVerifiedEmail] = useState('');
     const [verificationStep, setVerificationStep] = useState<'input' | 'verify'>('input');
     const [setupCode, setSetupCode] = useState('');
-    const [enteredSetupCode, setEnteredSetupCode] = useState('');
     const [isSendingCode, setIsSendingCode] = useState(false);
+
+    // Uncontrolled refs — avoids re-rendering the modal on every keystroke
+    const emailValueRef = useRef('');
+    const otpValueRef = useRef('');
 
     useEffect(() => {
         if (visible) {
@@ -86,17 +88,20 @@ export const StrictModeModal = ({
     };
 
     const handleSendVerificationCode = async () => {
-        if (!emailAddress || isSendingCode) {
+        const email = emailValueRef.current.trim();
+        if (!email || isSendingCode) {
             alert("INVALID INPUT: PLEASE ENTER VALID EMAIL");
             return;
         }
 
         setIsSendingCode(true);
         const code = Math.floor(100000 + Math.random() * 900000).toString();
-        
+
         try {
-            await sendSetupVerificationCode(emailAddress, code);
+            await sendSetupVerificationCode(email, code);
+            setVerifiedEmail(email);
             setSetupCode(code);
+            otpValueRef.current = '';
             setVerificationStep('verify');
         } catch (error: any) {
             alert(`API ERROR: ${error.message || 'FAILED TO SEND'}`);
@@ -106,7 +111,7 @@ export const StrictModeModal = ({
     };
 
     const handleVerifyCode = () => {
-        if (enteredSetupCode === setupCode) {
+        if (otpValueRef.current === setupCode) {
             setIsVerified(true);
         } else {
             alert("INVALID VERIFICATION CODE");
@@ -125,7 +130,7 @@ export const StrictModeModal = ({
         }
 
         onConfirm(selectedMode, {
-            emailAddress,
+            emailAddress: verifiedEmail,
             isVerified
         });
         onClose();
@@ -185,7 +190,7 @@ export const StrictModeModal = ({
                 </View>
 
                 {/* Sub-options revealed below the 4 main options */}
-                <Animated.View layout={Layout.springify()} className="mt-8 pb-32">
+                <View className="mt-8 pb-32">
                     {selectedMode === 'qr_code' && (
                         <Animated.View entering={FadeInDown} className="mb-8">
                             <Text className="text-white/20 font-headline font-black text-[10px] uppercase tracking-[0.3em] mb-4">QR CODE CONFIGURATION</Text>
@@ -222,12 +227,13 @@ export const StrictModeModal = ({
                                 {verificationStep === 'input' && !isVerified ? (
                                     <View>
                                         <TextInput
-                                            value={emailAddress}
-                                            onChangeText={setEmailAddress}
+                                            defaultValue=""
+                                            onChangeText={(text) => { emailValueRef.current = text; }}
                                             placeholder="mom@example.com"
                                             placeholderTextColor="rgba(255,255,255,0.2)"
                                             keyboardType="email-address"
                                             autoCapitalize="none"
+                                            autoCorrect={false}
                                             className="h-14 bg-black border border-white/20 px-4 text-white font-headline font-black text-sm mb-4"
                                         />
                                         <TouchableOpacity
@@ -246,12 +252,13 @@ export const StrictModeModal = ({
                                         <Text className="text-white/40 font-label text-[10px] mb-3 italic">Enter the code emailed to your contact</Text>
                                         <View className="flex-row gap-2">
                                             <TextInput
-                                                value={enteredSetupCode}
-                                                onChangeText={setEnteredSetupCode}
+                                                defaultValue=""
+                                                onChangeText={(text) => { otpValueRef.current = text; }}
                                                 placeholder="------"
                                                 placeholderTextColor="rgba(255,255,255,0.2)"
                                                 keyboardType="number-pad"
                                                 maxLength={6}
+                                                autoFocus
                                                 className="flex-1 h-14 bg-black border border-white/20 px-4 text-white font-headline font-black text-xl text-center"
                                             />
                                             <TouchableOpacity
@@ -261,13 +268,13 @@ export const StrictModeModal = ({
                                                 <MaterialIcons name="check" size={24} color="black" />
                                             </TouchableOpacity>
                                         </View>
-                                        <TouchableOpacity onPress={() => setVerificationStep('input')} className="mt-4">
+                                        <TouchableOpacity onPress={() => { otpValueRef.current = ''; setVerificationStep('input'); }} className="mt-4">
                                             <Text className="text-white/20 font-label text-[10px] uppercase tracking-widest text-center underline">Change email</Text>
                                         </TouchableOpacity>
                                     </View>
                                 ) : (
                                     <View className="h-14 bg-white/5 border border-white/20 items-center justify-center px-4">
-                                        <Text className="text-white font-headline font-black text-xs uppercase tracking-widest" numberOfLines={1}>{emailAddress}</Text>
+                                        <Text className="text-white font-headline font-black text-xs uppercase tracking-widest" numberOfLines={1}>{verifiedEmail}</Text>
                                     </View>
                                 )}
                             </View>
@@ -311,7 +318,7 @@ export const StrictModeModal = ({
                     )}
 
 
-                </Animated.View>
+                </View>
             </BottomSheetScrollView>
 
             <View className="px-6 py-6 bg-[#0a0a0a]">

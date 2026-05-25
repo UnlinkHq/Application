@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import Animated, { FadeIn, Layout } from 'react-native-reanimated';
-import { ModernToggle } from '../ui/ModernToggle';
+import { UToggle } from '../ui/UToggle';
 
 interface TimedBreaksConfigProps {
     enabled: boolean;
@@ -28,7 +28,7 @@ export const TimedBreaksConfig = ({
                         <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">Allow Timed Breaks</Text>
                         <Text className="text-white/40 font-label text-[10px] mt-1">Temporary relief during sessions</Text>
                     </View>
-                    <ModernToggle value={enabled} onValueChange={onEnabledChange} />
+                    <UToggle value={enabled} onValueChange={onEnabledChange} />
                 </View>
 
                 {enabled && (

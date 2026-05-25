@@ -33,13 +33,17 @@ const logoSvg = `<svg width="574" height="200" viewBox="0 0 574 200" fill="none"
 </svg>
 `;
 
+type ActiveTab = 'blocks' | 'streaks';
+
 export const BlocksScreen = () => {
     const navigation = useNavigation<any>();
     const { openSelection } = useSelection();
+    const [activeTab, setActiveTab] = useState<ActiveTab>('blocks');
     const [activeSession, setActiveSession] = useState<BlockSession | null>(null);
     const [library, setLibrary] = useState<BlockSession[]>([]);
     const [history, setHistory] = useState<SessionHistoryEntry[]>([]);
     const [streak, setStreak] = useState(0);
+    const [showLockModal, setShowLockModal] = useState(false);
 
     const refreshData = useCallback(async () => {
         const [active, lib, hist] = await Promise.all([
@@ -65,9 +69,7 @@ export const BlocksScreen = () => {
         const sub = AppState.addEventListener('change', (state) => {
             if (state === 'active') refreshData();
         });
-        // LIGHTNING_REFRESH: Listen for internal app signals to refresh instantly
         const refreshSub = DeviceEventEmitter.addListener('UNLINK REFRESH DATA', refreshData);
-
         return () => {
             sub.remove();
             refreshSub.remove();
@@ -76,18 +78,17 @@ export const BlocksScreen = () => {
 
     const handleStop = async () => {
         const previousSession = activeSession;
-        setActiveSession(null); // Optimistic update
+        setActiveSession(null);
         try {
             await FocusStorageService.stopSession();
             refreshData();
         } catch (error) {
-            setActiveSession(previousSession); // Rollback on error
+            setActiveSession(previousSession);
             console.error('Failed to stop session:', error);
         }
     };
 
     const handlePlay = async (block: BlockSession) => {
-        // --- OVERLAP VALIDATION ---
         const libraryBlocks = await FocusStorageService.getLibraryBlocks();
         const activeScheduled = libraryBlocks.filter(b =>
             b.type === 'schedule' &&
@@ -97,20 +98,19 @@ export const BlocksScreen = () => {
 
         if (activeScheduled.length > 0) {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            const activeTitle = activeScheduled[0].title;
-            setShowLockModal(true); // Reuse lock modal for overlap
+            setShowLockModal(true);
             return;
         }
 
         const session = { ...block, startTime: Date.now() };
         const previousSession = activeSession;
-        setActiveSession(session); // Optimistic update
+        setActiveSession(session);
 
         try {
             await FocusStorageService.startSession(session);
             refreshData();
         } catch (error) {
-            setActiveSession(previousSession); // Rollback
+            setActiveSession(previousSession);
             console.error('Failed to start session:', error);
         }
     };
@@ -120,37 +120,26 @@ export const BlocksScreen = () => {
         const assetId = (block?.strictnessConfig as any)?.assetId;
 
         try {
-            // 1. Attempt to delete the photo first (ONLY if it's a QR_CODE session)
             if (block?.strictnessConfig?.mode === 'qr_code' && assetId) {
-                // If user clicks "Deny", this will throw and jump to catch block
                 await MediaLibrary.deleteAssetsAsync([assetId]);
             }
-
-            // 2. If we reach here, user accepted or there was no photo
             const previousLibrary = library;
-            setLibrary(prev => prev.filter(b => b.id !== id)); // Optimistic update
-
+            setLibrary(prev => prev.filter(b => b.id !== id));
             try {
                 await FocusStorageService.deleteBlock(id);
                 refreshData();
             } catch (storageError) {
-                setLibrary(previousLibrary); // Rollback
+                setLibrary(previousLibrary);
                 console.error('Failed to delete block from storage:', storageError);
             }
         } catch (assetError) {
-            // User denied deletion - this is intended behavior
-            // We stop here - the focus session is NOT deleted
+            // User denied deletion — intentional, do not delete block
         }
     };
-
-    const [showLockModal, setShowLockModal] = useState(false);
 
     const handleEdit = (block: BlockSession) => {
         if (activeSession) {
             setShowLockModal(true);
-        } else {
-            // navigation.navigate('EditBlock', { blockId: block.id });
-            // For now, let's just toast or log
         }
     };
 
@@ -159,9 +148,7 @@ export const BlocksScreen = () => {
             <SafeAreaView className="flex-1 bg-black" edges={['top']}>
                 {/* Header */}
                 <View className="h-16 flex-row items-center justify-between px-6 border-b border-white/10 bg-black">
-                    <View className="flex-row items-center mr-2">
-                        <SvgXml xml={logoSvg} width={90} />
-                    </View>
+                    <SvgXml xml={logoSvg} width={90} />
                     <View className="flex-row items-center gap-5">
                         <TouchableOpacity
                             onPress={openSelection}
@@ -175,72 +162,40 @@ export const BlocksScreen = () => {
                     </View>
                 </View>
 
+                {/* Tab Bar */}
+                <View className="flex-row border-b border-white/10">
+                    <TabButton
+                        label="BLOCKS"
+                        active={activeTab === 'blocks'}
+                        onPress={() => setActiveTab('blocks')}
+                    />
+                    <TabButton
+                        label="STREAKS"
+                        active={activeTab === 'streaks'}
+                        onPress={() => setActiveTab('streaks')}
+                    />
+                </View>
+
                 <ScrollView
                     className="flex-1"
                     contentContainerStyle={{ paddingBottom: 120, paddingTop: 24 }}
                     showsVerticalScrollIndicator={false}
                 >
-                    <View className="px-6 mb-8">
-                        <PermissionBanner />
-                    </View>
-
-
-
-                    {/* Section: FOCUS_LIBRARY */}
-                    <View className="px-4">
-                        <View className="flex-row items-center justify-between mb-6">
-                            <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.3em]">
-                                FOCUS LIBRARY
-                            </Text>
-                            <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
-                                <Text className="text-blue-500 font-label text-[10px] uppercase tracking-widest">MANAGE ALL</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        {library.length > 0 ? (
-                            library.map((block, idx) => (
-                                <LibraryItem
-                                    key={block.id}
-                                    block={block}
-                                    index={idx}
-                                    onPlay={() => handlePlay(block)}
-                                    onDelete={() => handleDelete(block.id)}
-                                    onEdit={() => handleEdit(block)}
-                                    isActive={activeSession?.id === block.id}
-                                />
-                            ))
-                        ) : (
-                            <View className="py-12 items-center">
-                                <MaterialIcons name="inventory" size={40} color="rgba(255,255,255,0.05)" />
-                                <Text className="text-white/20 font-label text-[10px] uppercase tracking-widest mt-4">Library empty</Text>
-                            </View>
-                        )}
-                    </View>
-
-                    {/* Section: SESSION_HISTORY */}
-                    {history.length > 0 && (
-                        <View className="px-4 mt-10">
-                            <View className="flex-row items-center justify-between mb-6">
-                                <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.3em]">
-                                    SESSION HISTORY
-                                </Text>
-                                {streak > 0 && (
-                                    <View className="flex-row items-center bg-white/5 border border-white/10 px-3 py-1">
-                                        <MaterialCommunityIcons name="fire" size={12} color="#FF6B35" />
-                                        <Text className="text-white font-headline font-black text-[10px] ml-1">
-                                            {streak} DAY STREAK
-                                        </Text>
-                                    </View>
-                                )}
-                            </View>
-                            {history.slice(0, 10).map((entry) => (
-                                <HistoryRow key={`${entry.id}-${entry.completedAt}`} entry={entry} />
-                            ))}
-                        </View>
+                    {activeTab === 'blocks' ? (
+                        <BlocksTab
+                            library={library}
+                            activeSession={activeSession}
+                            onPlay={handlePlay}
+                            onDelete={handleDelete}
+                            onEdit={handleEdit}
+                        />
+                    ) : (
+                        <StreaksTab
+                            streak={streak}
+                            history={history}
+                        />
                     )}
                 </ScrollView>
-
-
 
                 {/* Session Lock Warning Modal */}
                 {showLockModal && (
@@ -271,6 +226,130 @@ export const BlocksScreen = () => {
         </View>
     );
 };
+
+// ─── Tab Bar ────────────────────────────────────────────────────────────────
+
+const TabButton = ({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) => (
+    <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.7}
+        className="flex-1 items-center py-3"
+    >
+        <Text className={`font-headline font-black text-[11px] uppercase tracking-[0.25em] ${active ? 'text-white' : 'text-white/25'}`}>
+            {label}
+        </Text>
+        {active && <View className="absolute bottom-0 left-6 right-6 h-[2px] bg-white" />}
+    </TouchableOpacity>
+);
+
+// ─── Blocks Tab ──────────────────────────────────────────────────────────────
+
+const BlocksTab = ({
+    library,
+    activeSession,
+    onPlay,
+    onDelete,
+    onEdit,
+}: {
+    library: BlockSession[];
+    activeSession: BlockSession | null;
+    onPlay: (block: BlockSession) => void;
+    onDelete: (id: string) => void;
+    onEdit: (block: BlockSession) => void;
+}) => (
+    <View className="px-4">
+        <View className="px-2 mb-4">
+            <PermissionBanner />
+        </View>
+
+        <View className="flex-row items-center justify-between mb-6 px-2">
+            <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.3em]">
+                FOCUS LIBRARY
+            </Text>
+        </View>
+
+        {library.length > 0 ? (
+            library.map((block, idx) => (
+                <LibraryItem
+                    key={block.id}
+                    block={block}
+                    index={idx}
+                    onPlay={() => onPlay(block)}
+                    onDelete={() => onDelete(block.id)}
+                    onEdit={() => onEdit(block)}
+                    isActive={activeSession?.id === block.id}
+                />
+            ))
+        ) : (
+            <View className="py-16 items-center">
+                <MaterialIcons name="inventory" size={40} color="rgba(255,255,255,0.05)" />
+                <Text className="text-white/20 font-label text-[10px] uppercase tracking-widest mt-4">Library empty</Text>
+            </View>
+        )}
+    </View>
+);
+
+// ─── Streaks Tab ─────────────────────────────────────────────────────────────
+
+const StreaksTab = ({ streak, history }: { streak: number; history: SessionHistoryEntry[] }) => {
+    const completedCount = history.filter(e => e.wasCompleted).length;
+    const totalMins = history.reduce((acc, e) => acc + (e.wasCompleted ? e.durationMins : 0), 0);
+    const totalHours = Math.floor(totalMins / 60);
+
+    return (
+        <View className="px-4">
+            {/* Streak Hero */}
+            <View className="items-center py-10 mb-6">
+                <View className="flex-row items-center mb-2">
+                    <MaterialCommunityIcons name="fire" size={32} color="#FF6B35" />
+                    <Text className="text-white font-headline font-black text-7xl ml-2">
+                        {streak}
+                    </Text>
+                </View>
+                <Text className="text-white/30 font-label text-[11px] uppercase tracking-[0.4em]">
+                    DAY STREAK
+                </Text>
+            </View>
+
+            {/* Stats Row */}
+            <View className="flex-row gap-3 mb-10">
+                <View className="flex-1 bg-white/5 border border-white/10 p-4 items-center">
+                    <Text className="text-white font-headline font-black text-2xl">{completedCount}</Text>
+                    <Text className="text-white/30 font-label text-[9px] uppercase tracking-widest mt-1">SESSIONS</Text>
+                </View>
+                <View className="flex-1 bg-white/5 border border-white/10 p-4 items-center">
+                    <Text className="text-white font-headline font-black text-2xl">{totalHours}h</Text>
+                    <Text className="text-white/30 font-label text-[9px] uppercase tracking-widest mt-1">FOCUSED</Text>
+                </View>
+                <View className="flex-1 bg-white/5 border border-white/10 p-4 items-center">
+                    <Text className="text-white font-headline font-black text-2xl">{history.length}</Text>
+                    <Text className="text-white/30 font-label text-[9px] uppercase tracking-widest mt-1">TOTAL</Text>
+                </View>
+            </View>
+
+            {/* Session History */}
+            {history.length > 0 && (
+                <View>
+                    <Text className="text-white/40 font-label text-[10px] uppercase tracking-[0.3em] mb-6">
+                        SESSION HISTORY
+                    </Text>
+                    {history.slice(0, 20).map((entry) => (
+                        <HistoryRow key={`${entry.id}-${entry.completedAt}`} entry={entry} />
+                    ))}
+                </View>
+            )}
+
+            {history.length === 0 && (
+                <View className="py-16 items-center">
+                    <MaterialCommunityIcons name="chart-timeline-variant" size={40} color="rgba(255,255,255,0.05)" />
+                    <Text className="text-white/20 font-label text-[10px] uppercase tracking-widest mt-4">No sessions yet</Text>
+                </View>
+            )}
+        </View>
+    );
+};
+
+// ─── Shared sub-components ────────────────────────────────────────────────────
 
 const HistoryRow = ({ entry }: { entry: SessionHistoryEntry }) => {
     const date = new Date(entry.completedAt);
@@ -309,93 +388,14 @@ const HistoryRow = ({ entry }: { entry: SessionHistoryEntry }) => {
     );
 };
 
-const ActiveBlockCard = ({ session, onStop }: { session: BlockSession, onStop: () => void }) => {
-    const [remaining, setRemaining] = useState('');
-    const pulse = useSharedValue(0.4);
-
-    useEffect(() => {
-        pulse.value = withRepeat(
-            withSequence(
-                withTiming(0.8, { duration: 2000 }),
-                withTiming(0.4, { duration: 2000 })
-            ),
-            -1,
-            true
-        );
-
-        const timer = setInterval(() => {
-            const now = Date.now();
-            const elapsedMins = (now - session.startTime) / (1000 * 60);
-            const leftMins = Math.max(0, session.durationMins - elapsedMins);
-
-            const h = Math.floor(leftMins / 60);
-            const m = Math.floor(leftMins % 60);
-            const s = Math.floor((leftMins * 60) % 60);
-            setRemaining(`${h > 0 ? h + 'h ' : ''}${m}m ${s < 10 ? '0' + s : s}s`);
-        }, 1000);
-
-        return () => clearInterval(timer);
-    }, [session]);
-
-    const auraStyle = useAnimatedStyle(() => ({
-        opacity: pulse.value,
-        transform: [{ scale: interpolate(pulse.value, [0.4, 0.8], [1, 1.05]) }]
-    }));
-
-    const iconsToDisplay = session.appIcons?.slice(0, 4) || [];
-    const extraCount = (session.apps.length > 4) ? session.apps.length - 4 : 0;
-
-    return (
-        <View>
-            <Animated.View style={[auraStyle, styles.aura]} />
-            <View className="bg-[#0e0e0e] border-2 border-white/20 p-6">
-                <View className="flex-row items-center justify-between mb-8">
-                    <TouchableOpacity onPress={onStop} className="flex-row items-center gap-2">
-                        <View className="w-5 h-5 border border-red-500 items-center justify-center">
-                            <View className="w-2 h-2 bg-red-500" />
-                        </View>
-                        <Text className="text-red-500 font-headline font-black text-xs uppercase tracking-widest">
-                            Terminate session
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-
-                <View className="flex-row items-center mb-8">
-                    <View className="w-14 h-14 bg-white/5 border border-white/10 items-center justify-center mr-5">
-                        <MaterialCommunityIcons name="timer-sand" size={32} color="white" />
-                    </View>
-                    <View>
-                        <Text className="text-white font-headline font-black text-2xl uppercase tracking-widest mb-1">
-                            {session.title}
-                        </Text>
-                        <Text className="text-white/40 font-label text-[10px] mt-1">
-                            {session.apps.length} Targets • {remaining} left
-                        </Text>
-                    </View>
-                </View>
-
-                <View className="flex-row items-center justify-between pt-6 border-t border-white/5">
-                    <View className="flex-row items-center">
-                        <View className="w-2 h-2 bg-green-500 mr-2" />
-                        <Text className="text-green-500/80 font-label text-[10px] italic uppercase tracking-widest font-black">
-                            ENFORCEMENT ACTIVE
-                        </Text>
-                    </View>
-
-                    <View className="flex-row items-center">
-                        {iconsToDisplay.map((icon, idx) => (
-                            <View key={idx} className="w-6 h-6 border border-black bg-[#1a1a1a] items-center justify-center -ml-2" style={{ zIndex: 10 - idx }}>
-                                <Image source={{ uri: icon }} className="w-full h-full" resizeMode="contain" />
-                            </View>
-                        ))}
-                    </View>
-                </View>
-            </View>
-        </View>
-    );
-};
-
-const LibraryItem = ({ block, index, onPlay, onDelete, onEdit, isActive }: { block: BlockSession, index: number, onPlay: () => void, onDelete: () => void, onEdit?: (block: BlockSession) => void, isActive: boolean }) => {
+const LibraryItem = ({ block, index, onPlay, onDelete, onEdit, isActive }: {
+    block: BlockSession;
+    index: number;
+    onPlay: () => void;
+    onDelete: () => void;
+    onEdit?: (block: BlockSession) => void;
+    isActive: boolean;
+}) => {
     const pulse = useSharedValue(0.4);
 
     useEffect(() => {
@@ -475,11 +475,9 @@ const LibraryItem = ({ block, index, onPlay, onDelete, onEdit, isActive }: { blo
 
                     <View className="flex-row items-center gap-4">
                         {!isActive && (
-                            <>
-                                <TouchableOpacity onPress={onDelete} className="p-2">
-                                    <MaterialIcons name="delete-outline" size={18} color="rgba(255,255,255,0.2)" />
-                                </TouchableOpacity>
-                            </>
+                            <TouchableOpacity onPress={onDelete} className="p-2">
+                                <MaterialIcons name="delete-outline" size={18} color="rgba(255,255,255,0.2)" />
+                            </TouchableOpacity>
                         )}
                         <TouchableOpacity
                             onPress={onPlay}
@@ -491,7 +489,6 @@ const LibraryItem = ({ block, index, onPlay, onDelete, onEdit, isActive }: { blo
                     </View>
                 </View>
 
-                {/* Small Icon Row */}
                 <View className="flex-row items-center">
                     {block.appIcons?.slice(0, 6).map((icon, idx) => (
                         <Image key={idx} source={{ uri: icon }} className="w-4 h-4 mr-2 opacity-40" />

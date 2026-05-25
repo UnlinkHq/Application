@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Switch, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { UToggle } from '../ui/UToggle';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 
@@ -32,12 +33,7 @@ export const UsageBudgetConfig = ({ onBack }: UsageBudgetConfigProps) => {
                 <Ionicons name="flash-outline" size={20} color="white" style={{ marginRight: 12}} />
                 <Text className="text-white font-headline font-black text-lg uppercase tracking-widest">ENABLE PROTOCOL</Text>
             </View>
-            <Switch 
-                value={isEnabled}
-                onValueChange={setIsEnabled}
-                trackColor={{ false: '#333', true: '#FFF' }}
-                thumbColor={isEnabled ? '#000' : '#888'}
-            />
+            <UToggle value={isEnabled} onValueChange={setIsEnabled} />
         </View>
 
         {/* Inputs - Surgical Style */}

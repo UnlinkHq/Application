@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, TouchableOpacity, TextInput, Dimensions, StyleSheet, Platform, AppState, AppStateStatus, Modal, Switch, Alert, Linking, DeviceEventEmitter } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, Dimensions, StyleSheet, Platform, AppState, AppStateStatus, Modal, Alert, Linking, DeviceEventEmitter } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BottomSheetScrollView } from '@gorhom/bottom-sheet';
 import * as MediaLibrary from 'expo-media-library';
@@ -38,7 +38,6 @@ import {
     openAppInfoSettings
 } from '../../modules/screen-time';
 import { PermissionBanner } from '../ui/PermissionBanner';
-import { ModernToggle } from '../ui/ModernToggle';
 import { ConfigRow } from '../ui/ConfigRow';
 import { SignatureDeploymentModal } from './SignatureDeploymentModal';
 import SignatureService from '../../services/SignatureService';

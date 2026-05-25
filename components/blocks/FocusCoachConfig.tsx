@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, Switch, Platform, Modal } from 'react-native';
+import { View, Text, TouchableOpacity, Platform, Modal } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { ModernToggle } from '../ui/ModernToggle';
+import { UToggle } from '../ui/UToggle';
 import { requestAccessibilityPermission } from '../../modules/screen-time';
 
 export interface ScrollingProtocolConfig {
@@ -91,7 +91,7 @@ export const FocusCoachConfig = ({
                         </Text>
                     </View>
                     <View pointerEvents="none">
-                        <ModernToggle value={config.enabled} onValueChange={() => { }} />
+                        <UToggle value={config.enabled} onValueChange={() => {}} />
                     </View>
                 </TouchableOpacity>
 
@@ -103,12 +103,7 @@ export const FocusCoachConfig = ({
                                 <MaterialCommunityIcons name="youtube" size={18} color="#FF0000" />
                                 <Text className="text-white/40 font-headline font-black text-[9px] uppercase ml-2 tracking-widest">SCROLLING YOUTUBE</Text>
                                 <View className="flex-1 h-[1px] bg-white/5 ml-3" />
-                                <Switch
-                                    value={config.youtube.enabled}
-                                    onValueChange={handleYoutubeToggle}
-                                    trackColor={{ false: '#1A1A1A', true: '#FF0000' }}
-                                    thumbColor="#FFF"
-                                />
+                                <UToggle value={config.youtube.enabled} onValueChange={handleYoutubeToggle} activeColor="#FF0000" />
                             </View>
                         </View>
 
@@ -118,12 +113,7 @@ export const FocusCoachConfig = ({
                                 <MaterialCommunityIcons name="instagram" size={18} color="#E1306C" />
                                 <Text className="text-white/40 font-headline font-black text-[9px] uppercase ml-2 tracking-widest">SCROLLING INSTAGRAM</Text>
                                 <View className="flex-1 h-[1px] bg-white/5 ml-3" />
-                                <Switch
-                                    value={config.instagram.enabled}
-                                    onValueChange={handleInstagramToggle}
-                                    trackColor={{ false: '#1A1A1A', true: '#E1306C' }}
-                                    thumbColor="#FFF"
-                                />
+                                <UToggle value={config.instagram.enabled} onValueChange={handleInstagramToggle} activeColor="#E1306C" />
                             </View>
                         </View>
                     </Animated.View>

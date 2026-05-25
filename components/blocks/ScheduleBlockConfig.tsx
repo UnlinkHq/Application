@@ -13,7 +13,7 @@ import * as MediaLibrary from 'expo-media-library';
 import * as FileSystem from 'expo-file-system/legacy';
 import QRCode from 'react-native-qrcode-svg';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { ModernToggle } from '../ui/ModernToggle';
+import { UToggle } from '../ui/UToggle';
 import { ConfigRow } from '../ui/ConfigRow';
 import {
     isAdminActive,
@@ -265,10 +265,7 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
                             <MaterialCommunityIcons name="clock-check-outline" size={18} color="white" style={{ marginRight: 12 }} />
                             <Text className="text-white font-headline font-black text-[11px] uppercase tracking-widest">AUTO DEPLOY ENABLE</Text>
                         </View>
-                        <ModernToggle
-                            value={isEnabled}
-                            onValueChange={setIsEnabled}
-                        />
+                        <UToggle value={isEnabled} onValueChange={setIsEnabled} />
                     </View>
 
                     {/* Section: Configuration Core */}

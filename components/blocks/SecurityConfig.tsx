@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, Modal, AppState } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import { ModernToggle } from '../ui/ModernToggle';
+import { UToggle } from '../ui/UToggle';
 import { requestAdmin, isAdminActive } from '../../modules/screen-time';
 import * as Haptics from 'expo-haptics';
 
@@ -53,10 +53,7 @@ export const SecurityConfig = ({
                     <Text className="text-white/40 font-label text-[10px] mt-1 leading-tight">No loopholes. Prevents you from force-stopping or uninstalling the app while a focus session is active.</Text>
                 </View>
                 <View pointerEvents="none">
-                    <ModernToggle
-                        value={enabled}
-                        onValueChange={() => { }}
-                    />
+                    <UToggle value={enabled} onValueChange={() => {}} />
                 </View>
             </TouchableOpacity>
 
