@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, Platform, ActivityIndicator, 
 import { MaterialIcons, Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
 import ScreenTimeModule from '../../../modules/screen-time';
 import { BottomSheetWrapper } from '../../ui/BottomSheetWrapper';
+import { AccessibilityDisclosureScreen } from './AccessibilityDisclosureScreen';
 
 interface UnifiedPermissionStepProps {
   onPermissionGranted: () => void;
@@ -285,40 +286,17 @@ export const UnifiedPermissionStep: React.FC<UnifiedPermissionStepProps> = ({ on
                     </TouchableOpacity>
                 </View>
             </BottomSheetWrapper>
-            <BottomSheetWrapper
+            <AccessibilityDisclosureScreen
                 visible={showAccessibilityDisclosure}
-                onClose={() => setShowAccessibilityDisclosure(false)}
-                title="PROMINENT DISCLOSURE"
-                snapPoints={['45%']}
-            >
-                <View className="px-6 py-4">
-                    <View className="flex-row items-center mb-4">
-                        <MaterialIcons name="security" size={24} color="#72fe88" />
-                        <Text className="text-[#72fe88] font-headline font-black text-sm uppercase tracking-widest ml-3">
-                            ACCESSIBILITY API CONSENT
-                        </Text>
-                    </View>
-                    <Text className="text-white/80 font-label text-[11px] uppercase tracking-widest mb-6 leading-relaxed">
-                        Unlink uses the <Text className="text-white font-bold">Accessibility Service API</Text> to identify when a target application is launched. This information is used solely to display our focus overlay and block access to distracting content. 
-                        
-                        We <Text className="text-white font-bold">do not</Text> collect, store, or transmit any user data processed through this service.
-                    </Text>
-
-                    <TouchableOpacity 
-                        onPress={() => {
-                            setDisclosureAccepted(true);
-                            setShowAccessibilityDisclosure(false);
-                            // Give modal time to close before opening system settings
-                            setTimeout(() => {
-                                ScreenTimeModule.requestAccessibilityPermission();
-                            }, 300);
-                        }}
-                        className="bg-white py-4 items-center"
-                    >
-                        <Text className="text-black font-headline font-black text-[10px] uppercase tracking-widest">I HAVE READ AND ACCEPT</Text>
-                    </TouchableOpacity>
-                </View>
-            </BottomSheetWrapper>
+                onAccept={() => {
+                    setDisclosureAccepted(true);
+                    setShowAccessibilityDisclosure(false);
+                    setTimeout(() => {
+                        ScreenTimeModule.requestAccessibilityPermission();
+                    }, 300);
+                }}
+                onDecline={() => setShowAccessibilityDisclosure(false)}
+            />
         </View>
     );
 };

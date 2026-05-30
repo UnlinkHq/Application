@@ -56,7 +56,11 @@ class FallbackBlockingService : Service() {
         super.onCreate()
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, createNotification())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, createNotification(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIFICATION_ID, createNotification())
+        }
         refreshConfig()
 
         // Register for config refresh broadcasts
@@ -288,6 +292,10 @@ class FallbackBlockingService : Service() {
     private fun createOverlay() {
         val inflater = getSystemService(Context.LAYOUT_INFLATER_SERVICE) as LayoutInflater
         val layoutId = resources.getIdentifier("blocking_overlay_full", "layout", packageName)
+        if (layoutId == 0) {
+            Log.e("UnlinkFallback", "blocking_overlay_full layout not found — overlay skipped")
+            return
+        }
         overlayView = inflater.inflate(layoutId, null)
 
         val params = WindowManager.LayoutParams(
@@ -324,10 +332,10 @@ class FallbackBlockingService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val serviceChannel = NotificationChannel(
                 CHANNEL_ID,
-                "Unlink Fallback Protection",
-                NotificationManager.IMPORTANCE_HIGH
+                "Unlink Focus Service",
+                NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Required for unbreakable focus protection"
+                description = "Keeps your focus session active in the background"
                 setShowBadge(false)
                 enableVibration(false)
             }
@@ -338,10 +346,10 @@ class FallbackBlockingService : Service() {
 
     private fun createNotification(): Notification {
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Unlink Focus Protection Active")
-            .setContentText("Focus Engine is running in high-persistence mode")
+            .setContentTitle("Unlink Focus Active")
+            .setContentText("Your focus session is running")
             .setSmallIcon(android.R.drawable.ic_lock_idle_lock)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setOngoing(true)
             .build()

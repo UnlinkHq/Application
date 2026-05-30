@@ -36,23 +36,31 @@ export const OnboardingScreen = ({ onFinish }: { onFinish: () => void }) => {
     const checkAndPreload = async () => {
       const hasPerm = await ScreenTimeModule.hasPermission();
       const movingForward = currentStep > prevStep.current;
-      
-      // Auto-skip Step 3 if permission is already there AND we are moving forward
-      if (currentStep === 3 && hasPerm && movingForward) {
-          prefetchData();
-          handleNext();
-          prevStep.current = currentStep;
-          return;
+
+      // Auto-skip Step 3 only when ALL permissions are already granted
+      if (currentStep === 3 && movingForward) {
+          const [usage, background, overlay, battery] = await Promise.all([
+              ScreenTimeModule.hasPermission(),
+              ScreenTimeModule.isAccessibilityServiceEnabled(),
+              ScreenTimeModule.hasOverlayPermission(),
+              ScreenTimeModule.isBatteryOptimizationExempted(),
+          ]);
+          if (usage && background && overlay && battery) {
+              prefetchData();
+              handleNext();
+              prevStep.current = currentStep;
+              return;
+          }
       }
 
       // Early pre-fetch if at goal step and has permission
       if (currentStep >= 2 && hasPerm && !isDataLoaded) {
         prefetchData();
       }
-      
+
       prevStep.current = currentStep;
     };
-    
+
     checkAndPreload();
   }, [currentStep, isDataLoaded]);
 

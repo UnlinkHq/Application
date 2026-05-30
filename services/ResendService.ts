@@ -1,23 +1,36 @@
-// WARNING: This API key is embedded in the APK and can be extracted by decompiling.
-// Before Play Store release, replace this call with a backend proxy (e.g. Vercel Edge Function)
-// so the key lives server-side and is never shipped with the app.
-const RESEND_API_KEY = 're_N6uTZ7U8_5xDH88K6JuekUqNDGTwrL4pZ';
-const RESEND_FROM = 'Unlink <auth@getunlink.com>';
+const EMAIL_PROXY_URLS = [
+    'https://www.getunlink.com/api/send-email',
+    'https://unlink-productivity-app.vercel.app/api/send-email',
+];
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
-    const response = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${RESEND_API_KEY}`,
-        },
-        body: JSON.stringify({ from: RESEND_FROM, to: [to], subject, html })
-    });
+    let lastError: Error = new Error('EMAIL_SEND_FAILED');
 
-    if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || 'EMAIL_SEND_FAILED');
+    for (const url of EMAIL_PROXY_URLS) {
+        console.log('[ResendService] POST', url, 'to:', to);
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to, subject, html }),
+            });
+
+            if (!response.ok) {
+                const text = await response.text();
+                console.error('[ResendService] HTTP', response.status, text);
+                lastError = new Error(text || 'EMAIL_SEND_FAILED');
+                continue;
+            }
+
+            console.log('[ResendService] OK via', url);
+            return;
+        } catch (networkErr: any) {
+            console.error('[ResendService] Network error hitting', url, networkErr?.message);
+            lastError = networkErr;
+        }
     }
+
+    throw lastError;
 }
 
 export async function sendMomTestUnlockCode(to: string, otp: string): Promise<void> {

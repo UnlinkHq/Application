@@ -294,7 +294,11 @@ companion object {
         windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
         cacheViewIds()
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, createNotification())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, createNotification(), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } else {
+            startForeground(NOTIFICATION_ID, createNotification())
+        }
         // Clear stale shutdown marker on connect
         prefs.edit().putLong("last_shutdown_watchdog", 0L).apply()
         val filter = IntentFilter().apply {
@@ -413,8 +417,11 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
             }
         }
 
-        // ── 1. Self-protection (Main thread for instant response) ─────────────
-        if (isStrictModeEnabled && (isBlockActive("com.shahil.unlink") || isBlockingSuspended)) {
+        // ── 1. Self-protection — ONLY runs when user has explicitly enabled Strict Mode.
+        //    When Strict Mode is OFF this entire block is skipped — settings, force-stop,
+        //    and uninstall all work normally. This mirrors how Regain / parental-control
+        //    apps handle committed focus sessions: user opts in, user controls the pin.
+        if (isStrictModeEnabled && isBlockActive("com.shahil.unlink")) {
             val isSettings = pkg == "com.android.settings" || pkg.contains("settings", ignoreCase = true)
             val isPackageInstaller = pkg.contains("packageinstaller", ignoreCase = true)
             val isMiuiSecurity = pkg == "com.miui.securitycenter" || pkg.contains("securitycenter", ignoreCase = true)
@@ -566,19 +573,21 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
             return true
         }
 
+        // Only block when the toggle is currently ON (user is trying to disable the service).
+        // If the toggle is OFF the user is trying to ENABLE it — let them through.
         val isSensitiveAccessPage = (findTextNodesSafely(node, "Unlink") || findTextNodesSafely(node, "com.shahil.unlink")) &&
-                                     hasClickableToggle(node)
- 
+                                     hasEnabledClickableToggle(node)
+
         if (isSensitiveAccessPage) {
-            Log.d(TAG, "SELF_PROTECT: Detected Sensitive/Accessibility toggle for Unlink.")
+            Log.d(TAG, "SELF_PROTECT: Detected Sensitive/Accessibility toggle for Unlink (currently enabled — blocking disable).")
             return true
         }
- 
+
         val onPermPage = listOf("Display over other apps", "Usage access", "Modify system settings", "Accessibility")
              .any { findTextNodesSafely(node, it) }
- 
-        if (onPermPage && hasClickableToggle(node)) {
-            Log.d(TAG, "SELF_PROTECT: Detected Unlink Permission sub-page toggle.")
+
+        if (onPermPage && hasEnabledClickableToggle(node)) {
+            Log.d(TAG, "SELF_PROTECT: Detected Unlink Permission sub-page toggle (currently enabled — blocking disable).")
             return true
         }
  
@@ -610,6 +619,29 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
         for (i in 0 until node.childCount) {
             val child = node.getChild(i) ?: continue
             val result = hasClickableToggle(child)
+            child.recycle()
+            if (result) return true
+        }
+        return false
+    }
+
+    /**
+     * Like hasClickableToggle but only returns true when the toggle is currently CHECKED (ON).
+     * Used so self-protection only fires when the user is trying to DISABLE the service,
+     * not when they are trying to ENABLE it (toggle is off).
+     */
+    private fun hasEnabledClickableToggle(node: AccessibilityNodeInfo?): Boolean {
+        if (node == null) return false
+        val cls = node.className?.toString()?.lowercase() ?: ""
+        val rid = node.viewIdResourceName?.lowercase() ?: ""
+        val isToggle = cls.contains("switch") || cls.contains("checkbox") ||
+                       cls.contains("togglebutton") || cls.contains("secswitch") ||
+                       cls.contains("appcompatswitch") ||
+                       rid.contains("switch") || rid.contains("toggle")
+        if (isToggle && node.isClickable && node.isEnabled && node.isChecked) return true
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            val result = hasEnabledClickableToggle(child)
             child.recycle()
             if (result) return true
         }
@@ -1452,10 +1484,10 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val serviceChannel = NotificationChannel(
                 CHANNEL_ID,
-                "Unlink Protection Service",
-                NotificationManager.IMPORTANCE_HIGH
+                "Unlink Focus Service",
+                NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Ensures Unlink remains active during focus sessions"
+                description = "Keeps your focus session active"
                 setShowBadge(false)
             }
             (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager).createNotificationChannel(serviceChannel)
@@ -1465,11 +1497,11 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
     private fun createNotification(): Notification {
         val pi = PendingIntent.getActivity(this, 0, packageManager.getLaunchIntentForPackage(packageName), PendingIntent.FLAG_IMMUTABLE)
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("Unlink Protection Active")
-            .setContentText("Your focus is being protected")
+            .setContentTitle("Unlink Focus Active")
+            .setContentText("Your focus session is running")
             .setSmallIcon(android.R.drawable.ic_lock_lock)
             .setContentIntent(pi)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setOngoing(true)
             .build()
@@ -1477,8 +1509,10 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        Log.d(TAG, "onTaskRemoved detected — Unlink will self-heal in 1s.")
-        val restartIntent = Intent(applicationContext, UnlinkAccessibilityService::class.java)
+        // AccessibilityService cannot be restarted via Intent — only the user can re-enable it.
+        // Keep the FallbackBlockingService alive so blocking continues if the main task is removed.
+        Log.d(TAG, "onTaskRemoved detected — ensuring FallbackBlockingService survives.")
+        val restartIntent = Intent(applicationContext, FallbackBlockingService::class.java)
         val pending = android.app.PendingIntent.getService(
             applicationContext, 2,
             restartIntent,

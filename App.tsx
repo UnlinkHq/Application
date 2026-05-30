@@ -138,8 +138,12 @@ export default function App() {
 
     // Interval check for session changes
     const interval = setInterval(async () => {
-      const session = await FocusStorageService.getActiveSession();
-      setActiveSession(session);
+      try {
+        const session = await FocusStorageService.getActiveSession();
+        setActiveSession(session);
+      } catch (error) {
+        console.error('[App] Session poll error:', error);
+      }
     }, 15000);
 
     // Listen for native break requests from the coach overlay

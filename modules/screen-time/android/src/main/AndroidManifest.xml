@@ -16,10 +16,10 @@
             android:name=".UnlinkAccessibilityService"
             android:enabled="true"
             android:exported="true"
-            android:label="Unlink Surgical Engine"
-            android:foregroundServiceType="specialUse"
+            android:label="Unlink Focus Guard"
             android:directBootAware="true"
             android:stopWithTask="false"
+            android:foregroundServiceType="specialUse"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter android:priority="1000">
                 <action android:name="android.accessibilityservice.AccessibilityService" />
@@ -29,7 +29,7 @@
                 android:resource="@xml/accessibility_service_config" />
             <meta-data
                 android:name="isAccessibilityTool"
-                android:value="false" />
+                android:value="true" />
         </service>
 
         <service
