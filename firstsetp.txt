@@ -1,3 +1,0 @@
-npx expo export --platform android
-cd android
-./gradlew assembleRelease

@@ -8,7 +8,7 @@ import { MaterialIcons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import { ScreenTimeChart } from '../ScreenTimeChart';
 import { ScreenTimeService } from '../../services/ScreenTimeService';
-import { DailyUsage, MOCK_DATA } from '../../utils/screenTimeData';
+import { DailyUsage } from '../../utils/screenTimeData';
 import { DatePickerModal } from '../ui/DatePickerModal';
 import { PermissionBanner } from '../ui/PermissionBanner';
 import { FocusStorageService, BlockSession } from '../../services/FocusStorageService';
@@ -462,17 +462,10 @@ export const HomeScreen = () => {
                         if (JSON.stringify(prev) === JSON.stringify(data)) return prev;
                         return data;
                     });
-
-                    const { updateSDKState } = require('../../core/sdk/provider');
-                    const totalMinutes = data?.totalDuration ? data.totalDuration / 60 : 0;
-                    const appUsageMap = data?.apps ? Object.fromEntries(data.apps.map(a => [a.name, a.duration / 60])) : {};
-
-                    updateSDKState({
-                        todayTotalMinutes: totalMinutes,
-                        appUsage: appUsageMap
-                    });
                 } else {
-                    setDailyData(MOCK_DATA[selectedDate] ?? null);
+                    // No usage permission — show the real empty/permission state,
+                    // never fabricated stats.
+                    setDailyData(null);
                 }
             } catch (error) {
                 console.error('[HomeScreen] Error checking permission:', error);
@@ -481,7 +474,7 @@ export const HomeScreen = () => {
                 setRefreshing(false);
             }
         } else {
-            setDailyData(MOCK_DATA[14]);
+            setDailyData(null);
             setIsLoading(false);
             setRefreshing(false);
         }
@@ -584,6 +577,30 @@ export const HomeScreen = () => {
                     <Text className="text-white text-lg font-headline font-black uppercase tracking-widest mt-6 mb-2">Analyzing Logic...</Text>
                     <Text className="text-[#919191] font-label text-[10px] uppercase tracking-[0.2em]">Executing Data Protocol</Text>
                 </View>
+            </SafeAreaView>
+        );
+    }
+
+    // No usage permission — prompt for access instead of showing fabricated stats.
+    if (!hasPermission && !isLoading) {
+        return (
+            <SafeAreaView className="flex-1 bg-black items-center justify-center px-8" edges={['top']}>
+                <MaterialIcons name="insights" size={48} color="white" style={{ opacity: 0.2 }} />
+                <Text className="text-white text-xl font-headline font-black uppercase tracking-widest mt-6 mb-3 text-center">
+                    Usage Access Needed
+                </Text>
+                <Text className="text-white/40 font-label text-[11px] leading-relaxed text-center mb-10">
+                    Unlink reads your screen-time stats on-device to show your usage here. Grant Usage Access to see your real data — nothing is uploaded or leaves your phone.
+                </Text>
+                <TouchableOpacity
+                    onPress={handleRequestPermission}
+                    activeOpacity={0.9}
+                    className="w-full bg-white py-5 items-center"
+                >
+                    <Text className="text-black font-headline font-black text-sm uppercase tracking-widest">
+                        GRANT USAGE ACCESS
+                    </Text>
+                </TouchableOpacity>
             </SafeAreaView>
         );
     }

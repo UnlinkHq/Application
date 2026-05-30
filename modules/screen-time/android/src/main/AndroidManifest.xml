@@ -27,9 +27,9 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
-            <meta-data
-                android:name="isAccessibilityTool"
-                android:value="true" />
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Keeps the user's self-initiated app-focus session active so blocked apps stay blocked for the scheduled duration." />
         </service>
 
         <service
@@ -38,7 +38,11 @@
             android:exported="false"
             android:stopWithTask="false"
             android:directBootAware="true"
-            android:foregroundServiceType="specialUse" />
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Backup enforcement that continues the user's active focus session if the accessibility service is interrupted." />
+        </service>
 
         <receiver 
             android:name=".BootReceiver" 

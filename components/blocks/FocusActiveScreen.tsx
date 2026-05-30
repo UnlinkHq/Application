@@ -111,6 +111,10 @@ export const FocusActiveScreen = ({ session, onEnd }: FocusActiveScreenProps) =>
         if (emailCooldown > 0 || isEmailSending) return;
 
         const email = session.strictnessConfig.emailAddress;
+        if (!email) {
+            alert('No email is configured for this session.');
+            return;
+        }
         const newOtp = Math.floor(1000 + Math.random() * 9000).toString();
 
         setIsEmailSending(true);

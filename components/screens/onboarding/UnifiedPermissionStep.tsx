@@ -121,8 +121,11 @@ export const UnifiedPermissionStep: React.FC<UnifiedPermissionStepProps> = ({ on
     return (
         <View className="flex-1 bg-black px-6">
             <ScrollView showsVerticalScrollIndicator={false} className="flex-1 pt-8">
-                <Text className="text-4xl font-headline font-black text-white leading-tight tracking-widest uppercase mb-12">
+                <Text className="text-4xl font-headline font-black text-white leading-tight tracking-widest uppercase mb-3">
                     ENABLE PERMISSION{'\n'}TO START FOCUSING
+                </Text>
+                <Text className="text-[#72fe88]/70 font-label text-[10px] uppercase tracking-widest mb-10 leading-relaxed">
+                    Everything runs on-device · No account · No cloud · Your data never leaves your phone.
                 </Text>
 
                 <View className="space-y-2">

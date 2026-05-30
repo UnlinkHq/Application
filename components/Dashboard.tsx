@@ -23,7 +23,7 @@ const DashboardHeader = React.memo(({
     setStrict: (b: boolean) => void;
 }) => (
     <View className="px-4 pt-12">
-      <Text className="text-3xl font-bold mb-6">ScreenBreak</Text>
+      <Text className="text-3xl font-bold mb-6">Unlink</Text>
 
       {/* Stat Card */}
       <View className="bg-black rounded-2xl p-6 mb-6">

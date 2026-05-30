@@ -23,7 +23,7 @@ export const HowItHelpsStep: React.FC<HowItHelpsStepProps> = ({ onNext }) => {
   const slides: SlideItem[] = useMemo(() => [
     {
       title: "Break the autopilot scroll.",
-      description: "ScreenBreak's Focus Challenge adds a playful pause before distractions. Intercept the habit before it consumes your morning.",
+      description: "Unlink's Focus Gate adds a playful pause before distractions. Intercept the habit before it consumes your morning.",
       tag: "FEATURE 01",
       icon: "motion-photos-off"
     },

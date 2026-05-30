@@ -200,11 +200,21 @@ companion object {
                 Log.d(TAG, "Session expired. Tearing down.")
                 teardownAllBlocks()
             }
-            // Periodic multi-window scan: catches blocked apps sitting in a background
-            // split-screen pane that haven't fired TYPE_WINDOW_STATE_CHANGED yet.
-            // Runs every 10s — same cadence as this heartbeat, zero event overhead.
-            if (!isBlockingSuspended && (blockExpiryTime > now || checkNativeSchedulesActive())) {
+            val scheduleActive = checkNativeSchedulesActive()
+            if (!isBlockingSuspended && (blockExpiryTime > now || scheduleActive)) {
+                // Periodic multi-window scan: catches blocked apps sitting in a background
+                // split-screen pane that haven't fired TYPE_WINDOW_STATE_CHANGED yet.
+                // Runs every 10s — same cadence as this heartbeat, zero event overhead.
                 checkAllWindowsForBlockedApps()
+            } else if (!isBlockingSuspended && overlayView?.parent != null) {
+                // Nothing should be blocked right now (schedule window ended, no manual
+                // session active) yet the wall is still on screen. The user is stuck behind
+                // it and can't generate accessibility events to trigger a re-evaluation, and
+                // the end-alarm may be inexact/delayed. This timer-based teardown is the
+                // reliable path that lowers a schedule wall within 10s of the window ending.
+                Log.d(TAG, "Heartbeat: no active block but wall is up — tearing down.")
+                setWallVisibility(false)
+                hideIntentGate()
             }
             mainHandler.postDelayed(this, 10_000L)
         }
@@ -393,6 +403,10 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
                 hideIntentGate()
                 mainHandler.removeCallbacks(watchTimeRunnable)
             }
+            // A schedule/session window may have just ended while its wall was showing.
+            // No code below this fast-path runs, so tear the wall down explicitly here —
+            // otherwise the overlay stays stuck on screen past the schedule end time.
+            if (overlayView?.parent != null) setWallVisibility(false)
             return
         }
 

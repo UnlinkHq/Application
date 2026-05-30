@@ -5,14 +5,13 @@ import { useNavigation } from '@react-navigation/native';
 import { WelcomeStep } from './onboarding/WelcomeStep';
 import { SoundFamiliarStep } from './onboarding/SoundFamiliarStep';
 import { ScreenTimeGoalStep } from './onboarding/ScreenTimeGoalStep';
-import { PermissionStep } from './onboarding/PermissionStep';
 import { ScreenTimeReportStep } from './onboarding/ScreenTimeReportStep';
-import { AppUsageStep } from './onboarding/AppUsageStep';
+// NOTE: AppUsageStep intentionally removed from the flow to reduce drop-off (file kept on disk).
 import { ScreenTimeComparisonStep } from './onboarding/ScreenTimeComparisonStep';
 import { ReclaimTimeStep } from './onboarding/ReclaimTimeStep';
 import { HowItHelpsStep } from './onboarding/HowItHelpsStep';
-import { PaywallStep } from './onboarding/PaywallStep';
 import { UnifiedPermissionStep } from './onboarding/UnifiedPermissionStep';
+import { PrivacyTrustStep } from './onboarding/PrivacyTrustStep';
 import { JourneyBeginStep } from './onboarding/JourneyBeginStep';
 import { OnboardingHeader } from './onboarding/OnboardingHeader';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -29,7 +28,7 @@ export const OnboardingScreen = ({ onFinish }: { onFinish: () => void }) => {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const prevStep = React.useRef(0);
 
-  const TOTAL_STEPS = 10; 
+  const TOTAL_STEPS = 10;
 
   // Pre-fetch data earlier (Step 2) or auto-skip Step 3
   useEffect(() => {
@@ -194,27 +193,23 @@ export const OnboardingScreen = ({ onFinish }: { onFinish: () => void }) => {
           />
         ))}
         {currentStep === 5 && (
-          <AppUsageStep 
-            onNext={handleNext} 
+          <ScreenTimeComparisonStep
+            onNext={handleNext}
             preFetchedData={usageStats}
-            preFetchedApps={installedApps}
           />
         )}
         {currentStep === 6 && (
-          <ScreenTimeComparisonStep 
-            onNext={handleNext} 
-            preFetchedData={usageStats}
-          />
-        )}
-        {currentStep === 7 && (
-          <ReclaimTimeStep 
-            onNext={handleNext} 
+          <ReclaimTimeStep
+            onNext={handleNext}
             preFetchedData={usageStats}
             screenTimeGoal={screenTimeGoal}
           />
         )}
-        {currentStep === 8 && (
+        {currentStep === 7 && (
           <HowItHelpsStep onNext={handleNext} />
+        )}
+        {currentStep === 8 && (
+          <PrivacyTrustStep onNext={handleNext} />
         )}
         {currentStep === 9 && (
           <JourneyBeginStep onFinish={handleFinishOnboarding} />

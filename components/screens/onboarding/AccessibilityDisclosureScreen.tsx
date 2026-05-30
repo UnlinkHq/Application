@@ -150,7 +150,7 @@ export const AccessibilityDisclosureScreen: React.FC<AccessibilityDisclosureScre
 
                     {/* Privacy policy link */}
                     <TouchableOpacity
-                        onPress={() => Linking.openURL('https://getunlink.com/privacy')}
+                        onPress={() => Linking.openURL('https://www.getunlink.com/privacy')}
                         className="flex-row items-center justify-center mb-8"
                     >
                         <MaterialIcons name="open-in-new" size={12} color="rgba(255,255,255,0.3)" style={{ marginRight: 6 }} />

@@ -8,5 +8,11 @@ module.exports = function (api) {
     plugins: [
       'react-native-reanimated/plugin',
     ],
+    env: {
+      production: {
+        // Strip console.* calls from release builds only.
+        plugins: ['transform-remove-console'],
+      },
+    },
   };
 };

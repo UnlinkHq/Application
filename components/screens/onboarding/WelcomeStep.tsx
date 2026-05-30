@@ -44,6 +44,19 @@ export const WelcomeStep: React.FC<WelcomeStepProps> = ({ onNext }) => {
       {/* Footer Action Area */}
       <View className="w-full px-8 pb-8 flex-col items-center z-20">
         <View className="w-full items-center">
+          {/* Trust / privacy signals */}
+          <View className="w-full flex-row flex-wrap items-center justify-center mb-4">
+            {['OPEN SOURCE', 'NO CLOUD', '100% LOCAL', 'NO ACCOUNT'].map((badge) => (
+              <View key={badge} className="border border-white/15 px-3 py-1.5 m-1">
+                <Text className="text-white/60 font-label text-[9px] uppercase tracking-widest">
+                  {badge}
+                </Text>
+              </View>
+            ))}
+          </View>
+          <Text className="text-white/40 font-body text-[10px] mb-5 text-center" style={{ lineHeight: 16 }}>
+            Fully local &amp; open source. No account, no cloud —{'\n'}your data never leaves this device.
+          </Text>
           <Text className="text-white/40 font-body text-[10px] mb-8 text-center" style={{ lineHeight: 18 }}>
             The dopamine cycle is quantifiable.{'\n'}Break it now.
           </Text>
