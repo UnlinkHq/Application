@@ -17,6 +17,7 @@ import { UToggle } from '../ui/UToggle';
 import { ConfigRow } from '../ui/ConfigRow';
 import {
     isAdminActive,
+    requestAdmin,
     getSelectionCount,
     FamilyPickerView,
     getEngineHealth
@@ -164,15 +165,9 @@ export const ScheduleBlockConfig = ({ onBack }: ScheduleBlockConfigProps) => {
             return;
         }
 
-        // Check for Android Admin if Protect Uninstall is requested
+        // Ensure strict-mode uninstall protection is armed if Protect Uninstall is requested
         if (Platform.OS === 'android' && blockUninstall && !isAdminActive()) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            Alert.alert(
-                "PERMISSION REQUIRED",
-                "PROTECT UNINSTALL REQUIRES DEVICE ADMIN PERMISSION. PLEASE ENABLE IT IN THE SECURITY SECTION.",
-                [{ text: "OK" }]
-            );
-            return;
+            requestAdmin();
         }
 
         if (days.length === 0) {

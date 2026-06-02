@@ -146,22 +146,15 @@ companion object {
     private var isProcessingBreak = false
     private var suspensionStartTime = 0L
     private var lastSelfProtectCheckTime = 0L
+    @Volatile private var lastUnlinkSettingsSeen = 0L
     @Volatile private var cachedLauncherPackage: String? = null
 
     // ─── Thread-safe authorized apps set ─────────────────────────────────────
     private val authorizedApps = java.util.Collections.synchronizedSet(mutableSetOf<String>())
     private var gateCountdown = 3
 
-    // ─── Cached Schedules (Avoid JSON parsing on every event) ─────────────────
-    private data class NativeSchedule(
-        val id: String,
-        val enabled: Boolean,
-        val startTimeMins: Int,
-        val endTimeMins: Int,
-        val days: Set<String>,
-        val appPackages: List<String>
-    )
-    @Volatile private var cachedSchedules: List<NativeSchedule> = emptyList()
+    // ─── Cached Schedules (parsed once per refresh; evaluated via ScheduleEvaluator) ──
+    @Volatile private var cachedSchedules: List<ScheduleEvaluator.Schedule> = emptyList()
     @Volatile private var cachedStopRecords: Map<String, String> = emptyMap()
 
     // Usage stats cached off-thread so updateWallContent() never blocks main thread
@@ -196,6 +189,8 @@ companion object {
     private val heartbeatRunnable = object : Runnable {
         override fun run() {
             val now = System.currentTimeMillis()
+            // Heartbeat: lets us detect later if the engine was killed mid-session.
+            prefs.edit().putLong("last_engine_heartbeat", now).apply()
             if (blockExpiryTime in 1..now && !isBlockingSuspended) {
                 Log.d(TAG, "Session expired. Tearing down.")
                 teardownAllBlocks()
@@ -311,6 +306,8 @@ companion object {
         }
         // Clear stale shutdown marker on connect
         prefs.edit().putLong("last_shutdown_watchdog", 0L).apply()
+        // Detect a mid-session engine kill (force-stop / OEM) that happened while we were dead.
+        detectIntegrityBreakOnConnect()
         val filter = IntentFilter().apply {
             addAction("com.shahil.unlink.SYNC_LIST")
             addAction("com.shahil.ACTION_REFRESH_BLOCKS")
@@ -326,6 +323,40 @@ companion object {
         bgHandler.post { refreshFromDiskInternal() }
         refreshServiceConfig()
         mainHandler.post(heartbeatRunnable)
+    }
+
+    /**
+     * Runs when the accessibility engine (re)binds — including right after the user reopens the
+     * app following a force-stop. If our last heartbeat is stale while a session was still meant
+     * to be enforcing, the engine was killed mid-session. We latch a one-shot "integrity break"
+     * flag for the JS layer to surface (streak break + accountability), unless the silence is
+     * explained by the device simply being powered off (a reboot, not a deliberate kill).
+     */
+    private fun detectIntegrityBreakOnConnect() {
+        try {
+            val now = System.currentTimeMillis()
+            val lastBeat = prefs.getLong("last_engine_heartbeat", 0L)
+            val expiry = prefs.getLong("block_expiry_time", 0L)
+            val start = prefs.getLong("session_start_time", 0L)
+            val suspended = prefs.getBoolean("is_blocking_suspended", false)
+            if (lastBeat <= 0L || start <= 0L || suspended) return
+            val sessionWasActive = expiry > lastBeat   // engine last beat while time remained
+            val silence = now - lastBeat
+            val uptime = android.os.SystemClock.elapsedRealtime()
+            val explainedByReboot = uptime < silence + 5_000L  // device was off for the gap
+            if (sessionWasActive && silence > 60_000L && !explainedByReboot) {
+                val alreadyReported = prefs.getLong("integrity_reported_session", 0L)
+                if (alreadyReported != start) {
+                    prefs.edit()
+                        .putBoolean("integrity_break_pending", true)
+                        .putLong("integrity_break_silence_ms", silence)
+                        .putLong("integrity_break_session_start", start)
+                        .putLong("integrity_reported_session", start)
+                        .apply()
+                    Log.d(TAG, "INTEGRITY_BREAK: engine killed mid-session (silent ${silence / 1000}s).")
+                }
+            }
+        } catch (_: Exception) {}
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int = START_STICKY
@@ -446,6 +477,17 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
                 if (nowCheck - lastSelfProtectCheckTime > 300L) { // Debounce checks (300ms)
                     lastSelfProtectCheckTime = nowCheck
                     if (checkSelfProtection(root)) {
+                        lastUnlinkSettingsSeen = nowCheck
+                        Toast.makeText(applicationContext, "Focus Mode Active. Control locked. ❤️🩹", Toast.LENGTH_SHORT).show()
+                        performGlobalAction(GLOBAL_ACTION_BACK)
+                        return
+                    }
+                    // Force-stop / uninstall CONFIRM dialogs ("Force stop?", "Do you want to
+                    // uninstall this app?") usually drop the app name, so checkSelfProtection
+                    // can't see "Unlink" and misses them. If we were JUST on Unlink's own App
+                    // Info screen, treat such a dialog as the same destructive intent and bounce
+                    // it too — this closes the small race where a fast tap reaches the dialog.
+                    if (nowCheck - lastUnlinkSettingsSeen < 4000L && looksLikeDestructiveConfirm(root)) {
                         Toast.makeText(applicationContext, "Focus Mode Active. Control locked. ❤️🩹", Toast.LENGTH_SHORT).show()
                         performGlobalAction(GLOBAL_ACTION_BACK)
                         return
@@ -617,6 +659,20 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
     }
 
     /**
+     * True if the screen is a destructive CONFIRM dialog ("Force stop?" / uninstall prompt)
+     * that typically omits the app name. Only consulted right after we were on Unlink's own
+     * App Info screen, so the blast radius is a ~4s window during an active strict session.
+     */
+    private fun looksLikeDestructiveConfirm(node: AccessibilityNodeInfo?): Boolean {
+        if (node == null) return false
+        return findTextNodesSafely(node, "Force stop?") ||
+               findTextNodesSafely(node, "force stop") ||
+               findTextNodesSafely(node, "Force stop") ||
+               findTextNodesSafely(node, "uninstall this app") ||
+               findTextNodesSafely(node, "want to uninstall")
+    }
+
+    /**
      * Detects any enabled+clickable toggle widget in the hierarchy.
      * Covers: AOSP Switch, Samsung SecSwitch/OneUI, AppCompatSwitch,
      * CheckBox, ToggleButton, and resource-id heuristics.
@@ -669,8 +725,10 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
     private fun hasAppInfoResourceId(node: AccessibilityNodeInfo?): Boolean {
         if (node == null) return false
         val rid = node.viewIdResourceName?.lowercase() ?: ""
-        if (rid.contains("force_stop") || rid.contains("uninstall_button") || 
-            rid.contains("right_button") || rid.contains("left_button")) {
+        // Only match App-Info-specific button IDs. The generic AOSP dialog IDs
+        // "right_button"/"left_button" were removed — they caused false-positive
+        // bounces on unrelated settings dialogs that merely contained "Unlink" text.
+        if (rid.contains("force_stop") || rid.contains("uninstall_button")) {
             return true
         }
         for (i in 0 until node.childCount) {
@@ -703,48 +761,17 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
 
     private fun checkNativeSchedulesActive(): Boolean {
         if (isBlockingSuspended) return false
-        return checkNativeSchedules("com.shahil.unlink")
+        return ScheduleEvaluator.isAnyActive(cachedSchedules, cachedStopRecords)
     }
 
     private fun checkNativeSchedules(pkg: String): Boolean {
-        val schedules = cachedSchedules
-        if (schedules.isEmpty()) return false
-
-        val cal = THREAD_CAL.get()
-        cal.timeInMillis = System.currentTimeMillis()
-        val todayDayName = DAY_NAMES[cal.get(java.util.Calendar.DAY_OF_WEEK) - 1]
-        val todayDateStr = THREAD_DATE_FMT.get()!!.format(cal.time)
-        val yesterdayDayName = DAY_NAMES[(cal.get(java.util.Calendar.DAY_OF_WEEK) - 2 + 7) % 7]
-        val yesterdayCal = cal.clone() as java.util.Calendar
-        yesterdayCal.add(java.util.Calendar.DAY_OF_YEAR, -1)
-        val yesterdayDateStr = THREAD_DATE_FMT.get()!!.format(yesterdayCal.time)
-        val nowMins = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
-        val stops = cachedStopRecords
-
-        for (schedule in schedules) {
-            if (!schedule.enabled) continue
-            val isMidnightCrossing = schedule.endTimeMins <= schedule.startTimeMins
-            val isPostMidnight = isMidnightCrossing && nowMins < schedule.endTimeMins
-            val effectiveDayName = if (isPostMidnight) yesterdayDayName else todayDayName
-            val effectiveDateStr = if (isPostMidnight) yesterdayDateStr else todayDateStr
-            if (stops[schedule.id] == effectiveDateStr) continue
-            if (!schedule.days.contains(effectiveDayName)) continue
-            val inWindow = if (isMidnightCrossing) {
-                nowMins >= schedule.startTimeMins || nowMins < schedule.endTimeMins
-            } else {
-                nowMins >= schedule.startTimeMins && nowMins < schedule.endTimeMins
-            }
-            if (!inWindow) continue
-
-            if (pkg == "com.shahil.unlink") return true
-            if (schedule.appPackages.any { pkg.contains(it, ignoreCase = true) }) return true
-        }
-        return false
-    }
-
-    private fun parseTimeToMinutes(t: String): Int {
-        val p = t.split(":")
-        return if (p.size >= 2) (p[0].toIntOrNull() ?: 0) * 60 + (p[1].toIntOrNull() ?: 0) else 0
+        if (cachedSchedules.isEmpty()) return false
+        // "com.shahil.unlink" is the self-protection / "is anything active" probe — it matches
+        // any active window. Real target apps match only schedules that explicitly list them.
+        return if (pkg == "com.shahil.unlink")
+            ScheduleEvaluator.isAnyActive(cachedSchedules, cachedStopRecords)
+        else
+            ScheduleEvaluator.matchesPackage(cachedSchedules, cachedStopRecords, pkg)
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -833,49 +860,9 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
             }
             lastBrainrotScrollTime = prefs.getLong("last_scroll_timestamp", System.currentTimeMillis())
 
-            // ─── Parse & Cache Schedules ──────────────────────────────────────
-            val schedulesJson = prefs.getString("native_schedules", null)
-            val newSchedules = mutableListOf<NativeSchedule>()
-            if (schedulesJson != null) {
-                try {
-                    val array = org.json.JSONArray(schedulesJson)
-                    for (i in 0 until array.length()) {
-                        val block = array.getJSONObject(i)
-                        if (block.optString("type") != "schedule") continue
-                        val sched = block.optJSONObject("schedule") ?: continue
-                        val daysArr = sched.optJSONArray("days") ?: continue
-                        val daysSet = mutableSetOf<String>()
-                        for (j in 0 until daysArr.length()) daysSet.add(daysArr.getString(j))
-                        
-                        val appsArr = block.optJSONArray("apps") ?: continue
-                        val appList = mutableListOf<String>()
-                        for (k in 0 until appsArr.length()) appList.add(appsArr.getString(k))
-
-                        newSchedules.add(NativeSchedule(
-                            id = block.optString("id"),
-                            enabled = block.optBoolean("enabled", true),
-                            startTimeMins = parseTimeToMinutes(sched.optString("startTime", "")),
-                            endTimeMins = parseTimeToMinutes(sched.optString("endTime", "")),
-                            days = daysSet,
-                            appPackages = appList
-                        ))
-                    }
-                } catch (e: Exception) { Log.e(TAG, "Error parsing schedules for cache: ${e.message}") }
-            }
-            cachedSchedules = newSchedules
-
-            // ─── Parse & Cache Stop Records ───────────────────────────────────
-            val stopsJson = prefs.getString("native_stop_records", "{}") ?: "{}"
-            val newStops = mutableMapOf<String, String>()
-            try {
-                val obj = org.json.JSONObject(stopsJson)
-                val keys = obj.keys()
-                while (keys.hasNext()) {
-                    val key = keys.next()
-                    newStops[key] = obj.getString(key)
-                }
-            } catch (e: Exception) { Log.e(TAG, "Error parsing stop records: ${e.message}") }
-            cachedStopRecords = newStops
+            // ─── Parse & Cache Schedules + Stop Records (via ScheduleEvaluator) ──
+            cachedSchedules = ScheduleEvaluator.parse(prefs)
+            cachedStopRecords = ScheduleEvaluator.parseStops(prefs)
 
         } catch (e: Exception) { Log.e(TAG, "refreshFromDisk: ${e.message}") }
     }

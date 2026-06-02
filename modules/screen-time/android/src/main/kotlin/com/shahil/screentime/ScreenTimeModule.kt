@@ -7,14 +7,12 @@ import android.content.BroadcastReceiver
 import android.content.IntentFilter
 import android.content.Context
 import android.content.Intent
-import android.content.ComponentName
 import android.content.pm.PackageManager
 import android.util.Log
 import android.os.Process
 import android.os.Build
 import android.os.PowerManager
 import android.provider.Settings
-import android.app.admin.DevicePolicyManager
 import android.widget.Toast
 import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
@@ -33,17 +31,6 @@ class ScreenTimeModule : Module() {
   override fun definition() = ModuleDefinition {
     Name("ScreenTime")
     Events("onNativeBreakToggle")
-
-    Function("isAdminActive") {
-      try {
-        val context = appContext.reactContext ?: return@Function false
-        val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-        val adminComponent = ComponentName(context.packageName, "com.shahil.screentime.UnlinkDeviceAdminReceiver")
-        return@Function dpm.isAdminActive(adminComponent)
-      } catch (e: Exception) {
-        return@Function false
-      }
-    }
 
     Function("startFocusProtocol") { config: Map<String, Any> ->
       appContext.reactContext?.let { context ->
@@ -227,6 +214,23 @@ class ScreenTimeModule : Module() {
         return@AsyncFunction prefs.getBoolean("strict_mode", false)
     }
 
+    // Returns (and clears) a one-shot "the engine was killed mid-session" flag latched by
+    // UnlinkAccessibilityService.detectIntegrityBreakOnConnect(). Drives streak/accountability.
+    AsyncFunction("consumeIntegrityBreak") {
+        val context = appContext.reactContext ?: return@AsyncFunction mapOf("pending" to false)
+        val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+        val pending = prefs.getBoolean("integrity_break_pending", false)
+        if (!pending) return@AsyncFunction mapOf("pending" to false)
+        val silence = prefs.getLong("integrity_break_silence_ms", 0L)
+        val start = prefs.getLong("integrity_break_session_start", 0L)
+        prefs.edit().putBoolean("integrity_break_pending", false).apply()
+        return@AsyncFunction mapOf(
+            "pending" to true,
+            "silenceMs" to silence.toDouble(),
+            "sessionStart" to start.toDouble()
+        )
+    }
+
     Function("updateGlobalBrainrot") { delta: Double ->
         appContext.reactContext?.let { context ->
             val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
@@ -395,44 +399,6 @@ class ScreenTimeModule : Module() {
         context.sendBroadcast(intent)
       }
       return@Function null
-    }
-
-    Function("requestAdmin") {
-      val activity = appContext.currentActivity
-      val context = appContext.reactContext
-      if (context != null) {
-        try {
-          val adminComponent = ComponentName(context.packageName, "com.shahil.screentime.UnlinkDeviceAdminReceiver")
-          val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
-            putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, adminComponent)
-            putExtra(DevicePolicyManager.EXTRA_ADD_EXPLANATION, "Enabling this prevents Unlink from being uninstalled.")
-          }
-          
-          if (activity != null) {
-            activity.startActivity(intent)
-          } else {
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            context.startActivity(intent)
-          }
-        } catch (e: Exception) {
-          Log.e("UnlinkAdmin", "Failed to start admin activity", e)
-        }
-      }
-    }
-
-    Function("deactivateAdmin") {
-      appContext.reactContext?.let { context ->
-        try {
-          val dpm = context.getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-          val adminComponent = ComponentName(context.packageName, "com.shahil.screentime.UnlinkDeviceAdminReceiver")
-          
-          if (dpm.isAdminActive(adminComponent)) {
-            dpm.removeActiveAdmin(adminComponent)
-          }
-        } catch (e: Exception) {
-          // Silently fail - the JS layer will sync state via isAdminActive on next app resume
-        }
-      }
     }
 
     Function("hasPermission") {
@@ -723,6 +689,48 @@ class ScreenTimeModule : Module() {
           }
       }
     }
+
+    Function("getManufacturer") {
+      return@Function Build.MANUFACTURER ?: "unknown"
+    }
+
+    Function("openAutoStartSettings") {
+      val context = appContext.reactContext ?: return@Function false
+      // Known OEM autostart / background-restriction screens (the "dontkillmyapp" playbook).
+      // Try each known component in order; fall back to the app's detail settings so the user
+      // can always reach SOMETHING. This is what keeps the engine alive on Xiaomi/Oppo/Vivo/etc.
+      val intents = listOf(
+        Intent().setClassName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"),
+        Intent().setClassName("com.letv.android.letvsafe", "com.letv.android.letvsafe.AutobootManageActivity"),
+        Intent().setClassName("com.huawei.systemmanager", "com.huawei.systemmanager.startupmgr.ui.StartupNormalAppListActivity"),
+        Intent().setClassName("com.huawei.systemmanager", "com.huawei.systemmanager.optimize.process.ProtectActivity"),
+        Intent().setClassName("com.coloros.safecenter", "com.coloros.safecenter.permission.startup.StartupAppListActivity"),
+        Intent().setClassName("com.coloros.safecenter", "com.coloros.safecenter.startupapp.StartupAppListActivity"),
+        Intent().setClassName("com.oppo.safe", "com.oppo.safe.permission.startup.StartupAppListActivity"),
+        Intent().setClassName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.AddWhiteListActivity"),
+        Intent().setClassName("com.iqoo.secure", "com.iqoo.secure.ui.phoneoptimize.BgStartUpManager"),
+        Intent().setClassName("com.vivo.permissionmanager", "com.vivo.permissionmanager.activity.BgStartUpManagerActivity"),
+        Intent().setClassName("com.samsung.android.lool", "com.samsung.android.sm.ui.battery.BatteryActivity"),
+        Intent().setClassName("com.samsung.android.sm", "com.samsung.android.sm.ui.battery.BatteryActivity"),
+        Intent().setClassName("com.oneplus.security", "com.oneplus.security.chainlaunch.view.ChainLaunchAppListActivity")
+      )
+      for (intent in intents) {
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        if (context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) != null) {
+          try { context.startActivity(intent); return@Function true } catch (_: Exception) {}
+        }
+      }
+      // Fallback: app detail settings (battery/autostart usually reachable from here on stock ROMs)
+      try {
+        val fallback = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+        fallback.data = android.net.Uri.parse("package:${context.packageName}")
+        fallback.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(fallback)
+        return@Function true
+      } catch (_: Exception) {
+        return@Function false
+      }
+    }
   }
 
   private fun addToMaps(pkg: String, duration: Long, startTime: Long, hourlyMap: MutableMap<String, MutableMap<String, Long>>, dailyMap: MutableMap<String, Long>) {
@@ -779,7 +787,7 @@ class ScreenTimeModule : Module() {
     val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
     val expiryTime = prefs.getLong("block_expiry_time", 0L)
     val isSessionActive = expiryTime > System.currentTimeMillis()
-    val isScheduleActive = isAnyScheduleActiveNow(prefs)
+    val isScheduleActive = ScheduleEvaluator.isAnyActiveNow(prefs)
 
     val intent = Intent(context, FallbackBlockingService::class.java)
     if (isSessionActive || isScheduleActive) {
@@ -793,42 +801,4 @@ class ScreenTimeModule : Module() {
     }
   }
 
-  /** Lightweight schedule check used to decide whether to start FallbackBlockingService. */
-  private fun isAnyScheduleActiveNow(prefs: android.content.SharedPreferences): Boolean {
-    val schedulesJson = prefs.getString("native_schedules", null) ?: return false
-    return try {
-        val array = org.json.JSONArray(schedulesJson)
-        val cal = java.util.Calendar.getInstance()
-        val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-        val todayDayName = dayNames[cal.get(java.util.Calendar.DAY_OF_WEEK) - 1]
-        val todayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", cal.get(java.util.Calendar.YEAR), cal.get(java.util.Calendar.MONTH) + 1, cal.get(java.util.Calendar.DAY_OF_MONTH))
-        val yesterdayDayName = dayNames[(cal.get(java.util.Calendar.DAY_OF_WEEK) - 2 + 7) % 7]
-        val yesterdayCal = cal.clone() as java.util.Calendar
-        yesterdayCal.add(java.util.Calendar.DAY_OF_YEAR, -1)
-        val yesterdayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", yesterdayCal.get(java.util.Calendar.YEAR), yesterdayCal.get(java.util.Calendar.MONTH) + 1, yesterdayCal.get(java.util.Calendar.DAY_OF_MONTH))
-        val nowMins = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
-        val stopsJson = org.json.JSONObject(prefs.getString("native_stop_records", "{}") ?: "{}")
-        for (i in 0 until array.length()) {
-            val block = array.getJSONObject(i)
-            if (block.optString("type") != "schedule") continue
-            if (!block.optBoolean("enabled", true)) continue
-            val id = block.optString("id")
-            val sched = block.optJSONObject("schedule") ?: continue
-            val daysArr = sched.optJSONArray("days") ?: continue
-            val startMins = run { val p = sched.optString("startTime", "").split(":"); if (p.size >= 2) (p[0].toIntOrNull() ?: 0) * 60 + (p[1].toIntOrNull() ?: 0) else 0 }
-            val endMins = run { val p = sched.optString("endTime", "").split(":"); if (p.size >= 2) (p[0].toIntOrNull() ?: 0) * 60 + (p[1].toIntOrNull() ?: 0) else 0 }
-            val isMidnightCrossing = endMins <= startMins
-            val isPostMidnight = isMidnightCrossing && nowMins < endMins
-            val effectiveDayName = if (isPostMidnight) yesterdayDayName else todayDayName
-            val effectiveDateStr = if (isPostMidnight) yesterdayDateStr else todayDateStr
-            if (stopsJson.optString(id) == effectiveDateStr) continue
-            var dayMatch = false
-            for (j in 0 until daysArr.length()) { if (daysArr.getString(j) == effectiveDayName) { dayMatch = true; break } }
-            if (!dayMatch) continue
-            val inWindow = if (isMidnightCrossing) nowMins >= startMins || nowMins < endMins else nowMins >= startMins && nowMins < endMins
-            if (inWindow) return true
-        }
-        false
-    } catch (e: Exception) { false }
-  }
 }

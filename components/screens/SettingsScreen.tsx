@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, AppState, AppStateStatus } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, AppState, AppStateStatus, Modal } from 'react-native';
 import { UToggle } from '../ui/UToggle';
 import { UBadge } from '../ui/UBadge';
 import { USectionHeader } from '../ui/USectionHeader';
@@ -10,6 +10,7 @@ import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome5 } from '@
 import { BrandLogo } from '../ui/BrandLogo';
 import { FocusStorageService, BlockSession } from '../../services/FocusStorageService';
 import { isAdminActive, requestAdmin, deactivateAdmin } from '../../modules/screen-time';
+import { OEMKeepAliveStep } from './onboarding/OEMKeepAliveStep';
 import * as Haptics from 'expo-haptics';
 
 export const SettingsScreen = () => {
@@ -17,6 +18,7 @@ export const SettingsScreen = () => {
     const { isStrict, setStrict } = useBlocking();
     const [activeSession, setActiveSession] = useState<BlockSession | null>(null);
     const [isUninstallProtected, setIsUninstallProtected] = useState(false);
+    const [showKeepAlive, setShowKeepAlive] = useState(false);
 
     const checkStatus = useCallback(async () => {
         const session = await FocusStorageService.getActiveSession();
@@ -150,6 +152,13 @@ export const SettingsScreen = () => {
                 {/* Troubleshooting & Privacy */}
                 <SectionHeader title="Troubleshooting & Privacy" />
                 <View className="mb-12">
+                    {Platform.OS === 'android' && (
+                        <SettingsItem
+                            icon="battery-alert"
+                            label="Keep Unlink Running (Battery)"
+                            onPress={() => setShowKeepAlive(true)}
+                        />
+                    )}
                     <SettingsItem
                         icon="account-balance"
                         label="Banking Apps Crashing / Blocked?"
@@ -245,6 +254,23 @@ export const SettingsScreen = () => {
                     </View>
                 </View>
             </ScrollView>
+
+            <Modal
+                visible={showKeepAlive}
+                animationType="slide"
+                onRequestClose={() => setShowKeepAlive(false)}
+            >
+                <View className="flex-1 bg-black">
+                    <View className="h-16 flex-row items-center justify-between px-6 border-b border-white/10">
+                        <TouchableOpacity onPress={() => setShowKeepAlive(false)} className="p-1 -ml-2">
+                            <Ionicons name="close" size={28} color="white" />
+                        </TouchableOpacity>
+                        <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">Keep Running</Text>
+                        <View style={{ width: 28 }} />
+                    </View>
+                    <OEMKeepAliveStep />
+                </View>
+            </Modal>
         </SafeAreaView>
     );
 };

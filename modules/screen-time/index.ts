@@ -4,9 +4,6 @@ import { Platform } from 'react-native';
 interface ScreenTimeModuleInterface {
     hasPermission(): Promise<boolean>;
     requestPermission(): void;
-    isAdminActive(): boolean;
-    requestAdmin(): void;
-    deactivateAdmin(): void;
     getUsageStats(startTime: number, endTime: number): Promise<any>;
     getInstalledApps(): Promise<{ packageName: string, label: string, icon: string, category?: number }[]>;
 
@@ -58,8 +55,13 @@ interface ScreenTimeModuleInterface {
     setNativeStopRecord(blockId: string, dateStr: string): void;
     setStrictMode(enabled: boolean): void;
     getStrictMode(): Promise<boolean>;
+    consumeIntegrityBreak(): Promise<{ pending: boolean; silenceMs?: number; sessionStart?: number }>;
     canScheduleExactAlarms(): boolean;
     requestExactAlarmPermission(): void;
+
+    // OEM background-survival ("don't kill my app")
+    getManufacturer(): string;
+    openAutoStartSettings(): boolean;
 
     // iOS Shield functions
     activateShield(): void;
@@ -78,9 +80,6 @@ try {
     ScreenTimeModule = {
         hasPermission: async () => false,
         requestPermission: () => { },
-        isAdminActive: () => false,
-        requestAdmin: () => { },
-        deactivateAdmin: () => { },
         getUsageStats: async () => ({}),
         getInstalledApps: async () => [],
         hasOverlayPermission: async () => false,
@@ -122,8 +121,11 @@ try {
         setNativeStopRecord: () => { },
         setStrictMode: () => { },
         getStrictMode: async () => false,
+        consumeIntegrityBreak: async () => ({ pending: false }),
         canScheduleExactAlarms: () => true,
-        requestExactAlarmPermission: () => { }
+        requestExactAlarmPermission: () => { },
+        getManufacturer: () => 'unknown',
+        openAutoStartSettings: () => false
     };
 }
 
@@ -140,16 +142,29 @@ export function requestPermission(): void {
     ScreenTimeModule.requestPermission();
 }
 
+// ── Uninstall protection — migrated off the deprecated Device Admin API ──────
+// Preventing uninstall is now enforced by the accessibility-based strict-mode
+// self-protection in UnlinkAccessibilityService: during an active session it
+// bounces the user out of the App Info / uninstall / force-stop screens. Device
+// Admin was removed because (a) it no longer blocks uninstall on Android 7+ and
+// (b) it is the top Play Store rejection trigger for "app prevents removal".
+// These three functions keep the original API surface so existing UI keeps
+// working — they just toggle strict mode instead of requesting Device Admin.
+let _uninstallProtectionCache = false;
+getStrictMode().then(v => { _uninstallProtectionCache = v; }).catch(() => { });
+
 export function isAdminActive(): boolean {
-    return ScreenTimeModule.isAdminActive();
+    return _uninstallProtectionCache;
 }
 
 export function requestAdmin(): void {
-    ScreenTimeModule.requestAdmin();
+    _uninstallProtectionCache = true;
+    setStrictMode(true);
 }
 
 export function deactivateAdmin(): void {
-    ScreenTimeModule.deactivateAdmin();
+    _uninstallProtectionCache = false;
+    setStrictMode(false);
 }
 
 export async function getUsageStats(startTime: number, endTime: number): Promise<any> {
@@ -301,6 +316,15 @@ export async function getStrictMode(): Promise<boolean> {
     return await ScreenTimeModule.getStrictMode();
 }
 
+export async function consumeIntegrityBreak(): Promise<{ pending: boolean; silenceMs?: number; sessionStart?: number }> {
+    if (Platform.OS !== 'android') return { pending: false };
+    try {
+        return await ScreenTimeModule.consumeIntegrityBreak();
+    } catch {
+        return { pending: false };
+    }
+}
+
 // Event Handling
 const emitter = new EventEmitter(ScreenTimeModule as any);
 
@@ -314,4 +338,20 @@ export function canScheduleExactAlarms(): boolean {
 
 export function requestExactAlarmPermission(): void {
     ScreenTimeModule.requestExactAlarmPermission();
+}
+
+export function getManufacturer(): string {
+    try {
+        return ScreenTimeModule.getManufacturer();
+    } catch {
+        return 'unknown';
+    }
+}
+
+export function openAutoStartSettings(): boolean {
+    try {
+        return ScreenTimeModule.openAutoStartSettings();
+    } catch {
+        return false;
+    }
 }

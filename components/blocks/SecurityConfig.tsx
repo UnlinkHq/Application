@@ -83,7 +83,7 @@ export const SecurityConfig = ({
                                         <View className="w-1.5 h-1.5 bg-white" />
                                     </View>
                                     <Text className="flex-1 text-white/80 font-label text-[10px] uppercase tracking-wider leading-4">
-                                        Enabling this prevents the app from being uninstalled while a focus session is active.
+                                        While a focus session is active, Unlink will block the uninstall and force-stop screens to keep you committed.
                                     </Text>
                                 </View>
                                 <View className="flex-row items-start">
@@ -91,7 +91,7 @@ export const SecurityConfig = ({
                                         <View className="w-1.5 h-1.5 bg-white" />
                                     </View>
                                     <Text className="flex-1 text-white/80 font-label text-[10px] uppercase tracking-wider leading-4">
-                                        You will be redirected to the Android system settings to grant <Text className="text-white font-bold">Device Administrator</Text> access.
+                                        This uses the <Text className="text-white font-bold">Accessibility</Text> permission you already granted. It only applies during a session you start, and you can turn it off any time.
                                     </Text>
                                 </View>
                             </View>

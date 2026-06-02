@@ -75,3 +75,15 @@ export async function sendSetupVerificationCode(to: string, otp: string): Promis
         </div>`
     );
 }
+
+export async function sendIntegrityBreakAlert(to: string, sessionTitle: string): Promise<void> {
+    await sendEmail(
+        to,
+        'UNLINK: A FOCUS SESSION WAS INTERRUPTED',
+        `<div style="font-family: sans-serif; padding: 20px; color: #000;">
+            <h2 style="letter-spacing: 2px; text-transform: uppercase;">Unlink Protocol</h2>
+            <p>The focus session <b>${sessionTitle}</b> was <b>interrupted before it finished</b>.</p>
+            <p>The Unlink app was force-stopped or closed by the phone during the session, so blocking stopped early. You're receiving this because you're set as the accountability contact.</p>
+        </div>`
+    );
+}

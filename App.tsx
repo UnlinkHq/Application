@@ -6,7 +6,7 @@ import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-rean
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { LogBox, View, ActivityIndicator, Platform } from 'react-native';
+import { LogBox, View, ActivityIndicator, Platform, AppState, Modal, Text, TouchableOpacity } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
@@ -41,6 +41,7 @@ import { IntentGateScreen } from './components/screens/IntentGateScreen';
 import { addNativeBreakListener } from './modules/screen-time';
 import { PremiumSplash } from './components/ui/PremiumSplash';
 import { TemporalEngine } from './services/TemporalEngine';
+import { SessionIntegrityService, IntegrityBreakResult } from './services/SessionIntegrityService';
 import './global.css';
 
 // Build 0.81.5 has fixed safeAreaView but dependencies might still use it
@@ -103,6 +104,16 @@ const NavigationTree = ({ isFirstLaunch, onCompleteOnboarding }: { isFirstLaunch
 export default function App() {
   const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
   const [activeSession, setActiveSession] = useState<BlockSession | null>(null);
+  const [integrityBreak, setIntegrityBreak] = useState<IntegrityBreakResult | null>(null);
+
+  const runIntegrityCheck = async () => {
+    try {
+      const result = await SessionIntegrityService.checkAndConsume();
+      if (result) setIntegrityBreak(result);
+    } catch (e) {
+      // never block the app on this
+    }
+  };
   const [fontsLoaded] = useFonts({
     Outfit_400Regular,
     Outfit_700Bold,
@@ -134,6 +145,11 @@ export default function App() {
       }
     }
     checkState();
+    // Detect sessions interrupted (force-stop / OEM kill) while we were away.
+    runIntegrityCheck();
+    const appStateSub = AppState.addEventListener('change', (next) => {
+      if (next === 'active') runIntegrityCheck();
+    });
 
     // Interval check for session changes
     const interval = setInterval(async () => {
@@ -157,6 +173,7 @@ export default function App() {
     return () => {
       TemporalEngine.stop();
       subscription.remove();
+      appStateSub.remove();
       clearInterval(interval);
     };
   }, []);
@@ -194,6 +211,39 @@ export default function App() {
                 onCompleteOnboarding={completeOnboarding}
               />
               <GlobalModals />
+              <Modal
+                visible={!!integrityBreak}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setIntegrityBreak(null)}
+              >
+                <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', justifyContent: 'center', paddingHorizontal: 28 }}>
+                  <View style={{ borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)', backgroundColor: '#0a0a0a', padding: 28 }}>
+                    <Text style={{ color: '#ff4444', fontWeight: '900', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>
+                      SESSION INTERRUPTED
+                    </Text>
+                    <Text style={{ color: '#fff', fontWeight: '900', fontSize: 20, marginBottom: 12 }}>
+                      You broke focus.
+                    </Text>
+                    <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12, lineHeight: 18, marginBottom: 8 }}>
+                      "{integrityBreak?.title}" was interrupted for about {integrityBreak?.minutesSilent} min — the app was force-stopped or closed by your phone before the session finished. This counts as a break in your streak.
+                    </Text>
+                    {integrityBreak?.partnerNotified ? (
+                      <Text style={{ color: '#72fe88', fontSize: 11, marginBottom: 8 }}>
+                        Your accountability partner has been notified.
+                      </Text>
+                    ) : null}
+                    <TouchableOpacity
+                      onPress={() => setIntegrityBreak(null)}
+                      style={{ marginTop: 16, backgroundColor: '#fff', paddingVertical: 16, alignItems: 'center' }}
+                    >
+                      <Text style={{ color: '#000', fontWeight: '900', fontSize: 12, letterSpacing: 2, textTransform: 'uppercase' }}>
+                        I UNDERSTAND
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </Modal>
             </SelectionProvider>
             <StatusBar style="light" />
           </BlockingProvider>

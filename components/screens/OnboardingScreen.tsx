@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { WelcomeStep } from './onboarding/WelcomeStep';
@@ -12,6 +12,7 @@ import { ReclaimTimeStep } from './onboarding/ReclaimTimeStep';
 import { HowItHelpsStep } from './onboarding/HowItHelpsStep';
 import { UnifiedPermissionStep } from './onboarding/UnifiedPermissionStep';
 import { PrivacyTrustStep } from './onboarding/PrivacyTrustStep';
+import { OEMKeepAliveStep } from './onboarding/OEMKeepAliveStep';
 import { JourneyBeginStep } from './onboarding/JourneyBeginStep';
 import { OnboardingHeader } from './onboarding/OnboardingHeader';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -28,7 +29,8 @@ export const OnboardingScreen = ({ onFinish }: { onFinish: () => void }) => {
   const [isDataLoaded, setIsDataLoaded] = useState(false);
   const prevStep = React.useRef(0);
 
-  const TOTAL_STEPS = 10;
+  // Android gets one extra step (OEM keep-alive / battery guide) before the finish screen.
+  const TOTAL_STEPS = Platform.OS === 'android' ? 11 : 10;
 
   // Pre-fetch data earlier (Step 2) or auto-skip Step 3
   useEffect(() => {
@@ -154,8 +156,8 @@ export const OnboardingScreen = ({ onFinish }: { onFinish: () => void }) => {
 
   return (
     <SafeAreaView className="flex-1 bg-black">
-      {currentStep > 0 && currentStep < 10 && (
-        <OnboardingHeader 
+      {currentStep > 0 && currentStep < TOTAL_STEPS && (
+        <OnboardingHeader
           currentStep={currentStep} 
           totalSteps={TOTAL_STEPS} 
           onBack={handleBack}
@@ -211,7 +213,10 @@ export const OnboardingScreen = ({ onFinish }: { onFinish: () => void }) => {
         {currentStep === 8 && (
           <PrivacyTrustStep onNext={handleNext} />
         )}
-        {currentStep === 9 && (
+        {Platform.OS === 'android' && currentStep === 9 && (
+          <OEMKeepAliveStep onContinue={handleNext} continueLabel="CONTINUE" />
+        )}
+        {currentStep === (Platform.OS === 'android' ? 10 : 9) && (
           <JourneyBeginStep onFinish={handleFinishOnboarding} />
         )}
       </View>

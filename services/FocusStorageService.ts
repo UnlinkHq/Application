@@ -5,6 +5,14 @@ import ScreenTime, { startFocusProtocol } from '../modules/screen-time';
 const ACTIVE_SESSION_KEY = '@unlink_active_session';
 const LIBRARY_BLOCKS_KEY = '@unlink_library_blocks';
 const SESSION_HISTORY_KEY = '@unlink_session_history';
+const INTEGRITY_BREAKS_KEY = '@unlink_integrity_breaks';
+
+export interface IntegrityBreak {
+    sessionId: string;
+    title: string;
+    silenceMs: number;
+    at: number;
+}
 
 export interface SessionHistoryEntry {
     id: string;
@@ -391,6 +399,46 @@ export class FocusStorageService {
         };
         const updated = [entry, ...history].slice(0, 60);
         await AsyncStorage.setItem(SESSION_HISTORY_KEY, JSON.stringify(updated));
+    }
+
+    // --- Session Integrity (force-stop / engine-kill accountability) ---
+
+    /**
+     * Records a session that was interrupted by an engine kill (force-stop / OEM). Logs the
+     * break AND writes a not-completed history entry so the streak reflects the bail.
+     */
+    static async recordInterruption(meta: { title: string; silenceMs: number; sessionId?: string }): Promise<void> {
+        try {
+            const raw = await AsyncStorage.getItem(INTEGRITY_BREAKS_KEY);
+            const list: IntegrityBreak[] = raw ? JSON.parse(raw) : [];
+            list.unshift({
+                sessionId: meta.sessionId || 'unknown',
+                title: meta.title,
+                silenceMs: meta.silenceMs,
+                at: Date.now(),
+            });
+            await AsyncStorage.setItem(INTEGRITY_BREAKS_KEY, JSON.stringify(list.slice(0, 60)));
+        } catch (_) { }
+
+        try {
+            const history = await FocusStorageService.getSessionHistory();
+            const entry: SessionHistoryEntry = {
+                id: meta.sessionId || `interrupted_${Date.now()}`,
+                title: meta.title,
+                type: 'block_now',
+                durationMins: 0,
+                apps: [],
+                completedAt: Date.now(),
+                wasCompleted: false,
+            };
+            await AsyncStorage.setItem(SESSION_HISTORY_KEY, JSON.stringify([entry, ...history].slice(0, 60)));
+        } catch (_) { }
+    }
+
+    static async getIntegrityBreaks(): Promise<IntegrityBreak[]> {
+        const raw = await AsyncStorage.getItem(INTEGRITY_BREAKS_KEY);
+        if (!raw) return [];
+        try { return JSON.parse(raw); } catch { return []; }
     }
 
     static getStreak(history: SessionHistoryEntry[]): number {

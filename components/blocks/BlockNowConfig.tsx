@@ -266,15 +266,9 @@ export const BlockNowConfig = ({ onBack }: BlockNowConfigProps) => {
             return;
         }
 
-        // 1. Check for Android Admin if Protect Uninstall is requested
+        // 1. Ensure strict-mode uninstall protection is armed if Protect Uninstall is requested
         if (Platform.OS === 'android' && blockUninstall && !isAdminActive()) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-            Alert.alert(
-                "PERMISSION REQUIRED",
-                "PROTECT UNINSTALL REQUIRES DEVICE ADMIN PERMISSION. PLEASE ENABLE IT IN THE SECURITY SECTION.",
-                [{ text: "OK" }]
-            );
-            return;
+            requestAdmin();
         }
 
         // --- TEMPORAL OVERLAP VALIDATION ---

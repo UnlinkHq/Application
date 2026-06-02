@@ -2,5 +2,4 @@
 <resources>
     <string name="accessibility_service_label">Unlink Focus Guard</string>
     <string name="accessibility_service_description">Unlink is a digital wellbeing app that helps users manage screen time and reduce compulsive app usage. The accessibility service is used to: (1) detect when a blocked app opens and display a focus reminder overlay, (2) detect Shorts/Reels scrolling in YouTube and Instagram to show usage awareness indicators, and (3) in optional Strict Mode (user-controlled), prevent changes to app settings during an active focus session the user themselves started. No personal data, messages, passwords, or screen content are collected, stored, or transmitted. All processing happens on-device. This feature requires your explicit permission and can be disabled at any time.</string>
-    <string name="device_admin_description">Enabling this prevents Unlink from being uninstalled during focus sessions.</string>
 </resources>

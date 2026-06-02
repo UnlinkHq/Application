@@ -17,9 +17,6 @@ import android.view.View
 import android.view.WindowManager
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
-import org.json.JSONArray
-import org.json.JSONObject
-import java.util.Calendar
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
@@ -34,22 +31,14 @@ class FallbackBlockingService : Service() {
     private var currentBlockedApps: Set<String> = emptySet()
     private var blockExpiryTime: Long = 0L
     private var isBlockingSuspended: Boolean = false
-    private var cachedSchedules: List<CachedSchedule> = emptyList()
+    private var cachedSchedules: List<ScheduleEvaluator.Schedule> = emptyList()
     private var cachedStopRecords: Map<String, String> = emptyMap()
     private var cachedUsageStatsManager: android.app.usage.UsageStatsManager? = null
+    private var lastHeartbeatWrite = 0L
 
     companion object {
         private const val NOTIFICATION_ID = 1002
         private const val CHANNEL_ID = "unlink_fallback_channel"
-
-        private data class CachedSchedule(
-            val id: String,
-            val enabled: Boolean,
-            val startTimeMins: Int,
-            val endTimeMins: Int,
-            val days: Set<String>,
-            val appPackages: List<String>
-        )
     }
 
     override fun onCreate() {
@@ -95,77 +84,9 @@ class FallbackBlockingService : Service() {
         blockExpiryTime = prefs.getLong("block_expiry_time", 0L)
         isBlockingSuspended = prefs.getBoolean("is_blocking_suspended", false)
 
-        // Parse schedules for native-blocking fallback
-        cachedSchedules = parseSchedules(prefs)
-        cachedStopRecords = parseStopRecords(prefs)
-    }
-
-    private fun parseSchedules(prefs: android.content.SharedPreferences): List<CachedSchedule> {
-        val json = prefs.getString("native_schedules", null) ?: return emptyList()
-        return try {
-            val array = JSONArray(json)
-            (0 until array.length()).mapNotNull { i ->
-                val block = array.getJSONObject(i)
-                if (block.optString("type") != "schedule") return@mapNotNull null
-                val sched = block.optJSONObject("schedule") ?: return@mapNotNull null
-                val daysArr = sched.optJSONArray("days") ?: return@mapNotNull null
-                val daysSet = (0 until daysArr.length()).mapTo(mutableSetOf()) { daysArr.getString(it) }
-                val appsArr = block.optJSONArray("apps") ?: return@mapNotNull null
-                val appList = (0 until appsArr.length()).map { appsArr.getString(it) }
-                val start = parseTimeToMinutes(sched.optString("startTime", ""))
-                val end = parseTimeToMinutes(sched.optString("endTime", ""))
-                CachedSchedule(block.optString("id"), block.optBoolean("enabled", true), start, end, daysSet, appList)
-            }
-        } catch (e: Exception) {
-            Log.e("UnlinkFallback", "Schedule parse error: ${e.message}")
-            emptyList()
-        }
-    }
-
-    private fun parseStopRecords(prefs: android.content.SharedPreferences): Map<String, String> {
-        val json = prefs.getString("native_stop_records", "{}") ?: "{}"
-        return try {
-            val obj = JSONObject(json)
-            val map = mutableMapOf<String, String>()
-            val keys = obj.keys()
-            while (keys.hasNext()) { val k = keys.next(); map[k] = obj.getString(k) }
-            map
-        } catch (e: Exception) { emptyMap() }
-    }
-
-    private fun parseTimeToMinutes(t: String): Int {
-        val p = t.split(":")
-        return if (p.size >= 2) (p[0].toIntOrNull() ?: 0) * 60 + (p[1].toIntOrNull() ?: 0) else 0
-    }
-
-    private fun isBlockedBySchedule(pkg: String): Boolean {
-        if (cachedSchedules.isEmpty()) return false
-        val cal = Calendar.getInstance()
-        val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-        val todayDayName = dayNames[cal.get(Calendar.DAY_OF_WEEK) - 1]
-        val todayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
-        val yesterdayDayName = dayNames[(cal.get(Calendar.DAY_OF_WEEK) - 2 + 7) % 7]
-        val yesterdayCal = cal.clone() as Calendar
-        yesterdayCal.add(Calendar.DAY_OF_YEAR, -1)
-        val yesterdayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", yesterdayCal.get(Calendar.YEAR), yesterdayCal.get(Calendar.MONTH) + 1, yesterdayCal.get(Calendar.DAY_OF_MONTH))
-        val nowMins = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
-        for (sched in cachedSchedules) {
-            if (!sched.enabled) continue
-            val isMidnightCrossing = sched.endTimeMins <= sched.startTimeMins
-            val isPostMidnight = isMidnightCrossing && nowMins < sched.endTimeMins
-            val effectiveDayName = if (isPostMidnight) yesterdayDayName else todayDayName
-            val effectiveDateStr = if (isPostMidnight) yesterdayDateStr else todayDateStr
-            if (cachedStopRecords[sched.id] == effectiveDateStr) continue
-            if (!sched.days.contains(effectiveDayName)) continue
-            val inWindow = if (isMidnightCrossing) {
-                nowMins >= sched.startTimeMins || nowMins < sched.endTimeMins
-            } else {
-                nowMins >= sched.startTimeMins && nowMins < sched.endTimeMins
-            }
-            if (!inWindow) continue
-            if (sched.appPackages.any { pkg.contains(it, ignoreCase = true) }) return true
-        }
-        return false
+        // Parse schedules for native-blocking fallback (shared ScheduleEvaluator)
+        cachedSchedules = ScheduleEvaluator.parse(prefs)
+        cachedStopRecords = ScheduleEvaluator.parseStops(prefs)
     }
 
     private fun startPolling() {
@@ -181,7 +102,7 @@ class FallbackBlockingService : Service() {
     private fun checkForegroundApp() {
         val time = System.currentTimeMillis()
         val isManualSessionActive = !isBlockingSuspended && blockExpiryTime > time
-        val isAnyScheduleActive = isAnyScheduleCurrentlyActive()
+        val isAnyScheduleActive = ScheduleEvaluator.isAnyActive(cachedSchedules, cachedStopRecords)
 
         // If neither a manual session nor a schedule is active, hide the wall and bail.
         if (!isManualSessionActive && !isAnyScheduleActive) {
@@ -193,6 +114,14 @@ class FallbackBlockingService : Service() {
         if (UnlinkAccessibilityService.instance != null) {
             handler.post { setWallVisibility(false) }
             return
+        }
+
+        // Fallback is the live enforcer now — keep the shared engine heartbeat fresh so a genuine
+        // kill (BOTH services dead) is distinguishable from a normal accessibility handoff.
+        if (time - lastHeartbeatWrite > 10_000L) {
+            lastHeartbeatWrite = time
+            getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
+                .edit().putLong("last_engine_heartbeat", time).apply()
         }
 
         if (cachedUsageStatsManager == null) {
@@ -219,44 +148,11 @@ class FallbackBlockingService : Service() {
 
             val manualBlock = isManualSessionActive &&
                     currentBlockedApps.any { topPackage.contains(it, ignoreCase = true) }
-            val scheduleBlock = isBlockedBySchedule(topPackage)
+            val scheduleBlock = ScheduleEvaluator.matchesPackage(cachedSchedules, cachedStopRecords, topPackage)
             val isBlocked = manualBlock || scheduleBlock
 
             handler.post { setWallVisibility(isBlocked) }
         }
-    }
-
-    /**
-     * Returns true if ANY schedule is currently active (regardless of which app).
-     * Used to decide whether the fallback service should even bother polling.
-     */
-    private fun isAnyScheduleCurrentlyActive(): Boolean {
-        if (cachedSchedules.isEmpty()) return false
-        val cal = Calendar.getInstance()
-        val dayNames = arrayOf("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
-        val todayDayName = dayNames[cal.get(Calendar.DAY_OF_WEEK) - 1]
-        val todayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
-        val yesterdayDayName = dayNames[(cal.get(Calendar.DAY_OF_WEEK) - 2 + 7) % 7]
-        val yesterdayCal = cal.clone() as Calendar
-        yesterdayCal.add(Calendar.DAY_OF_YEAR, -1)
-        val yesterdayDateStr = String.format(java.util.Locale.US, "%04d-%02d-%02d", yesterdayCal.get(Calendar.YEAR), yesterdayCal.get(Calendar.MONTH) + 1, yesterdayCal.get(Calendar.DAY_OF_MONTH))
-        val nowMins = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE)
-        for (sched in cachedSchedules) {
-            if (!sched.enabled) continue
-            val isMidnightCrossing = sched.endTimeMins <= sched.startTimeMins
-            val isPostMidnight = isMidnightCrossing && nowMins < sched.endTimeMins
-            val effectiveDayName = if (isPostMidnight) yesterdayDayName else todayDayName
-            val effectiveDateStr = if (isPostMidnight) yesterdayDateStr else todayDateStr
-            if (cachedStopRecords[sched.id] == effectiveDateStr) continue
-            if (!sched.days.contains(effectiveDayName)) continue
-            val inWindow = if (isMidnightCrossing) {
-                nowMins >= sched.startTimeMins || nowMins < sched.endTimeMins
-            } else {
-                nowMins >= sched.startTimeMins && nowMins < sched.endTimeMins
-            }
-            if (inWindow) return true
-        }
-        return false
     }
 
     private fun setWallVisibility(visible: Boolean) {
