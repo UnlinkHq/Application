@@ -126,7 +126,7 @@ export const ScreenTimeComparisonStep: React.FC<ScreenTimeComparisonStepProps> =
           {comparisons.map((item, index) => (
             <View key={index} style={{ width }} className="px-6 items-center justify-start">
               <Text className="font-label text-base md:text-lg tracking-widest text-white font-bold uppercase text-center mb-4">
-                {item.title} // <Text className="text-[#ffb4aa]">{item.value} {item.unit}</Text>
+                {item.title} {'//'} <Text className="text-[#ffb4aa]">{item.value} {item.unit}</Text>
               </Text>
               
               <Text className="text-white/40 font-body text-[10px] leading-relaxed text-center max-w-sm px-4">

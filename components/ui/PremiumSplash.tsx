@@ -57,7 +57,7 @@ export const PremiumSplash = () => {
             -1,
             false
         );
-    }, []);
+    }, [opacity, ringOpacity, ringScale, scale]);
 
     const animatedLogoStyle = useAnimatedStyle(() => ({
         transform: [{ scale: scale.value }],

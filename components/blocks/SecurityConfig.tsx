@@ -1,9 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, Modal, AppState } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import React from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { UToggle } from '../ui/UToggle';
-import { requestAdmin, isAdminActive } from '../../modules/screen-time';
 import * as Haptics from 'expo-haptics';
 
 interface SecurityConfigProps {
@@ -11,30 +9,17 @@ interface SecurityConfigProps {
     onEnabledChange: (value: boolean) => void;
 }
 
+// Uninstall protection is enforced by the already-granted Accessibility service:
+// during an active session the strict-mode self-protection detects + bounces the
+// uninstall / force-stop / settings screens. No Device Admin, no extra permission —
+// so this is a plain on/off toggle. (Device Admin is a post-launch Phase 2.)
 export const SecurityConfig = ({
     enabled,
     onEnabledChange
 }: SecurityConfigProps) => {
-    const [isAdminModalVisible, setIsAdminModalVisible] = useState(false);
-
-    // When user returns from the Android OS admin grant dialog, read the real outcome
-    useEffect(() => {
-        const sub = AppState.addEventListener('change', (state) => {
-            if (state === 'active') {
-                onEnabledChange(isAdminActive());
-            }
-        });
-        return () => sub.remove();
-    }, [onEnabledChange]);
-
     const handleToggle = (value: boolean) => {
-        if (value && !isAdminActive()) {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            setIsAdminModalVisible(true);
-            return;
-        }
-        onEnabledChange(value);
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        onEnabledChange(value);
     };
 
     return (
@@ -50,74 +35,12 @@ export const SecurityConfig = ({
                 </View>
                 <View className="flex-1">
                     <Text className="text-white font-headline font-black text-[11px] uppercase tracking-tight">STRICT MODE</Text>
-                    <Text className="text-white/40 font-label text-[10px] mt-1 leading-tight">No loopholes. Prevents you from force-stopping or uninstalling the app while a focus session is active.</Text>
+                    <Text className="text-white/40 font-label text-[10px] mt-1 leading-tight">Makes it hard to quit. Blocks the force-stop & uninstall screens during an active session so you don't bail on impulse.</Text>
                 </View>
                 <View pointerEvents="none">
                     <UToggle value={enabled} onValueChange={() => {}} />
                 </View>
             </TouchableOpacity>
-
-            {isAdminModalVisible && (
-                <Modal
-                    transparent={true}
-                    visible={isAdminModalVisible}
-                    animationType="fade"
-                    onRequestClose={() => setIsAdminModalVisible(false)}
-                >
-                    <Animated.View
-                        entering={FadeIn}
-                        style={StyleSheet.absoluteFillObject}
-                        className="bg-black/95 items-center justify-center px-8"
-                    >
-                        <View className="w-full bg-[#0a0a0a] border border-white/20 p-8 rounded-sm items-center">
-                            <View className="w-16 h-16 bg-white/5 items-center justify-center mb-6 border border-white/10">
-                                <MaterialCommunityIcons name="shield-lock-outline" size={32} color="white" />
-                            </View>
-
-                            <Text className="text-white font-headline font-black text-xl uppercase tracking-widest text-center mb-2">STRICT MODE</Text>
-                            <Text className="text-white/40 font-label text-[9px] uppercase tracking-widest mb-8 text-center italic">MAXIMUM SECURITY ENFORCEMENT</Text>
-
-                            <View className="bg-white/5 border border-white/10 p-5 mb-8 w-full">
-                                <View className="flex-row items-start mb-4">
-                                    <View className="w-5 h-5 bg-white/10 items-center justify-center mr-3 mt-0.5">
-                                        <View className="w-1.5 h-1.5 bg-white" />
-                                    </View>
-                                    <Text className="flex-1 text-white/80 font-label text-[10px] uppercase tracking-wider leading-4">
-                                        While a focus session is active, Unlink will block the uninstall and force-stop screens to keep you committed.
-                                    </Text>
-                                </View>
-                                <View className="flex-row items-start">
-                                    <View className="w-5 h-5 bg-white/10 items-center justify-center mr-3 mt-0.5">
-                                        <View className="w-1.5 h-1.5 bg-white" />
-                                    </View>
-                                    <Text className="flex-1 text-white/80 font-label text-[10px] uppercase tracking-wider leading-4">
-                                        This uses the <Text className="text-white font-bold">Accessibility</Text> permission you already granted. It only applies during a session you start, and you can turn it off any time.
-                                    </Text>
-                                </View>
-                            </View>
-
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setIsAdminModalVisible(false);
-                                    requestAdmin();
-                                    // onEnabledChange is called by the AppState listener
-                                    // once the user returns from the OS dialog with the real outcome
-                                }}
-                                className="w-full h-14 bg-white items-center justify-center mb-3"
-                            >
-                                <Text className="text-black font-headline font-black text-xs uppercase tracking-widest">GRANT PERMISSION</Text>
-                            </TouchableOpacity>
-
-                            <TouchableOpacity
-                                onPress={() => setIsAdminModalVisible(false)}
-                                className="w-full h-14 border border-white/20 items-center justify-center"
-                            >
-                                <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">ABORT REQUEST</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </Animated.View>
-                </Modal>
-            )}
         </View>
     );
 };

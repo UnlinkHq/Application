@@ -1,62 +1,35 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { 
-  getEngineHealth, 
-  requestOverlayPermission, 
-  requestAccessibilityPermission, 
-  openAppInfoSettings, 
-  requestUsageStatsPermission, 
-  requestBatteryOptimizationExemption 
+import {
+  requestOverlayPermission,
+  requestAccessibilityPermission,
+  openAppInfoSettings,
+  requestUsageStatsPermission,
+  requestBatteryOptimizationExemption
 } from '../../modules/screen-time';
 import { FocusStorageService } from '../../services/FocusStorageService';
+import { useEngineHealth, refreshEngineHealth } from '../../hooks/useEngineHealth';
 
 export const PermissionBanner = () => {
-  const [health, setHealth] = useState({
-    overlay: true,
-    accessibility: true,
-    usage: true,
-    batteryExempt: true,
-    isEnforcing: true
-  });
-  const [loading, setLoading] = useState(true);
+  const { health, hasChecked } = useEngineHealth();
   const [showTroubleshoot, setShowTroubleshoot] = useState(false);
   const [isRearming, setIsRearming] = useState(false);
   const slideAnim = React.useRef(new Animated.Value(-200)).current;
 
-  const checkHealth = useCallback(async () => {
-    try {
-      const currentHealth = await getEngineHealth();
-      setHealth(currentHealth);
-
-      const coreGranted = currentHealth.overlay && 
-                         currentHealth.usage && 
-                         currentHealth.batteryExempt;
-      
-      const allGranted = coreGranted && currentHealth.accessibility;
-      
-      // We only show the banner if core permissions are missing, 
-      // or if session is active and accessibility is missing.
-      const shouldShow = !coreGranted || (!allGranted && currentHealth.isEnforcing);
-
-      Animated.spring(slideAnim, {
-        toValue: shouldShow ? 0 : -200,
-        useNativeDriver: true,
-        tension: 50,
-        friction: 8,
-      }).start();
-    } catch (error) {
-      console.error('Health check failed:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [slideAnim]);
+  const coreGranted = health.overlay && health.usage && health.batteryExempt;
+  const allGranted = coreGranted && health.accessibility;
+  // Only ever show after a real check has completed; never on the optimistic default.
+  const shouldShow = hasChecked && (!coreGranted || (!allGranted && health.isEnforcing));
 
   useEffect(() => {
-    const timer = setInterval(checkHealth, 3000);
-    checkHealth();
-    return () => clearInterval(timer);
-  }, [checkHealth]);
+    Animated.spring(slideAnim, {
+      toValue: shouldShow ? 0 : -200,
+      useNativeDriver: true,
+      tension: 50,
+      friction: 8,
+    }).start();
+  }, [shouldShow, slideAnim]);
 
   const handleFixAccessibility = () => {
     requestAccessibilityPermission();
@@ -84,14 +57,14 @@ export const PermissionBanner = () => {
       Alert.alert("Error", "Failed to re-arm engine.");
     } finally {
       setIsRearming(false);
-      checkHealth();
+      refreshEngineHealth();
     }
   };
 
-  const isCoreGood = health.overlay && health.usage && health.batteryExempt;
-  const isAllGood = isCoreGood && health.accessibility;
-  
-  if (isAllGood && !loading) return null;
+  const isCoreGood = coreGranted;
+
+  // Keep mounted only while it has reason to be visible (avoids flashing on remount).
+  if (!shouldShow) return null;
 
   return (
     <Animated.View style={[styles.container, { transform: [{ translateY: slideAnim }] }]}>

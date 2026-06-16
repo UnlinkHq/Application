@@ -10,6 +10,8 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Android 13+: required or the foreground-service + break-warning notifications are suppressed -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application>
         <service
@@ -62,5 +64,25 @@
             android:enabled="true"
             android:exported="false"
             android:directBootAware="true" />
+
+        <!--
+          Optional launcher-resilience alias. DISABLED by default (android:enabled="false")
+          so it has ZERO effect unless the user opts in via setLauncherEnabled(true). When a
+          user makes Unlink their Home app, the OS treats it as a launcher and stops the
+          aggressive OEM battery-killers from tearing down the focus engine. Targets the app's
+          MainActivity (applicationId com.unlink).
+        -->
+        <activity-alias
+            android:name="com.unlink.UnlinkLauncherAlias"
+            android:targetActivity="com.unlink.MainActivity"
+            android:enabled="false"
+            android:exported="true"
+            android:label="Unlink">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity-alias>
     </application>
 </manifest>

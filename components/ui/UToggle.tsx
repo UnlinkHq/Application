@@ -16,7 +16,7 @@ export const UToggle = ({ value, onValueChange, activeColor = '#FFFFFF', disable
 
     useEffect(() => {
         progress.value = withSpring(value ? 1 : 0, { damping: 18, stiffness: 180 });
-    }, [value]);
+    }, [value, progress]);
 
     const isWhite = activeColor === '#FFFFFF';
     const thumbOnColor = isWhite ? '#000000' : '#FFFFFF';

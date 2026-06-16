@@ -31,6 +31,36 @@ interface LiveBrainProps {
 
 const STAGE_RANGE = 100 / (STAGES.length - 1); // ~16.6 per stage
 
+interface MascotStageProps {
+  source: any;
+  index: number;
+  scoreValue: Animated.SharedValue<number>;
+  mascotContainerStyle: any;
+}
+
+const MascotStage: React.FC<MascotStageProps> = ({ source, index, scoreValue, mascotContainerStyle }) => {
+  const opacityStyle = useAnimatedStyle(() => {
+    // CROSS-FADE LOGIC
+    // Each stage has a peak at (index * STAGE_RANGE)
+    const peak = index * STAGE_RANGE;
+    const opacity = interpolate(
+      scoreValue.value,
+      [peak - STAGE_RANGE, peak, peak + STAGE_RANGE],
+      [0, 1, 0],
+      'clamp'
+    );
+    return { opacity };
+  });
+
+  return (
+    <Animated.Image
+      source={source}
+      style={[styles.image, mascotContainerStyle, opacityStyle, StyleSheet.absoluteFill]}
+      resizeMode="contain"
+    />
+  );
+};
+
 export const LiveBrain: React.FC<LiveBrainProps> = ({ score, size = 60, subtle = false }) => {
   // PHYSICS_VALUES
   const breathing = useSharedValue(0);
@@ -75,7 +105,7 @@ export const LiveBrain: React.FC<LiveBrainProps> = ({ score, size = 60, subtle =
     } else {
       jitter.value = withTiming(0);
     }
-  }, [score]);
+  }, [score, subtle, breathing, floating, jitter]);
 
   // 4. Reaction Pulse (Only if NOT subtle)
   useEffect(() => {
@@ -85,7 +115,7 @@ export const LiveBrain: React.FC<LiveBrainProps> = ({ score, size = 60, subtle =
       withSpring(1.2, { damping: 10, stiffness: 100 }),
       withSpring(1, { damping: 10, stiffness: 100 })
     );
-  }, [score, subtle]);
+  }, [score, subtle, reaction]);
 
   const mascotContainerStyle = useAnimatedStyle(() => {
     const scale = interpolate(breathing.value, [0, 1], [1, subtle ? 1.02 : 1.05]) * reaction.value;
@@ -99,29 +129,15 @@ export const LiveBrain: React.FC<LiveBrainProps> = ({ score, size = 60, subtle =
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
-      {STAGES.map((source, index) => {
-        const opacityStyle = useAnimatedStyle(() => {
-            // CROSS-FADE LOGIC
-            // Each stage has a peak at (index * STAGE_RANGE)
-            const peak = index * STAGE_RANGE;
-            const opacity = interpolate(
-                scoreValue.value,
-                [peak - STAGE_RANGE, peak, peak + STAGE_RANGE],
-                [0, 1, 0],
-                'clamp'
-            );
-            return { opacity };
-        });
-
-        return (
-          <Animated.Image
-            key={index}
-            source={source}
-            style={[styles.image, mascotContainerStyle, opacityStyle, StyleSheet.absoluteFill]}
-            resizeMode="contain"
-          />
-        );
-      })}
+      {STAGES.map((source, index) => (
+        <MascotStage
+          key={index}
+          source={source}
+          index={index}
+          scoreValue={scoreValue}
+          mascotContainerStyle={mascotContainerStyle}
+        />
+      ))}
       
       {/* Dynamic Glow */}
       <View 

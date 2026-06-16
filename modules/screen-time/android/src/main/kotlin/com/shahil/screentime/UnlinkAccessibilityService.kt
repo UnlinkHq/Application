@@ -147,6 +147,13 @@ companion object {
     private var suspensionStartTime = 0L
     private var lastSelfProtectCheckTime = 0L
     @Volatile private var lastUnlinkSettingsSeen = 0L
+    // Timestamp we last confirmed being on Unlink's OWN App Info. Arms the overlay-detail
+    // guard: that detail page renders only a toggle (no app name), so it can't be identified
+    // alone — but it's reached directly from App Info. Armed for a few seconds and cleared
+    // the instant any neutral screen appears, so it can NEVER bounce unrelated pages.
+    @Volatile private var armedFromUnlinkAppInfoAt = 0L
+    // Dedup key so the 400ms watchdog doesn't flood logcat with identical lines.
+    @Volatile private var lastDiagSig = ""
     @Volatile private var cachedLauncherPackage: String? = null
 
     // ─── Thread-safe authorized apps set ─────────────────────────────────────
@@ -166,6 +173,8 @@ companion object {
     private var gateOverlayView: View? = null
     private var brainrotOverlayView: View? = null
     private var bingeNudgeOverlayView: View? = null
+    private var shieldOverlayView: View? = null
+    private val shieldDismissRunnable = Runnable { hideSelfProtectShield() }
     private var isGateInflationPending = false
 
     // ─── Cached services (lazy — avoids repeated getSystemService Binder calls) ─
@@ -373,6 +382,7 @@ companion object {
         safeRemoveView(gateOverlayView);      gateOverlayView = null
         safeRemoveView(brainrotOverlayView);  brainrotOverlayView = null
         safeRemoveView(bingeNudgeOverlayView);bingeNudgeOverlayView = null
+        safeRemoveView(shieldOverlayView);    shieldOverlayView = null
         try { unregisterReceiver(syncReceiver) } catch (_: Exception) {}
         instance = null
         super.onDestroy()
@@ -450,6 +460,13 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
             ?: return
         if (pkg == packageName) return
 
+        // Drop the self-protection shield + stop the watchdog the instant the user is
+        // no longer on a settings/security surface (e.g. bounced home) — keeps it lag-free.
+        if (!isSelfProtectSurface(pkg)) {
+            mainHandler.removeCallbacks(selfProtectWatchdog)
+            if (shieldOverlayView != null) hideSelfProtectShield()
+        }
+
         // ── 0. PiP bypass detection ───────────────────────────────────────────
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isLauncherOrHomePackage(pkg)) {
             val piPkg = detectPiPBypass()
@@ -466,18 +483,31 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
         //    When Strict Mode is OFF this entire block is skipped — settings, force-stop,
         //    and uninstall all work normally. This mirrors how Regain / parental-control
         //    apps handle committed focus sessions: user opts in, user controls the pin.
+        if (isSelfProtectSurface(pkg)) {
+            val sessionActive = isBlockActive("com.shahil.unlink")
+            if (!isStrictModeEnabled || !sessionActive) {
+                // On a settings/security screen but the guard is OFF — this is the #1 reason
+                // "it doesn't bounce". Surfaced so the logs make it obvious.
+                diag("gateoff:$pkg:$isStrictModeEnabled:$sessionActive",
+                     "[$pkg] GUARD INACTIVE (strictMode=$isStrictModeEnabled session=$sessionActive) — allowing, no protection")
+            }
+        }
+
         if (isStrictModeEnabled && isBlockActive("com.shahil.unlink")) {
-            val isSettings = pkg == "com.android.settings" || pkg.contains("settings", ignoreCase = true)
-            val isPackageInstaller = pkg.contains("packageinstaller", ignoreCase = true)
-            val isMiuiSecurity = pkg == "com.miui.securitycenter" || pkg.contains("securitycenter", ignoreCase = true)
-            
-            if (isSettings || isPackageInstaller || isMiuiSecurity) {
+            if (isSelfProtectSurface(pkg)) {
+                // Keep a fast watchdog alive while parked on a dangerous surface so a
+                // static screen / first-frame timing miss can't slip through. Re-armed
+                // idempotently; the runnable self-terminates once we leave the surface.
+                mainHandler.removeCallbacks(selfProtectWatchdog)
+                mainHandler.postDelayed(selfProtectWatchdog, 400L)
                 val root = rootInActiveWindow
                 val nowCheck = System.currentTimeMillis()
                 if (nowCheck - lastSelfProtectCheckTime > 300L) { // Debounce checks (300ms)
                     lastSelfProtectCheckTime = nowCheck
                     if (checkSelfProtection(root)) {
                         lastUnlinkSettingsSeen = nowCheck
+                        // Cover the buttons FIRST (wins the race even if BACK is slow), then bounce.
+                        showSelfProtectShield()
                         Toast.makeText(applicationContext, "Focus Mode Active. Control locked. ❤️🩹", Toast.LENGTH_SHORT).show()
                         performGlobalAction(GLOBAL_ACTION_BACK)
                         return
@@ -488,10 +518,13 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
                     // Info screen, treat such a dialog as the same destructive intent and bounce
                     // it too — this closes the small race where a fast tap reaches the dialog.
                     if (nowCheck - lastUnlinkSettingsSeen < 4000L && looksLikeDestructiveConfirm(root)) {
+                        showSelfProtectShield()
                         Toast.makeText(applicationContext, "Focus Mode Active. Control locked. ❤️🩹", Toast.LENGTH_SHORT).show()
                         performGlobalAction(GLOBAL_ACTION_BACK)
                         return
                     }
+                    // On a settings/security surface but nothing destructive — drop any stale shield.
+                    hideSelfProtectShield()
                 }
             }
         }
@@ -602,51 +635,153 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
     // Self-protection (runs on bgHandler — never blocks UI thread)
     // ─────────────────────────────────────────────────────────────────────────
 
+    /** Deduped diagnostic logging — filter with `adb logcat -s UnlinkWarden`. */
+    private fun diag(sig: String, msg: String) {
+        if (sig == lastDiagSig) return
+        lastDiagSig = sig
+        Log.d(TAG, "DIAG $msg")
+    }
+
     /**
      * Returns true ONLY when the user is actively trying to destroy Unlink.
      * Freely browsing settings always returns false.
      */
     private fun checkSelfProtection(node: AccessibilityNodeInfo?): Boolean {
         if (node == null) return false
+        val now = System.currentTimeMillis()
+        val pkg = node.packageName?.toString() ?: "?"
 
+        // Locale-proof identity: the app label "Unlink" never translates, and these are
+        // its own package ids. We ONLY ever act when one of these is actually on screen
+        // (or — narrow exception below — we just came straight from Unlink's App Info).
         val hasUnlinkIdentity = findTextNodesSafely(node, "Unlink") ||
+                                findTextNodesSafely(node, "com.unlink") ||
                                 findTextNodesSafely(node, "com.shahil.unlink")
 
-        if (!hasUnlinkIdentity) return false
+        // Precise App-Info signature. The header, the force-stop/uninstall resource IDs, or
+        // "Uninstall" AND "Force stop" together only co-occur on the real App Info detail
+        // page — never on a search-results list. Checked FIRST so App Info ALWAYS bounces,
+        // even though the Settings window also carries a (collapsed) search box.
+        if (hasUnlinkIdentity) {
+            // Settings SEARCH (com.google.android.settings.intelligence) lists "App info" /
+            // "Uninstall" as result text while you type "unli", which falsely tripped the
+            // loose-text App-Info match below and bounced every keystroke. A real App-Info
+            // DETAIL page never has an active text field; search always does. So the loose
+            // TEXT signals only count when there's no editable field. Hard signals
+            // (force_stop/uninstall_button resource IDs — actual buttons that never appear in
+            // a search list) stay unconditional, so App Info still always bounces.
+            val hasInput = hasEditableField(node)
+            val isAppInfoPage = hasAppInfoResourceId(node) ||
+                                // Strong, App-Info-only signal: both destructive BUTTONS present.
+                                // A search list never renders "Uninstall" AND "Force stop" together,
+                                // so this stays unconditional → the WHOLE App Info page bounces on
+                                // entry (the collapsed search box on App Info no longer suppresses it).
+                                (findTextNodesSafely(node, "Uninstall") && findTextNodesSafely(node, "Force stop")) ||
+                                // Loose header text false-positives on Settings search results
+                                // ("App info" shown as a result subtitle), so only trust it when
+                                // there is no editable field — i.e. a real detail page, not search.
+                                (!hasInput && (
+                                    findTextNodesSafely(node, "App info") ||
+                                    findTextNodesSafely(node, "Application details") ||
+                                    findTextNodesSafely(node, "App details")
+                                ))
+            if (isAppInfoPage) {
+                armedFromUnlinkAppInfoAt = now   // arm overlay-detail guard
+                diag("ai:$pkg", "[$pkg] unlink=Y appInfo=Y → BOUNCE rule=APPINFO (armed overlay)")
+                return true
+            }
+        }
 
-        val hasAppInfoHeader = findTextNodesSafely(node, "App info") ||
-                               findTextNodesSafely(node, "Application details")
+        // ── Pure-navigation screens (search / list / home) carry a text-input field ────
+        // App Info already handled above, so here an editable field means a results list /
+        // home — you can't disable our permissions there (tapping a result opens the detail
+        // page, which we still catch). This is what stops "un"/"display" searches bouncing.
+        if (hasEditableField(node)) {
+            armedFromUnlinkAppInfoAt = 0L
+            diag("nav:$pkg", "[$pkg] text-input present (search/list/home) → ALLOW")
+            return false
+        }
 
-        val appInfoKeywords = listOf(
-            "Force stop", "Uninstall", "Disable", "Force quit", "Stop app", "Force stop?",
-            "Clear data", "Storage", "Permissions", "Modify system settings", "Display over other apps"
+        if (hasUnlinkIdentity) {
+            // Unlink + a toggle widget (detected by CLASS, not text), no input field = its
+            // accessibility / overlay-list detail page. Locale/OEM-proof. Bounce.
+            if (hasClickableToggle(node)) {
+                diag("tg:$pkg", "[$pkg] unlink=Y toggle=Y → BOUNCE rule=UNLINK+TOGGLE")
+                return true
+            }
+            // Unlink name + a destructive CONFIRM ("Force stop?", "Uninstall this app?",
+            // "Stop Unlink?") — these dialogs render the app name but carry no toggle and
+            // aren't App-Info-classified, so without this they leaked through "mention only".
+            // This is the direct uninstall / force-stop / disable-accessibility escape. Bounce.
+            if (looksLikeDestructiveConfirm(node)) {
+                armedFromUnlinkAppInfoAt = now
+                diag("dc:$pkg", "[$pkg] unlink=Y destructive-confirm → BOUNCE rule=CONFIRM")
+                return true
+            }
+            // Unlink only *mentioned* with no actionable control → allow.
+            armedFromUnlinkAppInfoAt = 0L
+            diag("um:$pkg", "[$pkg] unlink=Y appInfo=N toggle=N → ALLOW (mention only)")
+            return false
+        }
+
+        // ── No "Unlink" on screen ─────────────────────────────────────────────
+        // The overlay / "appear on top" DETAIL page renders only a toggle, never the app
+        // name. Bounce it ONLY when we arrived directly from Unlink's App Info moments ago
+        // (armed). This is the key to ZERO collateral: a "display" search, or ANOTHER app's
+        // overlay page, is never armed, so other apps are never affected.
+        val armed = armedFromUnlinkAppInfoAt != 0L && (now - armedFromUnlinkAppInfoAt < 5000L)
+        val overlay = isOverlayPermissionPage(node)
+        if (armed && overlay) {
+            armedFromUnlinkAppInfoAt = now // keep armed while the page is in front
+            diag("ov:$pkg", "[$pkg] unlink=N overlay=Y armed=Y → BOUNCE rule=OVERLAY-DETAIL")
+            return true
+        }
+        if (overlay) {
+            diag("ovna:$pkg", "[$pkg] unlink=N overlay=Y armed=N → ALLOW (not opened from Unlink App Info)")
+        }
+
+        // Any other screen (Settings home, search, another app's pages, launcher) → neutral.
+        // Disarm so nothing unrelated can ever bounce. THIS is what stops the false positives.
+        armedFromUnlinkAppInfoAt = 0L
+        return false
+    }
+
+    /**
+     * True if the screen is the "display over other apps" / "appear on top" permission
+     * page. Cross-OEM label coverage: Pixel/AOSP/Realme/Oppo/Vivo ("display over other
+     * apps"), Samsung ("appear on top"), Xiaomi/MIUI ("display pop-up windows"), plus
+     * generic "draw over" / "floating window" variants. Case-insensitive substring match.
+     */
+    private fun isOverlayPermissionPage(node: AccessibilityNodeInfo?): Boolean {
+        if (node == null) return false
+        val keys = listOf(
+            "over other apps",        // Display/Allow display over other apps (AOSP/Pixel/Realme/Oppo/Vivo)
+            "on top of other apps",   // some AOSP variants
+            "appear on top",          // Samsung One UI
+            "display pop-up",         // Xiaomi / MIUI ("Display pop-up windows…")
+            "draw over",              // generic / older
+            "floating window"         // Vivo / some ColorOS
         )
-        val hasDestructiveButtons = appInfoKeywords.any { findTextNodesSafely(node, it) } ||
-                                    hasAppInfoResourceId(node)
+        return keys.any { findTextNodesSafely(node, it) }
+    }
 
-        if (hasDestructiveButtons && (hasAppInfoHeader || hasUnlinkIdentity)) {
-            Log.d(TAG, "SELF_PROTECT: Detected Unlink App Info / Sensitive Setting (Instant) — Kicking back.")
-            return true
+    /**
+     * True if the screen contains an editable text field (search box / input). Used to
+     * recognise Settings search / list / home screens — which are navigation, never a
+     * place permissions get disabled — so they are always allowed (no false bounces).
+     * Permission DETAIL pages never contain an input field.
+     */
+    private fun hasEditableField(node: AccessibilityNodeInfo?): Boolean {
+        if (node == null) return false
+        if (node.isEditable) return true
+        val cls = node.className?.toString()?.lowercase() ?: ""
+        if (cls.contains("edittext") || cls.contains("autocomplete")) return true
+        for (i in 0 until node.childCount) {
+            val child = node.getChild(i) ?: continue
+            val result = hasEditableField(child)
+            child.recycle()
+            if (result) return true
         }
-
-        // Only block when the toggle is currently ON (user is trying to disable the service).
-        // If the toggle is OFF the user is trying to ENABLE it — let them through.
-        val isSensitiveAccessPage = (findTextNodesSafely(node, "Unlink") || findTextNodesSafely(node, "com.shahil.unlink")) &&
-                                     hasEnabledClickableToggle(node)
-
-        if (isSensitiveAccessPage) {
-            Log.d(TAG, "SELF_PROTECT: Detected Sensitive/Accessibility toggle for Unlink (currently enabled — blocking disable).")
-            return true
-        }
-
-        val onPermPage = listOf("Display over other apps", "Usage access", "Modify system settings", "Accessibility")
-             .any { findTextNodesSafely(node, it) }
-
-        if (onPermPage && hasEnabledClickableToggle(node)) {
-            Log.d(TAG, "SELF_PROTECT: Detected Unlink Permission sub-page toggle (currently enabled — blocking disable).")
-            return true
-        }
- 
         return false
     }
 
@@ -665,11 +800,17 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
      */
     private fun looksLikeDestructiveConfirm(node: AccessibilityNodeInfo?): Boolean {
         if (node == null) return false
-        return findTextNodesSafely(node, "Force stop?") ||
-               findTextNodesSafely(node, "force stop") ||
-               findTextNodesSafely(node, "Force stop") ||
+        // findTextNodesSafely is a case-insensitive substring match, so each entry also
+        // covers its title-case / trailing-"?" variants.
+        return findTextNodesSafely(node, "force stop") ||      // Force stop button + "Force stop?" dialog
                findTextNodesSafely(node, "uninstall this app") ||
-               findTextNodesSafely(node, "want to uninstall")
+               findTextNodesSafely(node, "want to uninstall") ||
+               // Accessibility-toggle OFF confirm: "Stop Unlink?" / "Turn off Unlink?" /
+               // "Disable Unlink?". The "…Unlink" suffix keeps these from ever matching an
+               // unrelated dialog, so it's safe even in the no-identity armed window.
+               findTextNodesSafely(node, "Stop Unlink") ||
+               findTextNodesSafely(node, "Turn off Unlink") ||
+               findTextNodesSafely(node, "Disable Unlink")
     }
 
     /**
@@ -1174,6 +1315,112 @@ idBingeNudgeTakeBreak = id("bingeNudgeTakeBreakButton")
         mainHandler.post {
             gateOverlayView?.let { safeRemoveView(it); gateOverlayView = null }
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Self-protection shield
+    // ─────────────────────────────────────────────────────────────────────────
+
+    // OEM packages that host the App-Info / force-stop / uninstall / permission
+    // screens. Covers AOSP plus the major OEM "security center" apps that route
+    // these destructive actions through their own package instead of settings.
+    private val SELF_PROTECT_PACKAGES = listOf(
+        "settings",                  // AOSP + most OEMs (com.android.settings)
+        "packageinstaller",          // uninstall confirm (com.android/google.packageinstaller)
+        "securitycenter",            // Xiaomi / MIUI (com.miui.securitycenter)
+        "com.miui.securitycore",
+        "com.coloros.safecenter",    // Oppo / Realme (ColorOS)
+        "com.coloros.phonemanager",
+        "com.oppo.safe",             // older Oppo
+        "com.iqoo.secure",           // Vivo / iQOO
+        "com.vivo.permissionmanager",
+        "com.vivo.abe",
+        "com.huawei.systemmanager",  // Huawei / Honor (EMUI / MagicOS)
+        "com.samsung.android.lool",  // Samsung Device Care
+        "com.samsung.android.sm",    // Samsung Smart Manager (older)
+        "com.transsion.phonemaster"  // Tecno / Infinix / itel
+    )
+
+    private fun isSelfProtectSurface(pkg: String): Boolean =
+        SELF_PROTECT_PACKAGES.any { pkg.contains(it, ignoreCase = true) }
+
+    /**
+     * Fast re-scan that stays alive ONLY while the user is parked on a settings /
+     * security surface during an active strict session. A single event-driven check
+     * misses static screens (App-Info opened via Recents) and first-frame timing
+     * (toggle not yet reported "checked"); this closes both. It self-terminates the
+     * instant the foreground leaves the surface, so it costs nothing the rest of the time.
+     */
+    private val selfProtectWatchdog = object : Runnable {
+        override fun run() {
+            if (!isStrictModeEnabled || !isBlockActive("com.shahil.unlink")) { hideSelfProtectShield(); return }
+            val root = rootInActiveWindow
+            val pkg = root?.packageName?.toString()
+            if (pkg == null || !isSelfProtectSurface(pkg)) {   // left the danger zone — stop & clear
+                hideSelfProtectShield(); return
+            }
+            val now = System.currentTimeMillis()
+            if (checkSelfProtection(root) ||
+                (now - lastUnlinkSettingsSeen < 4000L && looksLikeDestructiveConfirm(root))) {
+                lastUnlinkSettingsSeen = now
+                showSelfProtectShield()
+                performGlobalAction(GLOBAL_ACTION_BACK)
+            } else {
+                hideSelfProtectShield()   // on a settings list, but not on a dangerous toggle/screen
+            }
+            mainHandler.postDelayed(this, 400L)
+        }
+    }
+
+    /**
+     * Instantly draws an opaque full-screen overlay over the App-Info / force-stop /
+     * uninstall screen so the destructive buttons are physically untappable. This wins
+     * the race that GLOBAL_ACTION_BACK alone can lose when the OS is slow to navigate.
+     * Built programmatically (no XML dependency) and self-dismisses as a safety net.
+     * Called on the accessibility main thread; addView is therefore synchronous & instant.
+     */
+    private fun showSelfProtectShield() {
+        // Refresh the safety dismissal on every detection so it stays up while the
+        // dangerous screen is in front, and auto-clears if detections stop.
+        mainHandler.removeCallbacks(shieldDismissRunnable)
+        mainHandler.postDelayed(shieldDismissRunnable, 1500L)
+        if (shieldOverlayView != null) return
+        if (windowManager == null) windowManager = getSystemService(WINDOW_SERVICE) as WindowManager
+        val view = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#F2000000"))
+            isClickable = true   // absorb taps so they never reach the buttons behind
+            isFocusable = false
+            addView(TextView(this@UnlinkAccessibilityService).apply {
+                text = "Focus Mode Active\nControl locked ❤️🩹"
+                setTextColor(Color.WHITE)
+                textSize = 18f
+                gravity = Gravity.CENTER
+            }, FrameLayout.LayoutParams(-1, -1, Gravity.CENTER))
+        }
+        val params = WindowManager.LayoutParams(
+            -1, -1,
+            WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT
+        )
+        // TYPE_ACCESSIBILITY_OVERLAY does not require the draw-overlays permission,
+        // so the shield works on the accessibility grant alone. try/catch guards
+        // any OEM that still rejects the add.
+        try {
+            windowManager?.addView(view, params)
+            shieldOverlayView = view
+            vibrate(20)
+            Log.d(TAG, "DIAG shield shown (covering buttons)")
+        } catch (e: Exception) {
+            Log.e(TAG, "DIAG shield addView FAILED: ${e.message}")
+        }
+    }
+
+    private fun hideSelfProtectShield() {
+        mainHandler.removeCallbacks(shieldDismissRunnable)
+        shieldOverlayView?.let { safeRemoveView(it); shieldOverlayView = null }
     }
 
     // ─────────────────────────────────────────────────────────────────────────

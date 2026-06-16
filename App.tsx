@@ -1,20 +1,11 @@
-import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { enableScreens } from 'react-native-screens';
-
-enableScreens();
 import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
 import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LogBox, View, ActivityIndicator, Platform, AppState, Modal, Text, TouchableOpacity } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-
-// Configure Reanimated Logger to disable strict mode warnings
-configureReanimatedLogger({
-  level: ReanimatedLogLevel.warn,
-  strict: false,
-});
 
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -43,6 +34,14 @@ import { PremiumSplash } from './components/ui/PremiumSplash';
 import { TemporalEngine } from './services/TemporalEngine';
 import { SessionIntegrityService, IntegrityBreakResult } from './services/SessionIntegrityService';
 import './global.css';
+
+enableScreens();
+
+// Configure Reanimated Logger to disable strict mode warnings
+configureReanimatedLogger({
+  level: ReanimatedLogLevel.warn,
+  strict: false,
+});
 
 // Build 0.81.5 has fixed safeAreaView but dependencies might still use it
 LogBox.ignoreLogs([

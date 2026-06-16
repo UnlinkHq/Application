@@ -4,6 +4,7 @@ import android.app.AppOpsManager
 import android.app.usage.UsageStats
 import android.app.usage.UsageStatsManager
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.IntentFilter
 import android.content.Context
 import android.content.Intent
@@ -212,6 +213,45 @@ class ScreenTimeModule : Module() {
         val context = appContext.reactContext ?: return@AsyncFunction false
         val prefs = context.getSharedPreferences("UnlinkBlockingPrefs", Context.MODE_PRIVATE)
         return@AsyncFunction prefs.getBoolean("strict_mode", false)
+    }
+
+    // ── Launcher resilience (optional, opt-in) ─────────────────────────────────
+    // Setting Unlink as the Home app makes OEM battery-killers treat it as a launcher
+    // and stop tearing down the focus engine. The HOME alias ships DISABLED; we only
+    // enable it when the user opts in, then send them to pick the default Home app.
+
+    Function("isDefaultLauncher") {
+        val context = appContext.reactContext ?: return@Function false
+        val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME)
+        val res = context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY)
+        return@Function res?.activityInfo?.packageName == context.packageName
+    }
+
+    Function("setLauncherEnabled") { enabled: Boolean ->
+        val context = appContext.reactContext ?: return@Function null
+        val alias = ComponentName(context.packageName, "${context.packageName}.UnlinkLauncherAlias")
+        val newState = if (enabled) PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+                       else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+        try {
+            context.packageManager.setComponentEnabledSetting(alias, newState, PackageManager.DONT_KILL_APP)
+        } catch (e: Exception) {
+            Log.e("ScreenTimeModule", "setLauncherEnabled failed", e)
+        }
+        return@Function null
+    }
+
+    Function("openHomeSettings") {
+        val context = appContext.reactContext ?: return@Function null
+        try {
+            context.startActivity(Intent(Settings.ACTION_HOME_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: Exception) {
+            try {
+                context.startActivity(Intent(Settings.ACTION_MANAGE_DEFAULT_APPS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            } catch (_: Exception) {
+                Log.e("ScreenTimeModule", "openHomeSettings failed", e)
+            }
+        }
+        return@Function null
     }
 
     // Returns (and clears) a one-shot "the engine was killed mid-session" flag latched by

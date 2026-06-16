@@ -1,7 +1,7 @@
 # Unlink — Play Store Release Guide
 
 The single source of truth for shipping Unlink to the Google Play Store.
-Last updated: 2026-05. Re-verify the Play Console links if Google changes the flow.
+Last updated: 2026-06. Re-verify the Play Console links if Google changes the flow.
 
 ---
 
@@ -48,14 +48,38 @@ But it gets **manual review**, so do all of this:
   user-initiated focus enforcement (a session the user chose to start), NOT device control.**
   Recommended: keep it **optional / off by default**. If a reviewer objects, disable it for the
   Play build rather than fighting it.
-- **Device Admin API was removed (2026-05).** "Uninstall protection" used to request Device Admin
-  (`DeviceAdminReceiver` + `force-lock`). That is gone because: (a) Android 7+ no longer lets Device
-  Admin block uninstall, so it didn't even work, and (b) "app prevents its own removal" is the single
-  biggest Play rejection trigger (malware signature). Uninstall protection is now enforced **only**
-  by the accessibility strict-mode self-protection above — it detects the App Info / uninstall /
-  force-stop screen during an active session and fires `BACK`. This is the same mechanism AppBlock /
-  Stay Focused ship with and get approved. The old JS API (`requestAdmin`/`isAdminActive`/
-  `deactivateAdmin`) now just toggles strict mode (see `modules/screen-time/index.ts`).
+- **No Device Admin — accessibility-only for launch (deliberate).** "App prevents its own removal"
+  is the single biggest Play rejection trigger (malware signature), and the Accessibility +
+  uninstall-prevention combo draws the toughest review. **Regain (2.6M installs) ships
+  accessibility-only and is approved** — so that's our launch path. Uninstall protection is enforced
+  **only** by the accessibility strict-mode self-protection above: during an active, user-started
+  session it detects the App Info / uninstall / force-stop / accessibility / overlay screens, covers
+  them with an instant overlay shield, and fires `BACK`. The JS API (`requestAdmin` / `isAdminActive`
+  / `deactivateAdmin` in `modules/screen-time/index.ts`) just toggles the strict-mode flag — there is
+  **no** `DeviceAdminReceiver`, `BIND_DEVICE_ADMIN`, or `device_admin.xml` in the build.
+  - **Why this is compliant:** Play bans *preventing* uninstall, but *resisting* it is fine while
+    reversible — our protection is OFF outside a session and the user can always disable Accessibility
+    to remove the app. Frame it as **user-initiated focus enforcement, NOT device control**, and keep
+    it optional / off by default.
+  - **Scope is narrow & self-targeted (helps the review):** the bounce ONLY fires on screens that
+    show **our own** app name "Unlink" (App Info / overlay / accessibility / force-stop for Unlink).
+    Other apps' settings are never touched. This is "an app protecting its own focus session," not a
+    settings/device-control blocker — the safer side of the policy line. Say this plainly in the form.
+  - **Cross-OEM + cross-locale detection (`UnlinkAccessibilityService.checkSelfProtection`):** the
+    backbone keys off two signals that never change across manufacturer or language — the app name
+    **"Unlink"** (labels don't translate) + a **toggle widget detected by class** (not text) — so it
+    works on Samsung/Xiaomi/Realme/Oppo/Vivo in any language. English label matching is only a fast
+    path on top. A 400ms watchdog re-scans static screens; an overlay shield covers the buttons
+    instantly to win the race against a fast tap.
+  - **Accuracy note:** an earlier draft claimed "Android 7+ no longer lets Device Admin block
+    uninstall." That was wrong — it conflated plain device admin (still blocks uninstall on Android
+    13/14) with the Device-Owner-only `setUninstallBlocked()`. We omit Device Admin by *choice* (Play
+    risk), not because it doesn't work.
+  - **Phase 2 (post-launch, optional):** Device Admin gives an OS-enforced uninstall lock (Android
+    greys out the button). The canonical open-source `DigiPaws` and commercial AppBlock/StayFree all
+    do this via a `DeviceAdminReceiver` with an empty `<uses-policies>`. Adding it as an update to an
+    *established, in-good-standing* app draws far less scrutiny than launching with it. **Do not add
+    it to the v1 submission.**
 
 ---
 

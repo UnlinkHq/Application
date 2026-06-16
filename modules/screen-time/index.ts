@@ -55,6 +55,9 @@ interface ScreenTimeModuleInterface {
     setNativeStopRecord(blockId: string, dateStr: string): void;
     setStrictMode(enabled: boolean): void;
     getStrictMode(): Promise<boolean>;
+    isDefaultLauncher(): boolean;
+    setLauncherEnabled(enabled: boolean): void;
+    openHomeSettings(): void;
     consumeIntegrityBreak(): Promise<{ pending: boolean; silenceMs?: number; sessionStart?: number }>;
     canScheduleExactAlarms(): boolean;
     requestExactAlarmPermission(): void;
@@ -121,6 +124,9 @@ try {
         setNativeStopRecord: () => { },
         setStrictMode: () => { },
         getStrictMode: async () => false,
+        isDefaultLauncher: () => false,
+        setLauncherEnabled: () => { },
+        openHomeSettings: () => { },
         consumeIntegrityBreak: async () => ({ pending: false }),
         canScheduleExactAlarms: () => true,
         requestExactAlarmPermission: () => { },
@@ -142,14 +148,15 @@ export function requestPermission(): void {
     ScreenTimeModule.requestPermission();
 }
 
-// ── Uninstall protection — migrated off the deprecated Device Admin API ──────
-// Preventing uninstall is now enforced by the accessibility-based strict-mode
-// self-protection in UnlinkAccessibilityService: during an active session it
-// bounces the user out of the App Info / uninstall / force-stop screens. Device
-// Admin was removed because (a) it no longer blocks uninstall on Android 7+ and
-// (b) it is the top Play Store rejection trigger for "app prevents removal".
-// These three functions keep the original API surface so existing UI keeps
-// working — they just toggle strict mode instead of requesting Device Admin.
+// ── Uninstall protection — accessibility-only (no Device Admin) ───────────────
+// For the Play launch we deliberately do NOT use Device Admin (the Accessibility +
+// "prevents uninstall" combo is the highest review-risk pattern; Regain ships
+// accessibility-only and is approved). Uninstall protection is enforced entirely by
+// the strict-mode self-protection in UnlinkAccessibilityService: during a session it
+// detects + bounces (with an overlay shield) the App Info / uninstall / force-stop /
+// accessibility / overlay screens. These three functions keep the original API
+// surface so callers don't change — they just toggle the strict-mode flag.
+// (Device Admin is a deliberate post-launch Phase 2 — see RELEASE.md §1.)
 let _uninstallProtectionCache = false;
 getStrictMode().then(v => { _uninstallProtectionCache = v; }).catch(() => { });
 
@@ -165,6 +172,31 @@ export function requestAdmin(): void {
 export function deactivateAdmin(): void {
     _uninstallProtectionCache = false;
     setStrictMode(false);
+}
+
+// ── Launcher resilience (optional, opt-in) ───────────────────────────────────
+// Making Unlink the Home app stops aggressive OEM battery-killers from tearing
+// down the focus engine (this is how Regain "feels unbreakable"). The HOME alias
+// ships DISABLED, so there is zero behavior change unless the user opts in here.
+export function isDefaultLauncher(): boolean {
+    try { return ScreenTimeModule.isDefaultLauncher(); } catch { return false; }
+}
+
+// Enables the HOME alias, then opens the system Home-app picker so the user can
+// choose Unlink. Call from a clearly-labelled, optional settings toggle.
+export function enableLauncherResilience(): void {
+    ScreenTimeModule.setLauncherEnabled(true);
+    ScreenTimeModule.openHomeSettings();
+}
+
+// Disables the alias. The user should also re-pick their normal launcher in
+// Settings (openHomeSettings) — Android can't switch the default Home for them.
+export function disableLauncherResilience(): void {
+    ScreenTimeModule.setLauncherEnabled(false);
+}
+
+export function openHomeSettings(): void {
+    ScreenTimeModule.openHomeSettings();
 }
 
 export async function getUsageStats(startTime: number, endTime: number): Promise<any> {
