@@ -4,13 +4,13 @@
 **App:** Unlink — Focus & Screen Time
 **Developer:** Shahil KV
 **Contact:** mshahilkv@gmail.com
-**Website:** getunlink.com
+**Website:** https://www.getunlink.com/privacy
 
 ---
 
 ## Overview
 
-Unlink is a digital wellbeing app that helps you manage screen time and reduce compulsive app usage. We built Unlink on a simple principle: **your data stays on your device.** We do not sell data, run ads, or upload your behaviour to any server.
+Unlink is a digital wellbeing app that helps you manage screen time and reduce compulsive app usage. We built Unlink on a simple principle: **your data stays on your device.** We do not sell data, run ads, or upload your behaviour to any server. Unlink is open source so users can inspect how the app works.
 
 This policy explains exactly what we access, why, and what we never do.
 
@@ -26,6 +26,7 @@ Unlink uses Android's Accessibility Service API. This is required to reliably de
 
 **What the service never reads:**
 - Passwords, PINs, or payment card numbers
+- Password fields or login credentials. Never share your passwords with Unlink or anyone claiming to represent Unlink.
 - Messages, emails, or notifications
 - Browser history or URLs
 - Screen content from any app other than for the package name check described above
@@ -54,16 +55,17 @@ This permission allows Unlink to draw the blocking overlay screen above other ap
 
 ---
 
-## 4. Device Administrator (Optional)
+## 4. Focus Session Protection (Optional)
 
-If you enable **Strict Mode**, Unlink will ask you to grant Device Administrator permission. This is used for one purpose only: to prevent Unlink from being uninstalled while a focus session you started is active.
+Focus Session Protection is optional and off by default. If you manually enable it, Unlink uses the already-granted Accessibility Service during a focus session you started to help keep that session active until its timer ends.
 
-- This permission is entirely optional
-- You grant it explicitly via a system dialog
-- It is automatically released when your focus session ends
-- We do not use it to wipe data, change your lock screen password, or monitor your device
+- This feature is entirely optional
+- It is only active during a user-started focus session
+- It does not use Device Administrator permission
+- It does not block other apps' settings
+- We do not use it to wipe data, change your lock screen password, read passwords, or monitor your device
 
-You can revoke Device Administrator at any time in Android Settings → Security → Device Admin Apps → Unlink → Deactivate.
+You can disable it inside Unlink settings. You can also disable Unlink's Accessibility Service at any time in Android Settings → Accessibility → Unlink Focus Guard → Off.
 
 ---
 
@@ -79,7 +81,7 @@ The **Mom Test** feature lets you nominate a trusted contact (such as a parent o
 
 - You provide the email address voluntarily when setting up this feature
 - The email address is stored locally on your device
-- When you request early termination, the email address and a one-time code are sent to our email proxy (hosted on Vercel) which forwards it via Resend.com
+- When you request early termination, the email address and a one-time code are sent to our email proxy, which forwards it via Resend.com
 - **We do not store your trusted contact's email on any server.** The proxy receives the request, sends the email, and discards the data immediately
 - Resend.com's privacy policy applies to the email delivery: resend.com/privacy
 
@@ -125,7 +127,9 @@ The following data is stored on your device in local storage. None of it is uplo
 
 ## 10. Third-Party Services
 
-The only third-party service Unlink communicates with is **Resend.com**, and only when the Mom Test feature is used to send a verification email. Resend acts as an email delivery provider. The email is sent and Resend does not retain the content beyond delivery.
+The only cloud provider Unlink uses for user data is **Resend.com**, and only when the Mom Test feature is used to send a verification email. Resend acts as our email delivery provider. Everything else in Unlink is processed and stored on-device.
+
+We do not use Firebase Analytics, Mixpanel, Amplitude, advertising SDKs, or third-party tracking services.
 
 Resend's privacy policy: resend.com/privacy
 
@@ -163,4 +167,4 @@ We will update the Effective Date at the top of this page when changes are made.
 
 **Shahil KV**
 mshahilkv@gmail.com
-getunlink.com
+https://www.getunlink.com/privacy

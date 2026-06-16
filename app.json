@@ -18,9 +18,7 @@
       "resizeMode": "contain",
       "backgroundColor": "#000000"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "backgroundColor": "#000000",
     "ios": {
       "supportsTablet": true,
@@ -33,9 +31,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
-      "blockedPermissions": [
-        "android.permission.RECORD_AUDIO"
-      ],
+      "blockedPermissions": ["android.permission.RECORD_AUDIO"],
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.CAMERA",

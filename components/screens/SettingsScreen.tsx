@@ -1,12 +1,21 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Linking, Platform, AppState, AppStateStatus, Modal } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Linking,
+  Platform,
+  AppState,
+  AppStateStatus,
+  Modal,
+} from 'react-native';
 import { UToggle } from '../ui/UToggle';
 import { UBadge } from '../ui/UBadge';
 import { USectionHeader } from '../ui/USectionHeader';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { useBlocking } from '../../context/BlockingContext';
-import { Ionicons, MaterialIcons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
 import { BrandLogo } from '../ui/BrandLogo';
 import { FocusStorageService, BlockSession } from '../../services/FocusStorageService';
 import { isAdminActive, requestAdmin, deactivateAdmin } from '../../modules/screen-time';
@@ -14,263 +23,301 @@ import { OEMKeepAliveStep } from './onboarding/OEMKeepAliveStep';
 import * as Haptics from 'expo-haptics';
 
 export const SettingsScreen = () => {
-    const navigation = useNavigation();
-    const { isStrict, setStrict } = useBlocking();
-    const [activeSession, setActiveSession] = useState<BlockSession | null>(null);
-    const [isUninstallProtected, setIsUninstallProtected] = useState(false);
-    const [showKeepAlive, setShowKeepAlive] = useState(false);
+  const navigation = useNavigation();
+  const [activeSession, setActiveSession] = useState<BlockSession | null>(null);
+  const [isUninstallProtected, setIsUninstallProtected] = useState(false);
+  const [showKeepAlive, setShowKeepAlive] = useState(false);
 
-    const checkStatus = useCallback(async () => {
-        const session = await FocusStorageService.getActiveSession();
-        setActiveSession(session);
+  const checkStatus = useCallback(async () => {
+    const session = await FocusStorageService.getActiveSession();
+    setActiveSession(session);
 
-        if (Platform.OS === 'android') {
-            const active = isAdminActive();
-            setIsUninstallProtected(active);
+    if (Platform.OS === 'android') {
+      const active = isAdminActive();
+      setIsUninstallProtected(active);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkStatus();
+
+      const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+        if (nextAppState === 'active') {
+          checkStatus();
         }
-    }, []);
+      });
 
-    useFocusEffect(
-        useCallback(() => {
-            checkStatus();
+      return () => subscription.remove();
+    }, [checkStatus])
+  );
 
-            const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-                if (nextAppState === 'active') {
-                    checkStatus();
-                }
-            });
+  const isSessionLocking = activeSession?.strictnessConfig?.isUninstallProtected === true;
 
-            return () => subscription.remove();
-        }, [checkStatus])
-    );
+  const handleToggleUninstall = async () => {
+    if (isSessionLocking) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      return;
+    }
 
-    const isSessionLocking = activeSession?.strictnessConfig?.isUninstallProtected === true;
+    if (Platform.OS === 'android') {
+      if (isUninstallProtected) {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        deactivateAdmin();
+        setIsUninstallProtected(false);
+      } else {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        requestAdmin();
+        // State will be synced via AppState/Focus listener when user returns
+      }
+    }
+  };
 
-    const handleToggleUninstall = async () => {
-        if (isSessionLocking) {
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-            return;
-        }
+  const SectionHeader = ({ title }: { title: string }) => <USectionHeader title={title} />;
 
-        if (Platform.OS === 'android') {
-            if (isUninstallProtected) {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                deactivateAdmin();
-                setIsUninstallProtected(false);
-            } else {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                requestAdmin();
-                // State will be synced via AppState/Focus listener when user returns
-            }
-        }
-    };
+  const SettingsItem = ({
+    icon,
+    label,
+    rightElement,
+    onPress,
+    isLast = false,
+  }: {
+    icon: string;
+    label: string;
+    rightElement?: React.ReactNode;
+    onPress?: () => void;
+    isLast?: boolean;
+  }) => (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={onPress}
+      className={`flex-row items-center justify-between border-white/10 p-6 ${!isLast ? 'border-b' : ''} border-x border-t last:border-b`}
+      style={{ borderStyle: 'solid', borderWidth: 1, borderColor: '#ffffff20' }}>
+      <View className="flex-row items-center gap-4">
+        <MaterialIcons name={icon as any} size={20} color="white" />
+        <Text className="font-label text-sm uppercase tracking-widest text-white">{label}</Text>
+      </View>
+      <View className="flex-row items-center gap-2">
+        {rightElement}
+        {onPress && <MaterialIcons name="chevron-right" size={20} color="#5d5f5f" />}
+      </View>
+    </TouchableOpacity>
+  );
 
-    const SectionHeader = ({ title }: { title: string }) => <USectionHeader title={title} />;
+  return (
+    <SafeAreaView className="flex-1 bg-black" edges={['top']}>
+      {/* Header */}
+      <View className="h-16 flex-row items-center justify-between border-b border-white/10 bg-black px-6">
+        <View className="flex-row items-center gap-4">
+          <TouchableOpacity onPress={() => navigation.goBack()} className="-ml-2 p-1">
+            <Ionicons name="close" size={28} color="white" />
+          </TouchableOpacity>
+          <BrandLogo width={90} height={28} />
+        </View>
+        <View className="flex-row items-center gap-4">
+          <MaterialIcons name="sensors" size={24} color="white" />
+          <View className="h-8 w-8 items-center justify-center border border-white">
+            <MaterialIcons name="person" size={20} color="white" />
+          </View>
+        </View>
+      </View>
 
-    const SettingsItem = ({ icon, label, rightElement, onPress, isLast = false }: {
-        icon: string, label: string, rightElement?: React.ReactNode, onPress?: () => void, isLast?: boolean
-    }) => (
-        <TouchableOpacity
+      <ScrollView
+        className="flex-1 px-6"
+        contentContainerStyle={{ paddingTop: 32, paddingBottom: 240 }}>
+        {/* Parameters */}
+        <SectionHeader title="General Parameters" />
+        <View className="mb-12">
+          <TouchableOpacity
+            onPress={handleToggleUninstall}
             activeOpacity={0.7}
-            onPress={onPress}
-            className={`flex-row items-center justify-between p-6 border-white/10 ${!isLast ? 'border-b' : ''} border-x border-t last:border-b`}
-            style={{ borderStyle: 'solid', borderWidth: 1, borderColor: '#ffffff20' }}
-        >
+            className={`flex-row items-center justify-between border border-b-0 border-white/20 p-6 ${isSessionLocking ? 'opacity-50' : ''}`}>
             <View className="flex-row items-center gap-4">
-                <MaterialIcons name={icon as any} size={20} color="white" />
-                <Text className="font-label text-sm uppercase tracking-widest text-white">{label}</Text>
-            </View>
-            <View className="flex-row items-center gap-2">
-                {rightElement}
-                {onPress && <MaterialIcons name="chevron-right" size={20} color="#5d5f5f" />}
-            </View>
-        </TouchableOpacity>
-    );
-
-    return (
-        <SafeAreaView className="flex-1 bg-black" edges={['top']}>
-            {/* Header */}
-            <View className="h-16 flex-row items-center justify-between px-6 border-b border-white/10 bg-black">
-                <View className="flex-row items-center gap-4">
-                    <TouchableOpacity onPress={() => navigation.goBack()} className="p-1 -ml-2">
-                        <Ionicons name="close" size={28} color="white" />
-                    </TouchableOpacity>
-                    <BrandLogo width={90} height={28} />
-                </View>
-                <View className="flex-row items-center gap-4">
-                    <MaterialIcons name="sensors" size={24} color="white" />
-                    <View className="w-8 h-8 border border-white items-center justify-center">
-                        <MaterialIcons name="person" size={20} color="white" />
-                    </View>
-                </View>
-            </View>
-
-            <ScrollView
-                className="flex-1 px-6"
-                contentContainerStyle={{ paddingTop: 32, paddingBottom: 240 }}
-            >
-
-
-                {/* Parameters */}
-                <SectionHeader title="General Parameters" />
-                <View className="mb-12">
-                    <TouchableOpacity
-                        onPress={handleToggleUninstall}
-                        activeOpacity={0.7}
-                        className={`flex-row items-center justify-between p-6 border border-white/20 border-b-0 ${isSessionLocking ? 'opacity-50' : ''}`}
-                    >
-                        <View className="flex-row items-center gap-4">
-                            <MaterialIcons name="security" size={20} color="white" />
-                            <View>
-                                <Text className="font-label text-sm uppercase tracking-widest text-white">Prevent Uninstall</Text>
-                                {isSessionLocking && (
-                                    <View className="flex-row items-center mt-1">
-                                        <MaterialIcons name="lock" size={10} color="#72fe88" />
-                                        <Text className="text-[#72fe88] font-label text-[8px] uppercase ml-1">LOCKED BY ACTIVE SESSION</Text>
-                                    </View>
-                                )}
-                            </View>
-                        </View>
-                        <UToggle
-                            value={isUninstallProtected || isSessionLocking}
-                            onValueChange={handleToggleUninstall}
-                            activeColor={isSessionLocking ? '#72fe88' : '#FFFFFF'}
-                            disabled={isSessionLocking}
-                        />
-                    </TouchableOpacity>
-                    <SettingsItem
-                        icon="branding-watermark"
-                        label="Customize Block Screen"
-                        rightElement={
-                            <UBadge label="BETA" variant="beta" />
-                        }
-                        onPress={() => { }}
-                        isLast
-                    />
-                </View>
-
-                {/* Troubleshooting & Privacy */}
-                <SectionHeader title="Troubleshooting & Privacy" />
-                <View className="mb-12">
-                    {Platform.OS === 'android' && (
-                        <SettingsItem
-                            icon="battery-alert"
-                            label="Keep Unlink Running (Battery)"
-                            onPress={() => setShowKeepAlive(true)}
-                        />
-                    )}
-                    <SettingsItem
-                        icon="account-balance"
-                        label="Banking Apps Crashing / Blocked?"
-                        onPress={() => {
-                            import('react-native').then(({ Alert }) => {
-                                Alert.alert(
-                                    "WHY BANKING APPS BLOCK UNLINK",
-                                    "High-security banking apps block ANY app that uses 'Accessibility Services' or 'Screen Overlays' to protect you from malware. Since Unlink uses these to block your distractions instantly, banks panic.\n\nYour data is 100% private and never leaves your device. This is a bank security feature, not an Unlink bug.\n\nTo use your banking app, simply pause Unlink or temporarily turn off its Accessibility permission in your phone settings.",
-                                    [{ text: "I UNDERSTAND", style: "default" }]
-                                );
-                            });
-                        }}
-                        isLast
-                    />
-                </View>
-
-                {/* Socials & Journey */}
-                <SectionHeader title="Founder's Journey" />
-                <View className="border border-[#72fe88]/20 bg-[#72fe88]/5 p-6 mb-8 border-dashed">
-                    <Text className="text-white font-headline font-black text-xs uppercase tracking-widest mb-3">Startup Mission</Text>
-                    <Text className="text-white/60 font-label text-[10px] leading-5 mb-4 italic">
-                        "Unlink is a labor of love to help us reclaim our focus. We are building this journey together—if you want to see the hard work behind the scenes, join our social channels."
+              <MaterialIcons name="security" size={20} color="white" />
+              <View>
+                <Text className="font-label text-sm uppercase tracking-widest text-white">
+                  Focus Session Protection
+                </Text>
+                {isSessionLocking && (
+                  <View className="mt-1 flex-row items-center">
+                    <MaterialIcons name="lock" size={10} color="#72fe88" />
+                    <Text className="ml-1 font-label text-[8px] uppercase text-[#72fe88]">
+                      LOCKED BY ACTIVE SESSION
                     </Text>
-                    <View className="flex-row gap-4">
-                        <TouchableOpacity
-                            activeOpacity={0.7}
-                            className="flex-row items-center gap-2 p-2"
-                            onPress={() => {
-                                Linking.openURL('https://t.me/shahileeee').catch(err => console.error("Couldn't load page", err));
-                            }}
-                        >
-                            <FontAwesome5 name="telegram-plane" size={18} color="white" />
-                            <Text className="text-white font-label text-[10px] uppercase underline tracking-tighter">@shahileeee</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            activeOpacity={0.7}
-                            className="flex-row items-center gap-2 p-2"
-                            onPress={() => {
-                                Linking.openURL('https://instagram.com/_shahilee').catch(err => console.error("Couldn't load page", err));
-                            }}
-                        >
-                            <FontAwesome5 name="instagram" size={18} color="white" />
-                            <Text className="text-white font-label text-[10px] uppercase underline tracking-tighter">_shahilee</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
+                  </View>
+                )}
+              </View>
+            </View>
+            <UToggle
+              value={isUninstallProtected || isSessionLocking}
+              onValueChange={handleToggleUninstall}
+              activeColor={isSessionLocking ? '#72fe88' : '#FFFFFF'}
+              disabled={isSessionLocking}
+            />
+          </TouchableOpacity>
+          <SettingsItem
+            icon="branding-watermark"
+            label="Customize Block Screen"
+            rightElement={<UBadge label="BETA" variant="beta" />}
+            onPress={() => {}}
+            isLast
+          />
+        </View>
 
-                <SectionHeader title="Direct Support" />
-                <View className="mb-12">
-                    <SettingsItem
-                        icon="message"
-                        label="Message me on Telegram"
-                        onPress={() => {
-                            import('react-native').then(({ Alert, Linking }) => {
-                                Alert.alert(
-                                    "FOUNDER SUPPORT",
-                                    "I respond fast! Usually within a few hours. Message me for any bugs, feedback, or just to say hi @shahileeee",
-                                    [
-                                        { text: "LATER", style: "cancel" },
-                                        { text: "OPEN TELEGRAM", onPress: () => Linking.openURL('https://t.me/shahileeee') }
-                                    ]
-                                );
-                            });
-                        }}
-                    />
-                    <SettingsItem
-                        icon="delete-outline"
-                        label="I want to Uninstall / Issues"
-                        isLast
-                        onPress={() => {
-                            import('react-native').then(({ Alert, Linking }) => {
-                                Alert.alert(
-                                    "WAIT BEFORE YOU GO!",
-                                    "Is there something wrong? I'm working hard on this startup journey and would love to fix any issues you have personally. Message me on Telegram @shahileeee and I'll respond fast!",
-                                    [
-                                        { text: "NEVERMIND", style: "cancel" },
-                                        { text: "HELP ME DIRECTLY", onPress: () => Linking.openURL('https://t.me/shahileeee') }
-                                    ]
-                                );
-                            });
-                        }}
-                    />
-                </View>
+        {/* Troubleshooting & Privacy */}
+        <SectionHeader title="Troubleshooting & Privacy" />
+        <View className="mb-12">
+          {Platform.OS === 'android' && (
+            <SettingsItem
+              icon="battery-alert"
+              label="Keep Unlink Running (Battery)"
+              onPress={() => setShowKeepAlive(true)}
+            />
+          )}
+          <SettingsItem
+            icon="privacy-tip"
+            label="Privacy Policy"
+            onPress={() => Linking.openURL('https://www.getunlink.com/privacy')}
+          />
+          <SettingsItem
+            icon="account-balance"
+            label="Banking Apps Crashing / Blocked?"
+            onPress={() => {
+              import('react-native').then(({ Alert }) => {
+                Alert.alert(
+                  'WHY BANKING APPS BLOCK UNLINK',
+                  "High-security banking apps block ANY app that uses 'Accessibility Services' or 'Screen Overlays' to protect you from malware. Since Unlink uses these to block your distractions instantly, banks panic.\n\nYour data is 100% private and never leaves your device. This is a bank security feature, not an Unlink bug.\n\nTo use your banking app, simply pause Unlink or temporarily turn off its Accessibility permission in your phone settings.",
+                  [{ text: 'I UNDERSTAND', style: 'default' }]
+                );
+              });
+            }}
+            isLast
+          />
+        </View>
 
-                {/* Gateways */}
+        <SectionHeader title="Account" />
+        <View className="mb-12">
+          <SettingsItem
+            icon="delete-outline"
+            label="Request Account Deletion"
+            isLast
+            onPress={() => Linking.openURL('https://www.getunlink.com/delete-account')}
+          />
+        </View>
 
-                {/* Version Footer */}
-                <View className="pt-12 pb-8 items-center gap-6">
-                    <MaterialIcons name="sensors" size={32} color="rgba(255,255,255,0.2)" />
-                    <View className="items-center">
-                        <Text className="font-label text-[10px] uppercase tracking-[0.4em] text-white">Unlink  v-0.1 beta</Text>
+        {/* Socials & Journey */}
+        <SectionHeader title="Founder's Journey" />
+        <View className="mb-8 border border-dashed border-[#72fe88]/20 bg-[#72fe88]/5 p-6">
+          <Text className="mb-3 font-headline text-xs font-black uppercase tracking-widest text-white">
+            Startup Mission
+          </Text>
+          <Text className="mb-4 font-label text-[10px] italic leading-5 text-white/60">
+            "Unlink is a labor of love to help us reclaim our focus. We are building this journey
+            together—if you want to see the hard work behind the scenes, join our social channels."
+          </Text>
+          <View className="flex-row gap-4">
+            <TouchableOpacity
+              activeOpacity={0.7}
+              className="flex-row items-center gap-2 p-2"
+              onPress={() => {
+                Linking.openURL('https://t.me/shahileeee').catch((err) =>
+                  console.error("Couldn't load page", err)
+                );
+              }}>
+              <FontAwesome5 name="telegram-plane" size={18} color="white" />
+              <Text className="font-label text-[10px] uppercase tracking-tighter text-white underline">
+                @shahileeee
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              className="flex-row items-center gap-2 p-2"
+              onPress={() => {
+                Linking.openURL('https://instagram.com/_shahilee').catch((err) =>
+                  console.error("Couldn't load page", err)
+                );
+              }}>
+              <FontAwesome5 name="instagram" size={18} color="white" />
+              <Text className="font-label text-[10px] uppercase tracking-tighter text-white underline">
+                _shahilee
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
 
-                    </View>
-                </View>
-            </ScrollView>
+        <SectionHeader title="Direct Support" />
+        <View className="mb-12">
+          <SettingsItem
+            icon="message"
+            label="Message me on Telegram"
+            onPress={() => {
+              import('react-native').then(({ Alert, Linking }) => {
+                Alert.alert(
+                  'FOUNDER SUPPORT',
+                  'I respond fast! Usually within a few hours. Message me for any bugs, feedback, or just to say hi @shahileeee',
+                  [
+                    { text: 'LATER', style: 'cancel' },
+                    {
+                      text: 'OPEN TELEGRAM',
+                      onPress: () => Linking.openURL('https://t.me/shahileeee'),
+                    },
+                  ]
+                );
+              });
+            }}
+          />
+          <SettingsItem
+            icon="delete-outline"
+            label="App Issues"
+            isLast
+            onPress={() => {
+              import('react-native').then(({ Alert, Linking }) => {
+                Alert.alert(
+                  'APP SUPPORT',
+                  "Is there something wrong? I'm working hard on this startup journey and would love to fix any issues you have personally. Message me on Telegram @shahileeee and I'll respond fast!",
+                  [
+                    { text: 'NEVERMIND', style: 'cancel' },
+                    {
+                      text: 'HELP ME DIRECTLY',
+                      onPress: () => Linking.openURL('https://t.me/shahileeee'),
+                    },
+                  ]
+                );
+              });
+            }}
+          />
+        </View>
 
-            <Modal
-                visible={showKeepAlive}
-                animationType="slide"
-                onRequestClose={() => setShowKeepAlive(false)}
-            >
-                <View className="flex-1 bg-black">
-                    <View className="h-16 flex-row items-center justify-between px-6 border-b border-white/10">
-                        <TouchableOpacity onPress={() => setShowKeepAlive(false)} className="p-1 -ml-2">
-                            <Ionicons name="close" size={28} color="white" />
-                        </TouchableOpacity>
-                        <Text className="text-white font-headline font-black text-xs uppercase tracking-widest">Keep Running</Text>
-                        <View style={{ width: 28 }} />
-                    </View>
-                    <OEMKeepAliveStep />
-                </View>
-            </Modal>
-        </SafeAreaView>
-    );
+        {/* Gateways */}
+
+        {/* Version Footer */}
+        <View className="items-center gap-6 pb-8 pt-12">
+          <MaterialIcons name="sensors" size={32} color="rgba(255,255,255,0.2)" />
+          <View className="items-center">
+            <Text className="font-label text-[10px] uppercase tracking-[0.4em] text-white">
+              Unlink v-0.1 beta
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
+
+      <Modal
+        visible={showKeepAlive}
+        animationType="slide"
+        onRequestClose={() => setShowKeepAlive(false)}>
+        <View className="flex-1 bg-black">
+          <View className="h-16 flex-row items-center justify-between border-b border-white/10 px-6">
+            <TouchableOpacity onPress={() => setShowKeepAlive(false)} className="-ml-2 p-1">
+              <Ionicons name="close" size={28} color="white" />
+            </TouchableOpacity>
+            <Text className="font-headline text-xs font-black uppercase tracking-widest text-white">
+              Keep Running
+            </Text>
+            <View style={{ width: 28 }} />
+          </View>
+          <OEMKeepAliveStep />
+        </View>
+      </Modal>
+    </SafeAreaView>
+  );
 };
