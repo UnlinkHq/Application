@@ -1,6 +1,6 @@
 # Privacy Policy — Unlink
 
-**Effective Date:** 26 May 2025
+**Effective Date:** 25 June 2026
 **App:** Unlink — Focus & Screen Time
 **Developer:** Shahil KV
 **Contact:** mshahilkv@gmail.com
@@ -82,7 +82,7 @@ The **Mom Test** feature lets you nominate a trusted contact (such as a parent o
 - You provide the email address voluntarily when setting up this feature
 - The email address is stored locally on your device
 - When you request early termination, the email address and a one-time code are sent to our email proxy, which forwards it via Resend.com
-- **We do not store your trusted contact's email on any server.** The proxy receives the request, sends the email, and discards the data immediately
+- **We do not intentionally store your trusted contact's email on our server.** The proxy receives the request and sends the email. Temporary operational logs may exist for security, debugging, or delivery troubleshooting, and are deleted within 30 days
 - Resend.com's privacy policy applies to the email delivery: resend.com/privacy
 
 If you do not use the Mom Test feature, no email data is ever collected or transmitted.
@@ -93,19 +93,48 @@ If you do not use the Mom Test feature, no email data is ever collected or trans
 
 The app requests internet access for:
 - Sending verification emails via the Mom Test feature (described above)
-- No other network requests are made from the app
+- Opening links that you manually tap, such as the privacy policy, support links, open-source repository, or social links
+- Optional web-based Instagram story viewing if you use that feature. This loads Instagram in a WebView, and Instagram's own privacy practices apply to your use of Instagram
 
 We do not use the internet permission for analytics, advertising, crash reporting, or any background data upload.
 
 ---
 
-## 8. Data We Store Locally
+## 8. Installed Apps and App Visibility
+
+Unlink reads the list of launchable apps installed on your device so you can choose which apps to block and so we can show app names and icons inside the block list.
+
+**What we read:**
+- App package names
+- App display names
+- App icons
+
+This information is processed locally on your device. We do not upload your installed app list, app names, package names, or app icons to any server.
+
+---
+
+## 9. Background Operation and System Permissions
+
+Unlink uses a small number of Android system permissions to keep focus sessions reliable:
+
+- **Run at startup / receive boot completed:** Restores active sessions and schedules after your phone restarts
+- **Foreground service:** Keeps active blocking reliable during a focus session
+- **Exact alarm:** Starts scheduled focus sessions at the time you selected
+- **Ignore battery optimizations:** Helps prevent Android from stopping Unlink during an active session
+- **Vibration:** Provides local haptic feedback for reminders and blocking events
+
+These permissions do not give us access to your personal files, messages, contacts, photos, location, microphone, or camera. They are used only for app functionality and are not used to collect or upload data.
+
+---
+
+## 10. Data We Store Locally
 
 The following data is stored on your device in local storage. None of it is uploaded.
 
 | Data | Purpose |
 |------|---------|
 | Block list (app package names) | Your chosen apps to block |
+| Installed app names and icons | Showing apps in the app picker |
 | Focus session history | Showing your past sessions |
 | Brainrot score and scroll count | Daily engagement metric |
 | Schedule configurations | Your recurring focus schedules |
@@ -115,7 +144,7 @@ The following data is stored on your device in local storage. None of it is uplo
 
 ---
 
-## 9. Data We Do Not Collect
+## 11. Data We Do Not Collect
 
 - We do not collect analytics or crash reports
 - We do not use Firebase, Mixpanel, Amplitude, or any analytics SDK
@@ -125,9 +154,11 @@ The following data is stored on your device in local storage. None of it is uplo
 
 ---
 
-## 10. Third-Party Services
+## 12. Third-Party Services
 
 The only cloud provider Unlink uses for user data is **Resend.com**, and only when the Mom Test feature is used to send a verification email. Resend acts as our email delivery provider. Everything else in Unlink is processed and stored on-device.
+
+If you use the optional Instagram WebView feature, Instagram is loaded inside the app and Instagram's own terms and privacy policy apply to your use of Instagram. Unlink does not receive your Instagram password or messages.
 
 We do not use Firebase Analytics, Mixpanel, Amplitude, advertising SDKs, or third-party tracking services.
 
@@ -135,13 +166,13 @@ Resend's privacy policy: resend.com/privacy
 
 ---
 
-## 11. Children's Privacy
+## 13. Children's Privacy
 
 Unlink is not directed at children under 13. We do not knowingly collect personal information from children. If you believe your child has provided information through this app, contact us and we will delete it.
 
 ---
 
-## 12. Data Deletion
+## 14. Data Deletion
 
 Because all data is stored locally on your device, you can delete it at any time by:
 - Clearing app data in Android Settings → Apps → Unlink → Storage → Clear Data
@@ -151,19 +182,19 @@ For any data that passed through our email proxy (Mom Test emails), contact msha
 
 ---
 
-## 13. Note on Banking Applications
+## 15. Note on Banking Applications
 
 Some banking and financial apps detect when any Accessibility Service is active on the device and show a security warning or refuse to open. This is a security policy enforced by those apps — not a data collection practice by Unlink. If your banking app is affected, temporarily disable Unlink's accessibility service in Android Settings → Accessibility → Unlink Focus Guard → Off, complete your banking, then re-enable it.
 
 ---
 
-## 14. Changes to This Policy
+## 16. Changes to This Policy
 
 We will update the Effective Date at the top of this page when changes are made. Significant changes will be notified in-app.
 
 ---
 
-## 15. Contact
+## 17. Contact
 
 **Shahil KV**
 mshahilkv@gmail.com
